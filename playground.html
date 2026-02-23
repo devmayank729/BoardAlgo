@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Gemini API Playground</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080b10;
+    --surface: #0d1117;
+    --surface2: #131a24;
+    --surface3: #1a2332;
+    --border: #1e2d42;
+    --accent: #4f8ef7;
+    --accent2: #7c3aed;
+    --gem: #34d399;
+    --gem2: #06b6d4;
+    --text: #e2eaf6;
+    --text2: #8899b4;
+    --text3: #4a5d78;
+    --danger: #f43f5e;
+    --glow: rgba(79, 142, 247, 0.15);
+  }
+
+  html { scroll-behavior: smooth; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Background mesh */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 60% 40% at 10% 20%, rgba(79,142,247,0.07) 0%, transparent 60%),
+      radial-gradient(ellipse 40% 50% at 90% 80%, rgba(124,58,237,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse 30% 30% at 50% 50%, rgba(52,211,153,0.04) 0%, transparent 60%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Grid pattern overlay */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      linear-gradient(rgba(79,142,247,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(79,142,247,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 0 24px; }
+
+  /* ── Header ── */
+  header {
+    padding: 32px 0 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 36px;
+  }
+
+  .logo-gem {
+    width: 42px; height: 42px;
+    background: linear-gradient(135deg, var(--gem), var(--gem2));
+    clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+    animation: pulse-gem 3s ease-in-out infinite;
+    flex-shrink: 0;
+  }
+
+  @keyframes pulse-gem {
+    0%, 100% { filter: brightness(1) drop-shadow(0 0 8px rgba(52,211,153,0.5)); }
+    50% { filter: brightness(1.2) drop-shadow(0 0 16px rgba(52,211,153,0.8)); }
+  }
+
+  .logo-text { font-size: 22px; font-weight: 800; letter-spacing: -0.5px; }
+  .logo-text span { color: var(--gem); }
+
+  .badge {
+    margin-left: auto;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    padding: 4px 10px;
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    letter-spacing: 0.05em;
+  }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 320px 1fr;
+    gap: 24px;
+    align-items: start;
+  }
+
+  @media (max-width: 800px) {
+    .layout { grid-template-columns: 1fr; }
+  }
+
+  /* ── Panels ── */
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    padding: 14px 20px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: var(--surface2);
+  }
+
+  .panel-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--accent);
+    box-shadow: 0 0 6px var(--accent);
+  }
+
+  .panel-dot.green { background: var(--gem); box-shadow: 0 0 6px var(--gem); }
+  .panel-dot.purple { background: var(--accent2); box-shadow: 0 0 6px var(--accent2); }
+
+  .panel-title {
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text2);
+  }
+
+  .panel-body { padding: 20px; }
+
+  /* ── Form elements ── */
+  label {
+    display: block;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+
+  .input-wrap {
+    position: relative;
+    margin-bottom: 20px;
+  }
+
+  input[type="text"], input[type="password"], select, textarea {
+    width: 100%;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    padding: 12px 14px;
+    outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
+    resize: vertical;
+  }
+
+  input[type="text"]:focus, input[type="password"]:focus, select:focus, textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,142,247,0.12);
+  }
+
+  select { cursor: pointer; appearance: none; background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238899b4' d='M6 8L1 3h10z'/%3E%3C/svg%3E"); background-repeat: no-repeat; background-position: right 12px center; padding-right: 36px; }
+
+  .eye-btn {
+    position: absolute;
+    right: 12px; top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    cursor: pointer;
+    color: var(--text3);
+    font-size: 16px;
+    padding: 4px;
+    transition: color 0.2s;
+  }
+  .eye-btn:hover { color: var(--text2); }
+
+  .char-count {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 10px;
+    color: var(--text3);
+    text-align: right;
+    margin-top: 4px;
+  }
+
+  /* ── Temp slider ── */
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+
+  input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 4px;
+    background: var(--border);
+    border-radius: 2px;
+    outline: none;
+  }
+
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 16px; height: 16px;
+    background: var(--accent);
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 6px var(--accent);
+    transition: transform 0.1s;
+  }
+
+  input[type="range"]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+
+  .slider-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    color: var(--accent);
+    min-width: 32px;
+    text-align: right;
+  }
+
+  /* ── Toggle ── */
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+
+  .toggle-label { font-size: 13px; color: var(--text2); }
+
+  .toggle {
+    position: relative;
+    width: 40px; height: 22px;
+  }
+
+  .toggle input { opacity: 0; width: 0; height: 0; }
+
+  .toggle-slider {
+    position: absolute;
+    inset: 0;
+    background: var(--border);
+    border-radius: 11px;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+
+  .toggle-slider::before {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 3px; top: 3px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+
+  input:checked + .toggle-slider { background: var(--accent); }
+  input:checked + .toggle-slider::before { transform: translateX(18px); }
+
+  /* ── Send button ── */
+  .btn-send {
+    width: 100%;
+    padding: 14px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none;
+    border-radius: 12px;
+    color: white;
+    font-family: 'Syne', sans-serif;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: opacity 0.2s, transform 0.1s;
+  }
+
+  .btn-send:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-send:active { transform: translateY(0); }
+  .btn-send:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
+  .btn-send .ripple {
+    position: absolute;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.3);
+    transform: scale(0);
+    animation: ripple 0.6s linear;
+    pointer-events: none;
+  }
+
+  @keyframes ripple {
+    to { transform: scale(4); opacity: 0; }
+  }
+
+  .btn-clear {
+    width: 100%;
+    padding: 10px;
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    color: var(--text3);
+    font-family: 'Syne', sans-serif;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+    margin-top: 10px;
+    transition: border-color 0.2s, color 0.2s;
+  }
+
+  .btn-clear:hover { border-color: var(--danger); color: var(--danger); }
+
+  /* ── Main output area ── */
+  .main-col { display: flex; flex-direction: column; gap: 20px; }
+
+  .prompt-panel { }
+
+  textarea { min-height: 120px; }
+  #promptInput { min-height: 150px; }
+
+  /* ── Response area ── */
+  .response-area {
+    min-height: 200px;
+  }
+
+  .tabs {
+    display: flex;
+    border-bottom: 1px solid var(--border);
+    padding: 0 20px;
+    background: var(--surface2);
+    gap: 4px;
+  }
+
+  .tab {
+    padding: 12px 16px;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -1px;
+    transition: color 0.2s, border-color 0.2s;
+  }
+
+  .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .tab:hover:not(.active) { color: var(--text2); }
+
+  .tab-content { display: none; padding: 20px; }
+  .tab-content.active { display: block; }
+
+  /* ── Rendered output ── */
+  .rendered-output {
+    line-height: 1.75;
+    font-size: 15px;
+    color: var(--text);
+  }
+
+  .rendered-output h1, .rendered-output h2, .rendered-output h3 {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    margin: 1.2em 0 0.5em;
+    color: var(--text);
+  }
+
+  .rendered-output h1 { font-size: 22px; }
+  .rendered-output h2 { font-size: 18px; color: var(--accent); }
+  .rendered-output h3 { font-size: 15px; color: var(--gem); }
+
+  .rendered-output p { margin-bottom: 1em; }
+
+  .rendered-output code {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 2px 6px;
+    color: var(--gem);
+  }
+
+  .rendered-output pre {
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    overflow-x: auto;
+    margin: 1em 0;
+  }
+
+  .rendered-output pre code {
+    background: none;
+    border: none;
+    padding: 0;
+    color: var(--text);
+    font-size: 13px;
+    line-height: 1.6;
+  }
+
+  .rendered-output ul, .rendered-output ol {
+    margin: 0.5em 0 1em 1.5em;
+  }
+
+  .rendered-output li { margin-bottom: 0.3em; }
+
+  .rendered-output blockquote {
+    border-left: 3px solid var(--accent);
+    padding-left: 16px;
+    color: var(--text2);
+    font-style: italic;
+    margin: 1em 0;
+  }
+
+  .rendered-output strong { color: white; font-weight: 700; }
+  .rendered-output em { color: var(--gem); }
+
+  .rendered-output table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 13px;
+  }
+
+  .rendered-output th {
+    background: var(--surface3);
+    padding: 10px 14px;
+    text-align: left;
+    font-weight: 700;
+    border: 1px solid var(--border);
+    color: var(--accent);
+  }
+
+  .rendered-output td {
+    padding: 9px 14px;
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+
+  .rendered-output tr:hover td { background: rgba(79,142,247,0.05); }
+
+  /* ── Raw output ── */
+  .raw-output {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--gem);
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px;
+    white-space: pre-wrap;
+    word-break: break-all;
+    line-height: 1.7;
+    max-height: 500px;
+    overflow-y: auto;
+  }
+
+  .raw-output::-webkit-scrollbar { width: 6px; }
+  .raw-output::-webkit-scrollbar-track { background: var(--surface); }
+  .raw-output::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+  /* ── Copy button ── */
+  .copy-btn {
+    float: right;
+    padding: 6px 12px;
+    background: var(--surface3);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    transition: all 0.2s;
+  }
+
+  .copy-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .copy-btn.copied { border-color: var(--gem); color: var(--gem); }
+
+  /* ── Empty state ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+
+  .empty-gem {
+    width: 48px; height: 48px;
+    background: linear-gradient(135deg, rgba(52,211,153,0.2), rgba(6,182,212,0.2));
+    clip-path: polygon(50% 0%, 100% 38%, 82% 100%, 18% 100%, 0% 38%);
+    margin: 0 auto 16px;
+  }
+
+  .empty-state p { font-size: 14px; font-weight: 600; margin-bottom: 6px; }
+  .empty-state small { font-size: 12px; font-family: 'JetBrains Mono', monospace; }
+
+  /* ── Loading ── */
+  .loading {
+    display: none;
+    text-align: center;
+    padding: 40px 20px;
+  }
+
+  .loading.active { display: block; }
+
+  .spinner {
+    width: 40px; height: 40px;
+    margin: 0 auto 16px;
+    position: relative;
+  }
+
+  .spinner::before, .spinner::after {
+    content: '';
+    position: absolute;
+    border-radius: 50%;
+    border: 2px solid transparent;
+  }
+
+  .spinner::before {
+    inset: 0;
+    border-top-color: var(--accent);
+    animation: spin 0.8s linear infinite;
+  }
+
+  .spinner::after {
+    inset: 6px;
+    border-top-color: var(--gem);
+    animation: spin 1.2s linear infinite reverse;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading p {
+    font-size: 13px;
+    color: var(--text2);
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  /* ── Token info ── */
+  .token-bar {
+    display: flex;
+    gap: 16px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    background: var(--surface2);
+    flex-wrap: wrap;
+  }
+
+  .token-stat {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+    color: var(--text3);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .token-stat span { color: var(--text2); }
+
+  /* ── Error ── */
+  .error-box {
+    background: rgba(244, 63, 94, 0.08);
+    border: 1px solid rgba(244, 63, 94, 0.3);
+    border-radius: 10px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin: 20px;
+  }
+
+  .error-icon { font-size: 18px; flex-shrink: 0; }
+  .error-msg { font-size: 13px; color: var(--danger); font-family: 'JetBrains Mono', monospace; line-height: 1.5; }
+
+  /* ── Status indicator ── */
+  .status-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 16px;
+  }
+
+  .status-dot {
+    width: 8px; height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background 0.3s, box-shadow 0.3s;
+  }
+
+  .status-dot.ok { background: var(--gem); box-shadow: 0 0 6px var(--gem); }
+  .status-dot.err { background: var(--danger); box-shadow: 0 0 6px var(--danger); }
+
+  .status-text { font-size: 11px; font-family: 'JetBrains Mono', monospace; color: var(--text3); }
+</style>
+</head>
+<body>
+
+<div class="wrapper">
+  <header>
+    <div class="logo-gem"></div>
+    <div>
+      <div class="logo-text">Gemini <span>Playground</span></div>
+    </div>
+    <div class="badge">API EXPLORER v1.0</div>
+  </header>
+
+  <div class="layout">
+
+    <!-- ── Left sidebar ── -->
+    <aside>
+
+      <!-- API Config -->
+      <div class="panel" style="margin-bottom:20px">
+        <div class="panel-header">
+          <div class="panel-dot"></div>
+          <span class="panel-title">API Configuration</span>
+        </div>
+        <div class="panel-body">
+          <div class="status-row">
+            <div class="status-dot" id="statusDot"></div>
+            <span class="status-text" id="statusText">No key provided</span>
+          </div>
+
+          <label>API Key</label>
+          <div class="input-wrap">
+            <input type="password" id="apiKey" placeholder="AIza..." autocomplete="off">
+            <button class="eye-btn" id="toggleKey" title="Show/hide key">👁</button>
+          </div>
+
+          <label>Model</label>
+          <div class="input-wrap">
+            <select id="modelSelect">
+              <option value="gemini-2.0-flash">gemini-2.0-flash</option>
+              <option value="gemini-2.0-flash-lite">gemini-2.0-flash-lite</option>
+              <option value="gemini-1.5-pro">gemini-1.5-pro</option>
+              <option value="gemini-1.5-flash">gemini-1.5-flash</option>
+              <option value="gemini-1.5-flash-8b">gemini-1.5-flash-8b</option>
+            </select>
+          </div>
+
+          <label>Temperature <span style="color:var(--text3)">(creativity)</span></label>
+          <div class="slider-row">
+            <input type="range" id="tempSlider" min="0" max="2" step="0.1" value="1">
+            <div class="slider-val" id="tempVal">1.0</div>
+          </div>
+
+          <label>Max Output Tokens</label>
+          <div class="input-wrap">
+            <select id="maxTokens">
+              <option value="512">512</option>
+              <option value="1024">1,024</option>
+              <option value="2048" selected>2,048</option>
+              <option value="4096">4,096</option>
+              <option value="8192">8,192</option>
+            </select>
+          </div>
+
+          <div class="toggle-row">
+            <span class="toggle-label">Streaming mode</span>
+            <label class="toggle">
+              <input type="checkbox" id="streamToggle">
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <!-- System Prompt -->
+      <div class="panel">
+        <div class="panel-header">
+          <div class="panel-dot purple"></div>
+          <span class="panel-title">System Prompt</span>
+        </div>
+        <div class="panel-body">
+          <label>Instructions for Gemini</label>
+          <textarea id="systemPrompt" placeholder="You are a helpful assistant. Respond concisely and clearly..." style="min-height:120px"></textarea>
+          <div class="char-count"><span id="sysCharCount">0</span> chars</div>
+        </div>
+      </div>
+
+    </aside>
+
+    <!-- ── Main col ── -->
+    <div class="main-col">
+
+      <!-- Prompt input -->
+      <div class="panel prompt-panel">
+        <div class="panel-header">
+          <div class="panel-dot green"></div>
+          <span class="panel-title">Your Prompt</span>
+        </div>
+        <div class="panel-body">
+          <textarea id="promptInput" placeholder="Ask Gemini anything..."></textarea>
+          <div class="char-count" style="margin-bottom:14px"><span id="promptCharCount">0</span> chars</div>
+          <button class="btn-send" id="sendBtn" onclick="sendRequest(event)">
+            ✦ Generate Response
+          </button>
+          <button class="btn-clear" onclick="clearAll()">Clear everything</button>
+        </div>
+      </div>
+
+      <!-- Response panel -->
+      <div class="panel response-area">
+        <div class="panel-header">
+          <div class="panel-dot"></div>
+          <span class="panel-title">Response</span>
+          <div id="modelBadge" style="margin-left:auto;font-family:'JetBrains Mono',monospace;font-size:10px;color:var(--text3)"></div>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" onclick="switchTab('rendered', this)">Rendered</div>
+          <div class="tab" onclick="switchTab('raw', this)">Raw JSON</div>
+          <div class="tab" onclick="switchTab('text', this)">Raw Text</div>
+        </div>
+
+        <!-- Loading -->
+        <div class="loading" id="loadingState">
+          <div class="spinner"></div>
+          <p id="loadingText">Connecting to Gemini...</p>
+        </div>
+
+        <!-- Error -->
+        <div id="errorBox" style="display:none">
+          <div class="error-box">
+            <span class="error-icon">⚠</span>
+            <div class="error-msg" id="errorMsg"></div>
+          </div>
+        </div>
+
+        <!-- Tab: Rendered -->
+        <div class="tab-content active" id="tab-rendered">
+          <div class="empty-state" id="emptyState">
+            <div class="empty-gem"></div>
+            <p>No response yet</p>
+            <small>Enter your API key &amp; prompt, then generate</small>
+          </div>
+          <div class="rendered-output" id="renderedOutput" style="display:none"></div>
+        </div>
+
+        <!-- Tab: Raw JSON -->
+        <div class="tab-content" id="tab-raw">
+          <button class="copy-btn" id="copyRawBtn" onclick="copyRaw('json')" style="display:none">Copy JSON</button>
+          <div style="clear:both"></div>
+          <div class="raw-output" id="rawJsonOutput" style="display:none"></div>
+          <div class="empty-state" id="emptyRaw">
+            <div class="empty-gem"></div>
+            <p>No data yet</p>
+            <small>Full API response will appear here</small>
+          </div>
+        </div>
+
+        <!-- Tab: Raw Text -->
+        <div class="tab-content" id="tab-text">
+          <button class="copy-btn" id="copyTextBtn" onclick="copyRaw('text')" style="display:none">Copy Text</button>
+          <div style="clear:both"></div>
+          <div class="raw-output" id="rawTextOutput" style="display:none"></div>
+          <div class="empty-state" id="emptyText">
+            <div class="empty-gem"></div>
+            <p>No data yet</p>
+            <small>Plain text response will appear here</small>
+          </div>
+        </div>
+
+        <!-- Token stats -->
+        <div class="token-bar" id="tokenBar" style="display:none">
+          <div class="token-stat">⚡ Prompt tokens: <span id="tokIn">-</span></div>
+          <div class="token-stat">📝 Output tokens: <span id="tokOut">-</span></div>
+          <div class="token-stat">🔢 Total: <span id="tokTotal">-</span></div>
+          <div class="token-stat">⏱ Time: <span id="respTime">-</span></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+// ── UI interactions ──────────────────────────────────────────
+const apiKeyInput = document.getElementById('apiKey');
+const toggleKeyBtn = document.getElementById('toggleKey');
+const tempSlider = document.getElementById('tempSlider');
+const tempVal = document.getElementById('tempVal');
+const systemPrompt = document.getElementById('systemPrompt');
+const promptInput = document.getElementById('promptInput');
+const sendBtn = document.getElementById('sendBtn');
+
+// Eye toggle
+toggleKeyBtn.addEventListener('click', () => {
+  const isPass = apiKeyInput.type === 'password';
+  apiKeyInput.type = isPass ? 'text' : 'password';
+  toggleKeyBtn.textContent = isPass ? '🔒' : '👁';
+});
+
+// Temperature slider
+tempSlider.addEventListener('input', () => {
+  tempVal.textContent = parseFloat(tempSlider.value).toFixed(1);
+});
+
+// Char counts
+systemPrompt.addEventListener('input', () => {
+  document.getElementById('sysCharCount').textContent = systemPrompt.value.length;
+});
+
+promptInput.addEventListener('input', () => {
+  document.getElementById('promptCharCount').textContent = promptInput.value.length;
+});
+
+// API key status
+apiKeyInput.addEventListener('input', () => {
+  const key = apiKeyInput.value.trim();
+  const dot = document.getElementById('statusDot');
+  const txt = document.getElementById('statusText');
+  if (!key) {
+    dot.className = 'status-dot';
+    txt.textContent = 'No key provided';
+  } else if (key.startsWith('AIza') && key.length > 20) {
+    dot.className = 'status-dot ok';
+    txt.textContent = 'Key looks valid';
+  } else {
+    dot.className = 'status-dot err';
+    txt.textContent = 'Key format unexpected';
+  }
+});
+
+// ── Tabs ────────────────────────────────────────────────────
+function switchTab(name, el) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-' + name).classList.add('active');
+}
+
+// ── Ripple effect ────────────────────────────────────────────
+sendBtn.addEventListener('click', function(e) {
+  const ripple = document.createElement('span');
+  ripple.className = 'ripple';
+  const rect = this.getBoundingClientRect();
+  const size = Math.max(rect.width, rect.height);
+  ripple.style.cssText = `width:${size}px;height:${size}px;left:${e.clientX-rect.left-size/2}px;top:${e.clientY-rect.top-size/2}px`;
+  this.appendChild(ripple);
+  setTimeout(() => ripple.remove(), 700);
+});
+
+// ── Main API call ────────────────────────────────────────────
+let lastRawJson = '';
+let lastRawText = '';
+
+async function sendRequest(e) {
+  e.preventDefault();
+  const apiKey = apiKeyInput.value.trim();
+  const prompt = promptInput.value.trim();
+  const model = document.getElementById('modelSelect').value;
+  const temp = parseFloat(tempSlider.value);
+  const maxTok = parseInt(document.getElementById('maxTokens').value);
+  const sysPrompt = systemPrompt.value.trim();
+
+  if (!apiKey) { showError('Please enter your Gemini API key first.'); return; }
+  if (!prompt) { showError('Please enter a prompt.'); return; }
+
+  setLoading(true);
+  hideError();
+
+  const startTime = Date.now();
+
+  // Build request body
+  const body = {
+    contents: [{ role: 'user', parts: [{ text: prompt }] }],
+    generationConfig: {
+      temperature: temp,
+      maxOutputTokens: maxTok,
+      responseMimeType: "application/json" ,
+    }
+
+
+
+
+
+  };
+
+  if (sysPrompt) {
+    body.systemInstruction = { parts: [{ text: sysPrompt }] };
+  }
+
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+
+  try {
+    document.getElementById('loadingText').textContent = `Calling ${model}...`;
+
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+
+    const elapsed = ((Date.now() - startTime) / 1000).toFixed(2) + 's';
+    const data = await res.json();
+
+    if (!res.ok) {
+      const errMsg = data?.error?.message || `HTTP ${res.status} ${res.statusText}`;
+      showError(errMsg);
+      setLoading(false);
+      return;
+    }
+
+    // Extract text
+    const candidate = data.candidates?.[0];
+    const text = candidate?.content?.parts?.map(p => p.text).join('') || '';
+
+    // Store raws
+    lastRawJson = JSON.stringify(data, null, 2);
+    lastRawText = text;
+
+    // Rendered
+    showRendered(text);
+
+    // Raw JSON
+    document.getElementById('rawJsonOutput').textContent = lastRawJson;
+    document.getElementById('rawJsonOutput').style.display = 'block';
+    document.getElementById('emptyRaw').style.display = 'none';
+    document.getElementById('copyRawBtn').style.display = 'inline-block';
+
+    // Raw text
+    document.getElementById('rawTextOutput').textContent = lastRawText;
+    document.getElementById('rawTextOutput').style.display = 'block';
+    document.getElementById('emptyText').style.display = 'none';
+    document.getElementById('copyTextBtn').style.display = 'inline-block';
+
+    // Token stats
+    const usage = data.usageMetadata || {};
+    document.getElementById('tokIn').textContent = usage.promptTokenCount ?? '-';
+    document.getElementById('tokOut').textContent = usage.candidatesTokenCount ?? '-';
+    document.getElementById('tokTotal').textContent = usage.totalTokenCount ?? '-';
+    document.getElementById('respTime').textContent = elapsed;
+    document.getElementById('tokenBar').style.display = 'flex';
+
+    // Model badge
+    document.getElementById('modelBadge').textContent = model;
+
+    // Status dot ok
+    document.getElementById('statusDot').className = 'status-dot ok';
+    document.getElementById('statusText').textContent = 'Response received';
+
+  } catch (err) {
+    showError('Network error: ' + err.message + '\n\nMake sure your API key is valid and CORS is allowed (use from browser directly).');
+  }
+
+  setLoading(false);
+}
+
+// ── Markdown renderer (no external libs) ──────────────────
+function markdownToHtml(md) {
+  let html = md
+    // Escape HTML
+    .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+    // Code blocks (``` ... ```)
+    .replace(/```(\w+)?\n?([\s\S]*?)```/g, (_, lang, code) =>
+      `<pre><code class="language-${lang||''}">${code.trim()}</code></pre>`)
+    // Inline code
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    // Headers
+    .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+    // Bold + italic
+    .replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.+?)\*/g, '<em>$1</em>')
+    .replace(/__(.+?)__/g, '<strong>$1</strong>')
+    .replace(/_(.+?)_/g, '<em>$1</em>')
+    // Strikethrough
+    .replace(/~~(.+?)~~/g, '<del>$1</del>')
+    // Blockquotes
+    .replace(/^&gt; (.+)$/gm, '<blockquote>$1</blockquote>')
+    // HR
+    .replace(/^---+$/gm, '<hr style="border:1px solid var(--border);margin:1.5em 0">')
+    // Unordered lists
+    .replace(/^\* (.+)$/gm, '<li>$1</li>')
+    .replace(/^- (.+)$/gm, '<li>$1</li>')
+    // Ordered lists
+    .replace(/^\d+\. (.+)$/gm, '<li>$1</li>')
+    // Links
+    .replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" style="color:var(--accent);text-decoration:underline" target="_blank">$1</a>')
+    // Paragraphs (double newline)
+    .replace(/\n\n(?!<[hbupolt])/g, '</p><p>')
+    .replace(/\n(?!<[hbupolt])/g, '<br>');
+
+  // Wrap li elements in ul
+  html = html.replace(/(<li>[\s\S]+?<\/li>)(?:\s*(<li>))?/g, (m) => {
+    if (m.includes('<ul>')) return m;
+    return m;
+  });
+  html = html.replace(/(<li>(?:(?!<li>)[\s\S])*<\/li>(?:\s*<li>(?:(?!<li>)[\s\S])*<\/li>)*)/g,
+    '<ul>$1</ul>');
+
+  return '<p>' + html + '</p>';
+}
+
+function showRendered(text) {
+  const out = document.getElementById('renderedOutput');
+  const empty = document.getElementById('emptyState');
+  out.innerHTML = markdownToHtml(text);
+  out.style.display = 'block';
+  empty.style.display = 'none';
+}
+
+// ── Helpers ──────────────────────────────────────────────────
+function setLoading(on) {
+  const loading = document.getElementById('loadingState');
+  sendBtn.disabled = on;
+  sendBtn.textContent = on ? '⏳ Generating...' : '✦ Generate Response';
+  loading.className = on ? 'loading active' : 'loading';
+}
+
+function showError(msg) {
+  const box = document.getElementById('errorBox');
+  document.getElementById('errorMsg').textContent = msg;
+  box.style.display = 'block';
+  document.getElementById('statusDot').className = 'status-dot err';
+  document.getElementById('statusText').textContent = 'Error';
+}
+
+function hideError() {
+  document.getElementById('errorBox').style.display = 'none';
+}
+
+function clearAll() {
+  promptInput.value = '';
+  document.getElementById('promptCharCount').textContent = '0';
+  document.getElementById('renderedOutput').innerHTML = '';
+  document.getElementById('renderedOutput').style.display = 'none';
+  document.getElementById('emptyState').style.display = 'block';
+  document.getElementById('rawJsonOutput').style.display = 'none';
+  document.getElementById('rawJsonOutput').textContent = '';
+  document.getElementById('emptyRaw').style.display = 'block';
+  document.getElementById('rawTextOutput').style.display = 'none';
+  document.getElementById('rawTextOutput').textContent = '';
+  document.getElementById('emptyText').style.display = 'block';
+  document.getElementById('copyRawBtn').style.display = 'none';
+  document.getElementById('copyTextBtn').style.display = 'none';
+  document.getElementById('tokenBar').style.display = 'none';
+  document.getElementById('modelBadge').textContent = '';
+  hideError();
+  lastRawJson = '';
+  lastRawText = '';
+}
+
+async function copyRaw(type) {
+  const text = type === 'json' ? lastRawJson : lastRawText;
+  const btn = type === 'json' ? document.getElementById('copyRawBtn') : document.getElementById('copyTextBtn');
+  try {
+    await navigator.clipboard.writeText(text);
+    btn.textContent = '✓ Copied!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = type === 'json' ? 'Copy JSON' : 'Copy Text';
+      btn.classList.remove('copied');
+    }, 2000);
+  } catch {}
+}
+
+// Allow Ctrl+Enter to submit
+promptInput.addEventListener('keydown', (e) => {
+  if (e.ctrlKey && e.key === 'Enter') sendRequest(e);
+});
+</script>
+</body>
+</html>

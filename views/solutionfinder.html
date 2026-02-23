@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BoardAlgo | Step-by-Step Solver</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              primary: '#6C2BD9',
+              accent: '#16A34A',
+              dark: '#020617',
+              surface: '#0f172a',
+              lightbg: '#F9FAFB',
+              lightborder: '#E5E7EB'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter','sans-serif'],
+            display: ['Poppins','sans-serif'],
+            handwriting: ['Kalam', 'cursive'] // Added handwriting font
+          },
+          boxShadow: {
+            'glow-primary': '0 0 20px rgba(108, 43, 217, 0.5)',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { overflow-x:hidden; transition: background-color .5s ease, color .5s ease; }
+    #canvas-container { position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; pointer-events:none; }
+    @media (prefers-reduced-motion: reduce) { #canvas-container{display:none!important} }
+    
+    .hud-panel{ background: var(--panel-bg, rgba(15,23,42,.7)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid var(--panel-border, rgba(255,255,255,.1)); box-shadow:0 8px 32px 0 rgba(0,0,0,.3); transition:all .5s ease; }
+    html.dark .hud-panel{ --panel-bg: rgba(15,23,42,.7); --panel-border: rgba(255,255,255,.1); }
+    html:not(.dark) .hud-panel{ --panel-bg: rgba(255,255,255,.85); --panel-border: rgba(0,0,0,.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,.05); }
+    
+    textarea:focus{ outline:none }
+    .input-wrapper:focus-within{ border-color:#6C2BD9; box-shadow: 0 0 25px rgba(108,43,217,0.2) inset, 0 0 20px rgba(108,43,217,0.3) }
+
+    /* =========================================
+       NOTEBOOK PAPER CSS
+       ========================================= */
+    .notebook-paper {
+      background-color: #ffffff;
+      /* Realistic notebook lines: light blue horizontal, red vertical margin */
+      background-image: 
+        linear-gradient(90deg, transparent 69px, #ff9999 69px, #ff9999 71px, transparent 71px),
+        linear-gradient(#e2e8f0 1px, transparent 1px);
+      background-size: 100% 2.5rem;
+      line-height: 2.5rem;
+      padding: 2.5rem 2rem 2.5rem 85px; /* Aligns text with the lines and margin */
+      font-family: 'Kalam', cursive;
+      font-size: 1.25rem;
+      min-height: 600px;
+      color: #0f172a;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+      position: relative;
+      border-radius: 4px;
+    }
+
+    /* Ink Colors - Matches physical pens */
+    .ink-blue { color: #1e3aa5; }
+    .ink-black { color: #1c1c1e; }
+    .ink-red { color: #d32f2f; }
+    .ink-green { color: #2e7d32; }
+
+    /* Force KaTeX to inherit the handwriting ink colors, overriding its default black */
+    .ink-blue .katex { color: #1e3aa5 !important; }
+    .ink-black .katex { color: #1c1c1e !important; }
+    .ink-red .katex { color: #d32f2f !important; }
+    .ink-green .katex { color: #2e7d32 !important; }
+
+    /* KaTeX spacing adjustments for ruled paper */
+    .katex-display { margin: 0 !important; padding: 0 !important; }
+
+    /* Topper Placeholder Styling */
+    .topper-overlay {
+      background: repeating-linear-gradient( 45deg, rgba(0,0,0,0.03), rgba(0,0,0,0.03) 10px, rgba(0,0,0,0) 10px, rgba(0,0,0,0) 20px );
+    }
+    html.dark .topper-overlay {
+      background: repeating-linear-gradient( 45deg, rgba(255,255,255,0.03), rgba(255,255,255,0.03) 10px, rgba(255,255,255,0) 10px, rgba(255,255,255,0) 20px );
+    }
+  </style>
+</head>
+
+<body class="bg-brand-lightbg dark:bg-brand-dark text-slate-800 dark:text-slate-200 min-h-screen selection:bg-brand-primary selection:text-white flex flex-col">
+
+  <div id="canvas-container" aria-hidden="true"></div>
+
+  <nav class="fixed top-0 w-full z-50 border-b border-brand-lightborder dark:border-white/10 bg-white/70 dark:bg-brand-dark/70 backdrop-blur-md transition-colors duration-500">
+    <div class="max-w-7xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <i data-lucide="cpu" class="w-6 h-6 text-brand-primary"></i>
+        <span class="text-xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
+          BOARD <span class="text-brand-primary">Algo</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <button id="theme-toggle" aria-label="Toggle Dark Mode" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+          <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
+          <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-brand-primary"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="relative z-10 w-full max-w-7xl mx-auto px-4 sm:px-6 pt-28 pb-20 flex-grow flex flex-col gap-6">
+
+    <header class="text-center mb-4">
+      <h1 class="text-3xl md:text-5xl font-display font-extrabold text-slate-900 dark:text-white mb-2">Step-by-Step Solver</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base">Get human-like handwritten solutions paired with topper references.</p>
+    </header>
+
+    <section id="ui-state-idle" class="flex flex-col gap-6 w-full max-w-3xl mx-auto transition-opacity duration-300">
+      <form id="solver-form" action="/api/generate-solution" method="POST" class="flex flex-col gap-6" autocomplete="off">
+        <div class="hud-panel rounded-2xl border border-transparent input-wrapper transition-all duration-300 p-0 overflow-hidden">
+          <textarea name="question" id="problem-input" 
+            class="w-full min-h-[120px] bg-transparent text-slate-900 dark:text-white p-6 rounded-t-xl resize-none font-medium placeholder-slate-400 dark:placeholder-slate-500"
+            placeholder="Type your math/science doubt here..." required></textarea>
+
+          <div class="flex items-center justify-between px-4 py-3 border-t border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 rounded-b-xl">
+            <div class="flex gap-2">
+               <button type="button" onclick="alert('Image upload coming soon')" class="p-2 rounded border border-brand-lightborder dark:border-white/10 text-slate-500 hover:text-brand-primary transition-colors">
+                 <i data-lucide="image" class="w-4 h-4"></i>
+               </button>
+            </div>
+            <button id="btn-generate" type="submit" class="px-6 py-2 rounded-lg bg-brand-primary text-white font-display font-bold hover:scale-[1.02] active:scale-95 transition-transform shadow-glow-primary flex items-center gap-2">
+              <i data-lucide="pen-tool" class="w-4 h-4"></i> Solve Question
+            </button>
+          </div>
+        </div>
+      </form>
+    </section>
+
+    <section id="ui-state-processing" class="hidden flex-col items-center justify-center w-full max-w-2xl mx-auto min-h-[300px] hud-panel rounded-2xl p-8 opacity-0">
+      <i data-lucide="pen-tool" class="w-12 h-12 text-brand-primary animate-bounce mb-4"></i>
+      <h2 class="text-xl font-display font-bold text-slate-900 dark:text-white mb-2">Writing down the solution...</h2>
+      <div class="w-full max-w-xs bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-2 overflow-hidden">
+        <div class="bg-brand-primary h-2 rounded-full animate-pulse" style="width:100%"></div>
+      </div>
+      <p class="text-xs text-slate-500 font-mono">Simulating human reasoning...</p>
+    </section>
+
+    <section id="ui-state-output" class="hidden w-full transition-opacity duration-300 opacity-0">
+      <div class="flex justify-between items-center mb-4">
+        <h3 id="problem-statement-title" class="text-lg font-bold text-slate-700 dark:text-slate-300">Solution</h3>
+        <button id="btn-reset" class="text-sm font-bold text-slate-500 hover:text-brand-primary flex items-center gap-1 transition-colors">
+          <i data-lucide="rotate-ccw" class="w-4 h-4"></i> Ask Another
+        </button>
+      </div>
+
+      <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <div class="lg:col-span-2 flex flex-col relative group">
+          <div id="notebook-canvas" class="notebook-paper overflow-hidden">
+            </div>
+        </div>
+
+        <div class="lg:col-span-1 hud-panel rounded-2xl border border-brand-lightborder dark:border-white/10 overflow-hidden flex flex-col h-[600px] relative topper-overlay">
+          
+          <div class="p-4 border-b border-brand-lightborder dark:border-white/10 bg-white/50 dark:bg-black/40 flex items-center justify-between">
+            <div class="flex items-center gap-2">
+              <i data-lucide="award" class="w-4 h-4 text-amber-500"></i>
+              <span class="font-display font-bold text-sm text-slate-900 dark:text-white">Topper's Sheet</span>
+            </div>
+          </div>
+
+          <div class="flex-grow flex flex-col items-center justify-center p-6 text-center z-10">
+            <div class="w-20 h-20 bg-slate-200 dark:bg-slate-800 rounded-full flex items-center justify-center mb-4 shadow-inner">
+              <i data-lucide="lock" class="w-8 h-8 text-slate-400"></i>
+            </div>
+            <h4 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Feature Coming Soon</h4>
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">
+              Soon you will be able to upload a screenshot of a topper's answer sheet, or we will automatically retrieve one from the CBSE database for comparison.
+            </p>
+            <button disabled class="px-4 py-2 bg-slate-200 dark:bg-slate-800 text-slate-400 rounded-lg text-sm font-bold cursor-not-allowed flex items-center gap-2 border border-slate-300 dark:border-slate-700">
+              <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload Answer Sheet
+            </button>
+          </div>
+        </div>
+
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    lucide.createIcons();
+
+    const form = document.getElementById('solver-form');
+    const stateIdle = document.getElementById('ui-state-idle');
+    const stateProcessing = document.getElementById('ui-state-processing');
+    const stateOutput = document.getElementById('ui-state-output');
+    
+    const notebookCanvas = document.getElementById('notebook-canvas');
+    const problemStatementTitle = document.getElementById('problem-statement-title');
+    const btnReset = document.getElementById('btn-reset');
+    const themeToggleBtn = document.getElementById('theme-toggle');
+    const htmlElement = document.documentElement;
+
+    function switchState(hideElem, showElem){
+      hideElem.classList.replace('opacity-100','opacity-0');
+      setTimeout(()=>{
+        hideElem.classList.add('hidden'); hideElem.classList.remove('flex');
+        showElem.classList.remove('hidden'); showElem.classList.add('flex');
+        void showElem.offsetWidth;
+        showElem.classList.replace('opacity-0','opacity-100');
+      }, 300);
+    }
+
+    form.addEventListener('submit', async (ev)=>{
+      ev.preventDefault();
+      switchState(stateIdle, stateProcessing);
+
+      const payload = { question: document.getElementById('problem-input').value };
+
+      try {
+        const res = await fetch(form.action, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
+
+        const json = await res.json();
+        
+        // --- Populate the Notebook ---
+        notebookCanvas.innerHTML = ''; // Clear previous
+        
+        if(json.problem_statement) {
+            problemStatementTitle.textContent = "Solution for: " + json.problem_statement.substring(0, 40) + "...";
+        }
+
+        if (json.steps && Array.isArray(json.steps)) {
+            json.steps.forEach(step => {
+                // 1. Determine Ink Color Class
+                let inkClass = 'ink-black'; // Default
+                if (step.ink === 'blue') inkClass = 'ink-blue';
+                if (step.ink === 'red') inkClass = 'ink-red';
+                if (step.ink === 'green') inkClass = 'ink-green';
+
+                // 2. Create the line container
+                const stepDiv = document.createElement('div');
+                stepDiv.className = `w-full mb-1 ${inkClass}`;
+
+                // 3. Add regular text if present
+                if (step.text) {
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = step.text + " ";
+                    stepDiv.appendChild(textSpan);
+                }
+
+                // 4. Add LaTeX if present
+                if (step.latex) {
+                    const mathSpan = document.createElement('div');
+                    // We render it as a block or inline. displayMode: true drops it to the next line.
+                    try {
+                        const cleanLatex = step.latex.replace(/\$\$/g, '').trim();
+                        katex.render(cleanLatex, mathSpan, {
+                            displayMode: true, 
+                            throwOnError: false
+                        });
+                        stepDiv.appendChild(mathSpan);
+                    } catch (e) {
+                        console.error("KaTeX Error:", e);
+                        mathSpan.textContent = step.latex;
+                        stepDiv.appendChild(mathSpan);
+                    }
+                }
+
+                notebookCanvas.appendChild(stepDiv);
+            });
+        } else {
+            // Fallback if backend doesn't send array
+            notebookCanvas.innerHTML = `<div class="ink-red">Error: No steps provided by AI.</div>`;
+        }
+
+        switchState(stateProcessing, stateOutput);
+
+      } catch (err) {
+        console.error(err);
+        alert('Failed to generate solution. Check console.');
+        switchState(stateProcessing, stateIdle);
+      }
+    });
+
+    btnReset.addEventListener('click', ()=>{
+      form.reset();
+      switchState(stateOutput, stateIdle);
+      document.getElementById('problem-input').focus();
+    });
+
+    // Theme Toggle Logic
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    if(prefersDark) htmlElement.classList.add('dark');
+    themeToggleBtn.addEventListener('click', ()=>{ 
+        htmlElement.classList.toggle('dark'); 
+        updateThreeJSColors(); 
+    });
+
+    // Background Matrix Effect (Three.js)
+    const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let scene, camera, renderer, grid;
+    function initThreeJS(){
+      if(prefersReducedMotion) return;
+      const container = document.getElementById('canvas-container');
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+      camera.position.set(0,3,10); camera.rotation.x = -0.2;
+      renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      container.appendChild(renderer.domElement);
+
+      const gridGeo = new THREE.PlaneGeometry(200,200,60,60);
+      const gridMat = new THREE.MeshBasicMaterial({ color:0x6C2BD9, wireframe:true, transparent:true, opacity:0.12 });
+      grid = new THREE.Mesh(gridGeo, gridMat);
+      grid.rotation.x = -Math.PI/2; scene.add(grid);
+
+      updateThreeJSColors();
+
+      let time = 0;
+      function animate(){
+        requestAnimationFrame(animate);
+        time += 0.003;
+        grid.position.z = (time*10) % 5;
+        const positions = gridGeo.attributes.position;
+        for(let i=0;i<positions.count;i++){
+          positions.setZ(i, Math.sin(i/5 + time*5) * 0.2);
+        }
+        positions.needsUpdate = true;
+        renderer.render(scene, camera);
+      }
+      animate();
+
+      window.addEventListener('resize', ()=>{
+        camera.aspect = window.innerWidth/window.innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(window.innerWidth, window.innerHeight);
+      });
+    }
+    function updateThreeJSColors(){
+      if(!scene) return;
+      const isDark = htmlElement.classList.contains('dark');
+      scene.fog = new THREE.FogExp2(isDark ? 0x020617 : 0xF9FAFB, 0.03);
+    }
+    initThreeJS();
+
+    // Init visibility
+    stateIdle.classList.remove('hidden');
+    stateProcessing.classList.add('hidden');
+    stateOutput.classList.add('hidden');
+  </script>
+</body>
+</html>

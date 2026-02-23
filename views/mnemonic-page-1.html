@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BoardAlgo | Cognitive Ingestion Engine</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            primary: '#6C2BD9',  // Brand Purple
+                            accent: '#16A34A',   // Action Green
+                            dark: '#020617',     // Obsidian
+                            surface: '#0f172a',  // Slate 900
+                            panel: 'rgba(15, 23, 42, 0.6)', 
+                            border: 'rgba(255, 255, 255, 0.08)',
+                            lightbg: '#F9FAFB',
+                            lightpanel: 'rgba(255, 255, 255, 0.8)',
+                            lightborder: '#E5E7EB'
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Poppins', 'sans-serif'],
+                        mono: ['ui-monospace', 'SFMono-Regular', 'Menlo', 'Monaco', 'Consolas', 'monospace'],
+                    },
+                    boxShadow: {
+                        'glow-primary': '0 0 20px rgba(108, 43, 217, 0.5)',
+                        'glow-accent': '0 0 20px rgba(22, 163, 74, 0.8)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            overflow-x: hidden;
+            transition: background-color 0.5s ease, color 0.5s ease;
+        }
+
+        /* 3D Background with Graceful Degradation for Accessibility */
+        #canvas-container {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 0; pointer-events: none;
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #canvas-container { display: none !important; }
+            body { background-image: radial-gradient(circle at center, #1e1b4b 0%, #020617 100%); }
+            html:not(.dark) body { background-image: radial-gradient(circle at center, #e0e7ff 0%, #F9FAFB 100%); }
+            .spring-slide { transition: none !important; }
+        }
+
+        /* Neo-brutalist Glassmorphism */
+        .hud-panel {
+            background: var(--panel-bg, rgba(15, 23, 42, 0.7));
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--panel-border, rgba(255, 255, 255, 0.1));
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            transition: all 0.5s ease;
+        }
+
+        html.dark .hud-panel {
+            --panel-bg: rgba(15, 23, 42, 0.7);
+            --panel-border: rgba(255, 255, 255, 0.1);
+        }
+
+        html:not(.dark) .hud-panel {
+            --panel-bg: rgba(255, 255, 255, 0.85);
+            --panel-border: rgba(0, 0, 0, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.05);
+        }
+
+        /* Spring Animation for Switcher */
+        .spring-slide {
+            transition: transform 0.6s cubic-bezier(0.34, 1.56, 0.64, 1), background-color 0.3s ease;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #6C2BD9; border-radius: 4px; }
+
+        /* Textarea Glowing Focus */
+        textarea:focus {
+            outline: none;
+        }
+        .input-wrapper:focus-within {
+            border-color: #6C2BD9;
+            box-shadow: 0 0 25px rgba(108, 43, 217, 0.2) inset, 0 0 20px rgba(108, 43, 217, 0.3);
+        }
+
+        /* Tooltip Setup */
+        .tooltip {
+            visibility: hidden; opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(10px);
+        }
+        .has-tooltip:hover .tooltip, .has-tooltip:focus .tooltip {
+            visibility: visible; opacity: 1; transform: translateY(0);
+        }
+
+        /* Wireframe Image Grid Background */
+        .wireframe-bg {
+            background-image: linear-gradient(var(--grid-color) 1px, transparent 1px),
+                              linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        html.dark .wireframe-bg { --grid-color: rgba(255, 255, 255, 0.05); }
+        html:not(.dark) .wireframe-bg { --grid-color: rgba(0, 0, 0, 0.05); }
+    </style>
+</head>
+<body class="bg-brand-lightbg dark:bg-brand-dark text-slate-800 dark:text-slate-200 min-h-screen selection:bg-brand-primary selection:text-white flex flex-col">
+
+    <div id="canvas-container" aria-hidden="true"></div>
+
+    <nav class="fixed top-0 w-full z-50 border-b border-brand-lightborder dark:border-white/10 bg-white/70 dark:bg-brand-dark/70 backdrop-blur-md transition-colors duration-500">
+        <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <i data-lucide="cpu" class="w-6 h-6 text-brand-primary"></i>
+                <span class="text-xl font-display font-bold tracking-tight text-slate-900 dark:text-white transition-colors duration-500">
+                    BOARD <span class="text-brand-primary">Algo</span>
+                </span>
+            </div>
+            <button id="theme-toggle" aria-label="Toggle Dark Mode" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:ring-2 focus:ring-brand-primary">
+                <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
+                <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-brand-primary"></i>
+            </button>
+        </div>
+    </nav>
+
+    <main class="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-28 pb-20 flex-grow flex flex-col gap-6">
+        
+        <header class="text-center mb-2">
+            <h1 class="text-3xl md:text-5xl font-display font-extrabold text-slate-900 dark:text-white mb-2 transition-colors duration-500">Synthesize Pathway</h1>
+            <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base">Upload a photo, paste a diagram, or type your board doubt.</p>
+        </header>
+
+        <section id="ui-state-idle" class="flex flex-col gap-6 w-full max-w-3xl mx-auto transition-opacity duration-300">
+            
+            <div class="hud-panel rounded-2xl border border-transparent input-wrapper transition-all duration-300">
+                <textarea 
+                    id="brain-dump" 
+                    aria-label="Cognitive Input"
+                    class="w-full min-h-[140px] bg-transparent text-slate-900 dark:text-white p-6 rounded-t-xl resize-none font-medium placeholder-slate-400 dark:placeholder-slate-500"
+                    placeholder="Paste text, drop a photo of a textbook question, or type your doubt here..."></textarea>
+                
+                <div class="flex flex-wrap items-center justify-between px-4 py-3 border-t border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 rounded-b-xl gap-2">
+                    <div class="flex gap-1 sm:gap-2">
+                        <button class="has-tooltip relative p-2 md:px-3 md:py-2 rounded-lg bg-white dark:bg-brand-surface border border-brand-lightborder dark:border-white/10 hover:border-brand-primary text-slate-600 dark:text-slate-300 hover:text-brand-primary transition-all flex items-center gap-2 focus:ring-2 focus:ring-brand-primary">
+                            <i data-lucide="camera" class="w-4 h-4"></i>
+                            <span class="text-xs font-bold hidden sm:inline">Scan</span>
+                            <div class="tooltip absolute -top-10 left-0 w-max px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg">Capture via Camera</div>
+                        </button>
+                        <button class="has-tooltip relative p-2 md:px-3 md:py-2 rounded-lg bg-white dark:bg-brand-surface border border-brand-lightborder dark:border-white/10 hover:border-brand-primary text-slate-600 dark:text-slate-300 hover:text-brand-primary transition-all flex items-center gap-2 focus:ring-2 focus:ring-brand-primary">
+                            <i data-lucide="image" class="w-4 h-4"></i>
+                            <span class="text-xs font-bold hidden sm:inline">Upload</span>
+                            <div class="tooltip absolute -top-10 left-0 w-max px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg">Upload Image (Max 5MB)</div>
+                        </button>
+                    </div>
+                    <div class="text-[10px] sm:text-xs text-slate-400 font-mono flex items-center gap-1">
+                        <i data-lucide="paperclip" class="w-3 h-3"></i> Clipboard ready
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col md:flex-row items-center justify-between gap-4 hud-panel rounded-2xl p-4">
+                <div class="flex items-center gap-4 w-full md:w-auto">
+                    <div role="radiogroup" aria-label="Generation Mode" class="relative flex w-full md:w-[260px] h-12 bg-black/5 dark:bg-black/40 rounded-full p-1 border border-black/10 dark:border-white/10">
+                        <div id="mode-indicator" class="absolute top-1 left-1 bottom-1 w-[calc(50%-4px)] bg-brand-primary rounded-full shadow-lg spring-slide z-0"></div>
+                        
+                        <button id="btn-lore" role="radio" aria-checked="true" class="has-tooltip flex-1 flex items-center justify-center gap-2 font-bold text-sm text-white transition-colors duration-300 relative z-10 focus:outline-none">
+                            <i data-lucide="book-open" class="w-4 h-4"></i> Lore
+                            <div class="tooltip absolute -top-14 left-0 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none">
+                                <span class="font-bold text-brand-primary">Narrative:</span> Unforgettable stories.
+                            </div>
+                        </button>
+                        
+                        <button id="btn-hack" role="radio" aria-checked="false" class="has-tooltip flex-1 flex items-center justify-center gap-2 font-bold text-sm text-slate-500 dark:text-slate-400 transition-colors duration-300 relative z-10 focus:outline-none">
+                            <i data-lucide="zap" class="w-4 h-4"></i> Hack
+                            <div class="tooltip absolute -top-14 right-0 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none">
+                                <span class="font-bold text-brand-accent">Bizarre:</span> Aggressive acronyms.
+                            </div>
+                        </button>
+                    </div>
+
+                    <button id="btn-deepscan" aria-pressed="false" class="has-tooltip relative w-12 h-12 shrink-0 rounded-full border-2 border-slate-300 dark:border-slate-700 flex items-center justify-center bg-white dark:bg-brand-surface text-slate-400 hover:text-brand-accent transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-accent">
+                        <i data-lucide="radar" class="w-5 h-5"></i>
+                        <div class="tooltip absolute -top-14 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none z-20">
+                            <span class="font-bold text-brand-accent">Deep-Scan:</span> Rigorous board retrieval.
+                        </div>
+                    </button>
+                </div>
+
+                <button id="btn-generate" class="w-full md:w-auto px-8 h-12 rounded-xl bg-brand-primary text-white font-display font-bold hover:scale-[1.02] active:scale-95 transition-transform shadow-glow-primary flex items-center justify-center gap-2 focus:ring-4 focus:ring-brand-primary/50">
+                    <i data-lucide="fingerprint" class="w-4 h-4"></i>
+                    Generate Hook
+                </button>
+            </div>
+        </section>
+
+        <section id="ui-state-processing" class="hidden flex-col items-center justify-center w-full max-w-2xl mx-auto min-h-[300px] hud-panel rounded-2xl p-8 transition-opacity duration-300 opacity-0" aria-live="polite" aria-busy="false">
+            <div class="relative w-20 h-20 mb-6">
+                <div class="absolute inset-0 border-4 border-brand-primary/20 rounded-full"></div>
+                <div class="absolute inset-0 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+                <i data-lucide="brain-circuit" class="absolute inset-0 m-auto w-8 h-8 text-brand-primary animate-pulse"></i>
+            </div>
+            
+            <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white mb-2">Processing Synapse...</h2>
+            
+            <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
+                <div id="progress-bar" class="bg-gradient-to-r from-brand-primary to-brand-accent h-2 rounded-full transition-all duration-300" style="width: 15%"></div>
+            </div>
+
+            <div class="font-mono text-xs sm:text-sm text-slate-500 dark:text-slate-400 w-full text-left bg-black/5 dark:bg-black/40 p-4 rounded-lg border border-brand-lightborder dark:border-white/10">
+                <div class="text-brand-accent mb-1">> Extracting multimodal input... [Done]</div>
+                <div class="text-brand-primary animate-pulse">> Scanning NCERT & CBSE 10-Year Database... (ETA: 2s)</div>
+            </div>
+
+            <button id="btn-cancel" class="mt-8 px-6 py-2 rounded-full border border-slate-300 dark:border-slate-600 text-slate-500 hover:text-red-500 hover:border-red-500 text-sm font-bold transition-colors">
+                Cancel & Restart
+            </button>
+        </section>
+
+        <section id="ui-state-output" class="hidden flex-col gap-6 w-full transition-opacity duration-300 opacity-0" aria-live="polite">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                
+                <div class="lg:col-span-1 flex flex-col gap-3">
+                    <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2">
+                        <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
+                    </h3>
+                    
+                    <div class="hud-panel p-3 rounded-xl border-l-4 border-l-brand-primary hover:-translate-y-1 transition-transform cursor-pointer">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-bold text-slate-900 dark:text-white">NCERT Sci Ch.4</span>
+                            <span class="text-[10px] font-mono bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20">98% Match</span>
+                        </div>
+                        <div class="h-16 bg-slate-200 dark:bg-slate-800 rounded mb-2 flex items-center justify-center overflow-hidden border border-brand-lightborder dark:border-white/5">
+                            <i data-lucide="book-open" class="text-slate-400 w-6 h-6"></i>
+                        </div>
+                        <button class="text-[10px] font-bold w-full text-center text-brand-primary">View Context</button>
+                    </div>
+
+                    <div class="hud-panel p-3 rounded-xl border-l-4 border-l-brand-accent hover:-translate-y-1 transition-transform cursor-pointer">
+                        <div class="flex justify-between items-start mb-2">
+                            <span class="text-xs font-bold text-slate-900 dark:text-white">CBSE PYQ 2023</span>
+                            <span class="text-[10px] font-mono bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20">91% Match</span>
+                        </div>
+                        <div class="h-16 bg-slate-200 dark:bg-slate-800 rounded mb-2 flex items-center justify-center overflow-hidden border border-brand-lightborder dark:border-white/5">
+                            <i data-lucide="file-text" class="text-slate-400 w-6 h-6"></i>
+                        </div>
+                        <button class="text-[10px] font-bold w-full text-center text-brand-accent">View Context</button>
+                    </div>
+                </div>
+
+                <div class="lg:col-span-3 hud-panel rounded-2xl overflow-hidden border border-brand-primary/20 flex flex-col">
+                    
+                    <div class="h-12 border-b border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 flex items-center px-4 justify-between">
+                        <div class="flex items-center gap-2">
+                            <span class="relative flex h-3 w-3">
+                                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-accent opacity-75"></span>
+                                <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-accent shadow-glow-accent"></span>
+                            </span>
+                            <span class="font-mono text-xs font-bold uppercase tracking-widest text-brand-accent">BoardAlgo AI Synapse</span>
+                        </div>
+                        <button id="btn-reset" class="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 transition-colors">
+                            <i data-lucide="rotate-ccw" class="w-3 h-3"></i> New Query
+                        </button>
+                    </div>
+
+                    <div class="p-6 md:p-8 font-sans text-slate-800 dark:text-slate-200 leading-relaxed text-sm md:text-base border-b border-brand-lightborder dark:border-white/10">
+                        <h2 class="text-xl md:text-2xl font-display font-bold text-brand-primary mb-4">The Saponification Protocol</h2>
+                        <p class="mb-4">Saponification is simply the hydrolysis of an ester with NaOH or KOH to give alcohol and sodium or potassium salt of the acid.</p>
+                        
+                        <div class="bg-black/5 dark:bg-black/40 p-4 rounded-xl border border-brand-lightborder dark:border-white/10 mb-4 font-mono text-brand-primary dark:text-brand-accent overflow-x-auto">
+                            $$ \text{CH}_3\text{COOC}_2\text{H}_5 + \text{NaOH} \rightarrow \text{CH}_3\text{COONa} + \text{C}_2\text{H}_5\text{OH} $$
+                        </div>
+
+                        <div class="bg-brand-primary/10 border-l-4 border-brand-primary p-4 rounded-r-xl">
+                            <strong class="text-brand-primary">Neural Hack Mnemonic:</strong>
+                            <p class="mt-1 font-bold">"Eating Sodium Produces Soap & Alcohol"</p>
+                            <p class="text-xs opacity-70 mt-1">(Ester + Sodium Hydroxide $\rightarrow$ Soap + Alcohol)</p>
+                        </div>
+                    </div>
+
+                    <div class="relative wireframe-bg flex flex-col items-center justify-center min-h-[250px] p-6 group">
+                        <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+                            <button class="p-1.5 bg-white dark:bg-brand-surface rounded shadow border border-brand-lightborder dark:border-white/10 hover:text-brand-primary"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+                            <button class="p-1.5 bg-white dark:bg-brand-surface rounded shadow border border-brand-lightborder dark:border-white/10 hover:text-brand-primary"><i data-lucide="download" class="w-4 h-4"></i></button>
+                        </div>
+                        
+                        <div class="w-full max-w-md h-40 bg-white/50 dark:bg-black/30 border border-brand-primary/30 rounded-lg flex items-center justify-center relative shadow-lg">
+                            <i data-lucide="network" class="w-12 h-12 text-brand-primary opacity-50"></i>
+                            <div class="absolute top-2 left-2 px-2 py-0.5 bg-brand-primary text-white text-[10px] font-bold rounded">Visual Cortex Rendered</div>
+                            
+                            <div class="absolute top-10 left-10 w-2 h-2 bg-brand-accent rounded-full shadow-glow-accent cursor-pointer has-tooltip">
+                                <div class="tooltip absolute top-4 left-0 w-max px-2 py-1 bg-brand-surface text-white text-[10px] rounded border border-white/10">Ester Bond</div>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Auto-expanding Textarea
+        const textarea = document.getElementById('brain-dump');
+        textarea.addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = Math.max(140, this.scrollHeight) + 'px';
+        });
+
+        // Mode Switcher Logic
+        const btnLore = document.getElementById('btn-lore');
+        const btnHack = document.getElementById('btn-hack');
+        const modeIndicator = document.getElementById('mode-indicator');
+        let currentMode = 'lore';
+
+        const updateModes = () => {
+            if (currentMode === 'lore') {
+                modeIndicator.style.transform = 'translateX(0%)';
+                modeIndicator.style.backgroundColor = '#6C2BD9';
+                btnLore.classList.replace('text-slate-500', 'text-white');
+                btnLore.classList.replace('dark:text-slate-400', 'text-white');
+                btnLore.setAttribute('aria-checked', 'true');
+                
+                btnHack.classList.replace('text-white', 'text-slate-500');
+                if(!btnHack.classList.contains('dark:text-slate-400')) btnHack.classList.add('dark:text-slate-400');
+                btnHack.setAttribute('aria-checked', 'false');
+            } else {
+                modeIndicator.style.transform = 'translateX(100%)';
+                modeIndicator.style.backgroundColor = '#16A34A';
+                btnHack.classList.replace('text-slate-500', 'text-white');
+                btnHack.classList.replace('dark:text-slate-400', 'text-white');
+                btnHack.setAttribute('aria-checked', 'true');
+                
+                btnLore.classList.replace('text-white', 'text-slate-500');
+                if(!btnLore.classList.contains('dark:text-slate-400')) btnLore.classList.add('dark:text-slate-400');
+                btnLore.setAttribute('aria-checked', 'false');
+            }
+        };
+
+        btnLore.addEventListener('click', () => { currentMode = 'lore'; updateModes(); });
+        btnHack.addEventListener('click', () => { currentMode = 'hack'; updateModes(); });
+
+        // Deep-Scan State Modifier
+        const btnDeepScan = document.getElementById('btn-deepscan');
+        let isDeepScanOn = false;
+
+        btnDeepScan.addEventListener('click', () => {
+            isDeepScanOn = !isDeepScanOn;
+            btnDeepScan.setAttribute('aria-pressed', isDeepScanOn);
+            if (isDeepScanOn) {
+                btnDeepScan.classList.add('border-brand-accent', 'text-brand-accent', 'shadow-glow-accent');
+                btnDeepScan.classList.remove('border-slate-300', 'dark:border-slate-700', 'text-slate-400');
+            } else {
+                btnDeepScan.classList.remove('border-brand-accent', 'text-brand-accent', 'shadow-glow-accent');
+                btnDeepScan.classList.add('border-slate-300', 'dark:border-slate-700', 'text-slate-400');
+            }
+        });
+
+        // UI State Management (Idle -> Processing -> Output)
+        const stateIdle = document.getElementById('ui-state-idle');
+        const stateProcessing = document.getElementById('ui-state-processing');
+        const stateOutput = document.getElementById('ui-state-output');
+        const progressBar = document.getElementById('progress-bar');
+        
+        let simulationTimer;
+
+        const switchState = (hideElem, showElem) => {
+            hideElem.classList.replace('opacity-100', 'opacity-0');
+            setTimeout(() => {
+                hideElem.classList.add('hidden');
+                hideElem.classList.remove('flex');
+                
+                showElem.classList.remove('hidden');
+                showElem.classList.add('flex');
+                
+                // Trigger reflow
+                void showElem.offsetWidth; 
+                showElem.classList.replace('opacity-0', 'opacity-100');
+            }, 300); // Wait for fade out
+        };
+
+        document.getElementById('btn-generate').addEventListener('click', () => {
+            // 1. Switch to Processing
+            switchState(stateIdle, stateProcessing);
+            stateProcessing.setAttribute('aria-busy', 'true');
+            
+            // 2. Simulate Streaming Progress
+            progressBar.style.width = '15%';
+            setTimeout(() => progressBar.style.width = '45%', 800);
+            setTimeout(() => progressBar.style.width = '85%', 1800);
+            
+            // 3. Switch to Output
+            simulationTimer = setTimeout(() => {
+                stateProcessing.setAttribute('aria-busy', 'false');
+                switchState(stateProcessing, stateOutput);
+            }, 3000);
+        });
+
+        // Cancel / Restart Flows
+        const resetToIdle = () => {
+            clearTimeout(simulationTimer);
+            stateProcessing.setAttribute('aria-busy', 'false');
+            
+            if(!stateProcessing.classList.contains('hidden')) switchState(stateProcessing, stateIdle);
+            if(!stateOutput.classList.contains('hidden')) switchState(stateOutput, stateIdle);
+            
+            textarea.value = '';
+            textarea.style.height = 'auto';
+            progressBar.style.width = '0%';
+        };
+
+        document.getElementById('btn-cancel').addEventListener('click', resetToIdle);
+        document.getElementById('btn-reset').addEventListener('click', resetToIdle);
+
+        // Theme Toggle & Three.js Handling
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        
+        // Disable Three.js if user prefers reduced motion
+        const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+        
+        let scene, camera, renderer, grid, particlesMesh;
+
+        const initThreeJS = () => {
+            if (prefersReducedMotion) return; // Skip WebGL setup
+
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(0, 3, 10); camera.rotation.x = -0.2;
+
+            renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            const gridGeo = new THREE.PlaneGeometry(200, 200, 60, 60);
+            const gridMat = new THREE.MeshBasicMaterial({ color: 0x6C2BD9, wireframe: true, transparent: true, opacity: 0.15 });
+            grid = new THREE.Mesh(gridGeo, gridMat);
+            grid.rotation.x = -Math.PI / 2; scene.add(grid);
+
+            const particlesGeo = new THREE.BufferGeometry();
+            const particlesCount = 300;
+            const posArray = new Float32Array(particlesCount * 3);
+            for(let i=0; i < particlesCount * 3; i++) posArray[i] = (Math.random() - 0.5) * 60;
+            particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+            const particlesMat = new THREE.PointsMaterial({ size: 0.08, color: 0xffffff, transparent: true, opacity: 0.4 });
+            particlesMesh = new THREE.Points(particlesGeo, particlesMat);
+            scene.add(particlesMesh);
+
+            updateThreeJSColors();
+
+            let time = 0;
+            const animate = () => {
+                requestAnimationFrame(animate);
+                time += 0.003;
+                grid.position.z = (time * 10) % 5;
+                const positions = gridGeo.attributes.position;
+                for (let i = 0; i < positions.count; i++) {
+                    positions.setZ(i, Math.sin(i / 5 + time * 5) * 0.2); 
+                }
+                positions.needsUpdate = true;
+                renderer.render(scene, camera);
+            };
+            animate();
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        };
+
+        const updateThreeJSColors = () => {
+            if (!scene) return;
+            const isDark = htmlElement.classList.contains('dark');
+            if (isDark) {
+                scene.fog = new THREE.FogExp2(0x020617, 0.03); 
+                particlesMesh.material.color.setHex(0xffffff);
+            } else {
+                scene.fog = new THREE.FogExp2(0xF9FAFB, 0.03); 
+                particlesMesh.material.color.setHex(0x6C2BD9); 
+            }
+        };
+
+        initThreeJS();
+
+        themeToggleBtn.addEventListener('click', () => {
+            htmlElement.classList.toggle('dark');
+            updateThreeJSColors();
+        });
+    </script>
+</body>
+</html>

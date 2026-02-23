@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>BoardAlgo | Cognitive Ingestion Engine</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              primary: '#6C2BD9',
+              accent: '#16A34A',
+              dark: '#020617',
+              surface: '#0f172a',
+              panel: 'rgba(15, 23, 42, 0.6)',
+              border: 'rgba(255, 255, 255, 0.08)',
+              lightbg: '#F9FAFB',
+              lightpanel: 'rgba(255, 255, 255, 0.8)',
+              lightborder: '#E5E7EB'
+            }
+          },
+          fontFamily: {
+            sans: ['Inter','sans-serif'],
+            display: ['Poppins','sans-serif'],
+            mono: ['ui-monospace','SFMono-Regular','Menlo','Monaco','Consolas','monospace']
+          },
+          boxShadow: {
+            'glow-primary': '0 0 20px rgba(108, 43, 217, 0.5)',
+            'glow-accent': '0 0 20px rgba(22, 163, 74, 0.8)'
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body { overflow-x:hidden; transition: background-color .5s ease, color .5s ease; }
+    #canvas-container { position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; pointer-events:none; }
+    @media (prefers-reduced-motion: reduce) { #canvas-container{display:none!important} .spring-slide{transition:none!important} }
+    .hud-panel{ background: var(--panel-bg, rgba(15,23,42,.7)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid var(--panel-border, rgba(255,255,255,.1)); box-shadow:0 8px 32px 0 rgba(0,0,0,.3); transition:all .5s ease; }
+    html.dark .hud-panel{ --panel-bg: rgba(15,23,42,.7); --panel-border: rgba(255,255,255,.1); }
+    html:not(.dark) .hud-panel{ --panel-bg: rgba(255,255,255,.85); --panel-border: rgba(0,0,0,.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,.05); }
+    .spring-slide{ transition: transform .6s cubic-bezier(.34,1.56,.64,1), background-color .3s ease; }
+    ::-webkit-scrollbar{ width:6px } ::-webkit-scrollbar-track{ background:transparent } ::-webkit-scrollbar-thumb{ background:#6C2BD9; border-radius:4px }
+    textarea:focus{ outline:none }
+    .input-wrapper:focus-within{ border-color:#6C2BD9; box-shadow: 0 0 25px rgba(108,43,217,0.2) inset, 0 0 20px rgba(108,43,217,0.3) }
+    .tooltip{ visibility:hidden; opacity:0; transition:opacity .3s ease, transform .3s ease; transform:translateY(10px); }
+    .has-tooltip:hover .tooltip, .has-tooltip:focus .tooltip{ visibility:visible; opacity:1; transform:translateY(0) }
+    .wireframe-bg{ background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); background-size:20px 20px }
+    html.dark .wireframe-bg{ --grid-color: rgba(255,255,255,.05) } html:not(.dark) .wireframe-bg{ --grid-color: rgba(0,0,0,.05) }
+    .file-preview { max-height: 120px; object-fit:contain; border-radius:8px; }
+    .short-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 8px; font-size: 14px; z-index: 60; }
+    /* KaTeX overrides for better dark mode contrast if needed */
+    .katex-display { margin: 1em 0; overflow-x: auto; overflow-y: hidden; padding-top: 0.5em; padding-bottom: 0.5em; }
+  </style>
+</head>
+
+<body class="bg-brand-lightbg dark:bg-brand-dark text-slate-800 dark:text-slate-200 min-h-screen selection:bg-brand-primary selection:text-white flex flex-col">
+
+  <div id="canvas-container" aria-hidden="true"></div>
+
+  <nav class="fixed top-0 w-full z-50 border-b border-brand-lightborder dark:border-white/10 bg-white/70 dark:bg-brand-dark/70 backdrop-blur-md transition-colors duration-500">
+    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <i data-lucide="cpu" class="w-6 h-6 text-brand-primary"></i>
+        <span class="text-xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
+          BOARD <span class="text-brand-primary">Algo</span>
+        </span>
+      </div>
+      <div class="flex items-center gap-3">
+        <% if (typeof user !== 'undefined' && user) { %>
+          <div class="text-sm text-slate-600 dark:text-slate-300 hidden sm:block"><%= user.name || user.email || '' %></div>
+        <% } %>
+        <button id="theme-toggle" aria-label="Toggle Dark Mode" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:ring-2 focus:ring-brand-primary">
+          <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
+          <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-brand-primary"></i>
+        </button>
+      </div>
+    </div>
+  </nav>
+
+  <main class="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-28 pb-20 flex-grow flex flex-col gap-6">
+
+    <header class="text-center mb-2">
+      <h1 class="text-3xl md:text-5xl font-display font-extrabold text-slate-900 dark:text-white mb-2">Synthesize Pathway</h1>
+      <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base">Upload a photo, paste a diagram, or type your board doubt.</p>
+    </header>
+
+    <section id="ui-state-idle" class="flex flex-col gap-6 w-full max-w-3xl mx-auto transition-opacity duration-300">
+
+      <form id="mnemonic-form" action="/api/generate-mnemonic" method="POST" class="flex flex-col gap-6" autocomplete="off" novalidate>
+        <div class="hud-panel rounded-2xl border border-transparent input-wrapper transition-all duration-300 p-0 overflow-hidden">
+          <textarea name="question" id="brain-dump" aria-label="Cognitive Input"
+            class="w-full min-h-[140px] bg-transparent text-slate-900 dark:text-white p-6 rounded-t-xl resize-none font-medium placeholder-slate-400 dark:placeholder-slate-500"
+            placeholder="Paste text, drop a photo of a textbook question, or type your doubt here..." required></textarea>
+
+          <div class="flex flex-wrap items-center justify-between px-4 py-3 border-t border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 rounded-b-xl gap-2">
+            <div class="flex gap-1 sm:gap-2 items-center">
+              <button id="btn-camera" type="button" class="has-tooltip relative p-2 md:px-3 md:py-2 rounded-lg bg-white dark:bg-brand-surface border border-brand-lightborder dark:border-white/10 hover:border-brand-primary text-slate-600 dark:text-slate-300 hover:text-brand-primary transition-all flex items-center gap-2 focus:ring-2 focus:ring-brand-primary">
+                <i data-lucide="camera" class="w-4 h-4"></i>
+                <span class="text-xs font-bold hidden sm:inline">Scan</span>
+                <div class="tooltip absolute -top-10 left-0 w-max px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg">Capture via Camera</div>
+              </button>
+
+              <button id="btn-upload" type="button" class="has-tooltip relative p-2 md:px-3 md:py-2 rounded-lg bg-white dark:bg-brand-surface border border-brand-lightborder dark:border-white/10 hover:border-brand-primary text-slate-600 dark:text-slate-300 hover:text-brand-primary transition-all flex items-center gap-2 focus:ring-2 focus:ring-brand-primary">
+                <i data-lucide="image" class="w-4 h-4"></i>
+                <span class="text-xs font-bold hidden sm:inline">Upload</span>
+                <div class="tooltip absolute -top-10 left-0 w-max px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg">Upload Image (Max 5MB)</div>
+              </button>
+
+              <input id="file-input" name="image" type="file" accept="image/*" class="hidden" />
+              <img id="file-preview" src="" alt="" class="hidden file-preview ml-2" />
+            </div>
+
+            <div class="text-[10px] sm:text-xs text-slate-400 font-mono flex items-center gap-1">
+              <i data-lucide="paperclip" class="w-3 h-3"></i> Clipboard ready
+            </div>
+          </div>
+        </div>
+
+        <div class="flex flex-col md:flex-row items-center justify-between gap-4 hud-panel rounded-2xl p-4">
+          <div class="flex items-center gap-4 w-full md:w-auto">
+            <div role="radiogroup" aria-label="Generation Mode" class="relative flex w-full md:w-[260px] h-12 bg-black/5 dark:bg-black/40 rounded-full p-1 border border-black/10 dark:border-white/10">
+              <div id="mode-indicator" class="absolute top-1 left-1 bottom-1 w-[calc(50%-4px)] bg-brand-primary rounded-full shadow-lg spring-slide z-0"></div>
+
+              <button id="btn-lore" role="radio" aria-checked="true" type="button" class="has-tooltip flex-1 flex items-center justify-center gap-2 font-bold text-sm text-white transition-colors duration-300 relative z-10 focus:outline-none">
+                <i data-lucide="book-open" class="w-4 h-4"></i> Lore
+                <div class="tooltip absolute -top-14 left-0 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none">
+                  <span class="font-bold text-brand-primary">Narrative:</span> Unforgettable stories.
+                </div>
+              </button>
+
+              <button id="btn-hack" role="radio" aria-checked="false" type="button" class="has-tooltip flex-1 flex items-center justify-center gap-2 font-bold text-sm text-slate-500 dark:text-slate-400 transition-colors duration-300 relative z-10 focus:outline-none">
+                <i data-lucide="zap" class="w-4 h-4"></i> Hack
+                <div class="tooltip absolute -top-14 right-0 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none">
+                  <span class="font-bold text-brand-accent">Bizarre:</span> Aggressive acronyms.
+                </div>
+              </button>
+            </div>
+
+            <button id="btn-deepscan" aria-pressed="false" type="button" class="has-tooltip relative w-12 h-12 shrink-0 rounded-full border-2 border-slate-300 dark:border-slate-700 flex items-center justify-center bg-white dark:bg-brand-surface text-slate-400 hover:text-brand-accent transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-accent">
+              <i data-lucide="radar" class="w-5 h-5"></i>
+              <div class="tooltip absolute -top-14 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none z-20">
+                <span class="font-bold text-brand-accent">Deep-Scan:</span> Rigorous board retrieval.
+              </div>
+            </button>
+          </div>
+
+          <input type="hidden" name="mode" id="mode-input" value="lore" />
+          <input type="hidden" name="deepScan" id="deepscan-input" value="false" />
+
+          <button id="btn-generate" type="submit" class="w-full md:w-auto px-8 h-12 rounded-xl bg-brand-primary text-white font-display font-bold hover:scale-[1.02] active:scale-95 transition-transform shadow-glow-primary flex items-center justify-center gap-2 focus:ring-4 focus:ring-brand-primary/50">
+            <i data-lucide="fingerprint" class="w-4 h-4"></i>
+            Generate Hook
+          </button>
+        </div>
+      </form>
+    </section>
+
+    <section id="ui-state-processing" class="hidden flex-col items-center justify-center w-full max-w-2xl mx-auto min-h-[300px] hud-panel rounded-2xl p-8 transition-opacity duration-300 opacity-0" aria-live="polite" aria-busy="false">
+      <div class="relative w-20 h-20 mb-6">
+        <div class="absolute inset-0 border-4 border-brand-primary/20 rounded-full"></div>
+        <div class="absolute inset-0 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
+        <i data-lucide="brain-circuit" class="absolute inset-0 m-auto w-8 h-8 text-brand-primary animate-pulse"></i>
+      </div>
+
+      <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white mb-2">Processing Synapse...</h2>
+
+      <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
+        <div id="progress-bar" class="bg-gradient-to-r from-brand-primary to-brand-accent h-2 rounded-full transition-all duration-300" style="width:15%"></div>
+      </div>
+
+      <div class="font-mono text-xs sm:text-sm text-slate-500 dark:text-slate-400 w-full text-left bg-black/5 dark:bg-black/40 p-4 rounded-lg border border-brand-lightborder dark:border-white/10">
+        <div class="text-brand-accent mb-1">> Extracting multimodal input... [Done]</div>
+        <div id="processing-line" class="text-brand-primary animate-pulse">> Scanning NCERT & CBSE 10-Year Database... (ETA: —)</div>
+      </div>
+
+      <button id="btn-cancel" class="mt-8 px-6 py-2 rounded-full border border-slate-300 dark:border-slate-600 text-slate-500 hover:text-red-500 hover:border-red-500 text-sm font-bold transition-colors">
+        Cancel & Restart
+      </button>
+    </section>
+
+    <section id="ui-state-output" class="hidden flex-col gap-6 w-full transition-opacity duration-300 opacity-0" aria-live="polite">
+      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <div class="lg:col-span-1 flex flex-col gap-3" id="source-matrix-container">
+          <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
+            <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
+          </h3>
+        </div>
+
+        <div class="lg:col-span-3 hud-panel rounded-2xl overflow-hidden border border-brand-primary/20 flex flex-col">
+          <div class="h-12 border-b border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 flex items-center px-4 justify-between">
+            <div class="flex items-center gap-2">
+              <span class="relative flex h-3 w-3">
+                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-accent opacity-75"></span>
+                <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-accent shadow-glow-accent"></span>
+              </span>
+              <span class="font-mono text-xs font-bold uppercase tracking-widest text-brand-accent">BoardAlgo AI Synapse</span>
+            </div>
+            <button id="btn-reset" class="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 transition-colors">
+              <i data-lucide="rotate-ccw" class="w-3 h-3"></i> New Query
+            </button>
+          </div>
+
+          <div id="ai-output-area" class="p-6 md:p-8 font-sans text-slate-800 dark:text-slate-200 leading-relaxed text-sm md:text-base border-b border-brand-lightborder dark:border-white/10">
+            <div id="ai-title" class="text-xl md:text-2xl font-display font-bold text-brand-primary mb-4">Result</div>
+            <div id="ai-content" class="mb-4 prose max-w-none"></div>
+
+            <div id="ai-formula" class="bg-black/5 dark:bg-black/40 p-4 rounded-xl border border-brand-lightborder dark:border-white/10 mb-4 overflow-x-auto hidden text-slate-800 dark:text-slate-200"></div>
+
+            <div id="ai-mnemonic" class="bg-brand-primary/10 border-l-4 border-brand-primary p-4 rounded-r-xl hidden">
+              <strong class="text-brand-primary">Neural Hack Mnemonic:</strong>
+              <p id="ai-mnemonic-text" class="mt-1 font-bold"></p>
+              <p id="ai-mnemonic-sub" class="text-xs opacity-70 mt-1"></p>
+            </div>
+          </div>
+
+          <div class="relative wireframe-bg flex flex-col items-center justify-center min-h-[250px] p-6 group">
+            <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+              <button id="btn-zoom" class="p-1.5 bg-white dark:bg-brand-surface rounded shadow border border-brand-lightborder dark:border-white/10 hover:text-brand-primary"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+              <button id="btn-download-output" class="p-1.5 bg-white dark:bg-brand-surface rounded shadow border border-brand-lightborder dark:border-white/10 hover:text-brand-primary"><i data-lucide="download" class="w-4 h-4"></i></button>
+            </div>
+
+            <div id="ai-visual" class="w-full max-w-md h-40 bg-white/50 dark:bg-black/30 border border-brand-primary/30 rounded-lg flex flex-col items-center justify-center relative shadow-lg gap-2">
+              <i data-lucide="layers" class="w-10 h-10 text-brand-primary opacity-40"></i>
+              <span class="text-xs font-bold uppercase tracking-widest text-brand-primary opacity-60">Visual Cortex: Coming Soon</span>
+            </div>
+
+            <div class="mt-4 flex gap-2">
+              <button id="btn-copy-output" class="px-3 py-1 rounded border">Copy</button>
+              <button id="btn-save-txt" class="px-3 py-1 rounded border">Download .txt</button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+  // ---------- icons ----------
+  lucide.createIcons();
+
+  // ---------- elements ----------
+  const form = document.getElementById('mnemonic-form');
+  const textarea = document.getElementById('brain-dump');
+  const fileInput = document.getElementById('file-input');
+  const filePreview = document.getElementById('file-preview');
+
+  const btnUpload = document.getElementById('btn-upload');
+  const btnCamera = document.getElementById('btn-camera');
+  const btnLore = document.getElementById('btn-lore');
+  const btnHack = document.getElementById('btn-hack');
+  const modeIndicator = document.getElementById('mode-indicator');
+  const modeInput = document.getElementById('mode-input');
+  const btnDeepScan = document.getElementById('btn-deepscan');
+  const deepScanInput = document.getElementById('deepscan-input');
+  const btnGenerate = document.getElementById('btn-generate');
+
+  const stateIdle = document.getElementById('ui-state-idle');
+  const stateProcessing = document.getElementById('ui-state-processing');
+  const stateOutput = document.getElementById('ui-state-output');
+  const progressBar = document.getElementById('progress-bar');
+  const processingLine = document.getElementById('processing-line');
+
+  const aiContent = document.getElementById('ai-content');
+  const aiTitle = document.getElementById('ai-title');
+  const aiFormula = document.getElementById('ai-formula');
+  const aiMnemonic = document.getElementById('ai-mnemonic');
+  const aiMnemonicText = document.getElementById('ai-mnemonic-text');
+  const aiMnemonicSub = document.getElementById('ai-mnemonic-sub');
+  const sourceMatrixContainer = document.getElementById('source-matrix-container');
+  const aiVisualContainer = document.getElementById('ai-visual');
+
+  const btnCancel = document.getElementById('btn-cancel');
+  const btnReset = document.getElementById('btn-reset');
+  const btnCopyOutput = document.getElementById('btn-copy-output');
+  const btnSaveTxt = document.getElementById('btn-save-txt');
+  const btnDownloadOutputTop = document.getElementById('btn-download-output');
+
+  const themeToggleBtn = document.getElementById('theme-toggle');
+  const htmlElement = document.documentElement;
+
+  // ---------- small helpers ----------
+  function show(elem){ elem.classList.remove('hidden'); elem.classList.replace?.('opacity-0','opacity-100'); }
+  function hide(elem){ elem.classList.add('hidden'); }
+  function switchState(hideElem, showElem){
+    try { hideElem.classList.replace('opacity-100','opacity-0'); } catch(e){}
+    setTimeout(()=>{
+      hideElem.classList.add('hidden'); hideElem.classList.remove('flex');
+      showElem.classList.remove('hidden'); showElem.classList.add('flex');
+      void showElem.offsetWidth;
+      try{ showElem.classList.replace('opacity-0','opacity-100'); } catch(e){}
+    }, 300);
+  }
+
+  // ---------- auto-expand textarea ----------
+  textarea.addEventListener('input', function(){ this.style.height='auto'; this.style.height = Math.max(140,this.scrollHeight)+'px'; });
+
+  // ---------- mode logic ----------
+  let currentMode = 'lore';
+  function updateModesUI(){
+    if(currentMode === 'lore'){
+      modeIndicator.style.transform = 'translateX(0%)';
+      modeIndicator.style.backgroundColor = '#6C2BD9';
+      btnLore.classList.add('text-white'); btnLore.classList.remove('text-slate-500');
+      btnLore.setAttribute('aria-checked','true');
+      btnHack.classList.remove('text-white'); btnHack.classList.add('text-slate-500'); btnHack.setAttribute('aria-checked','false');
+    } else {
+      modeIndicator.style.transform = 'translateX(100%)';
+      modeIndicator.style.backgroundColor = '#16A34A';
+      btnHack.classList.add('text-white'); btnHack.classList.remove('text-slate-500');
+      btnHack.setAttribute('aria-checked','true');
+      btnLore.classList.remove('text-white'); btnLore.classList.add('text-slate-500'); btnLore.setAttribute('aria-checked','false');
+    }
+    modeInput.value = currentMode;
+  }
+  btnLore.addEventListener('click', ()=>{ currentMode='lore'; updateModesUI(); });
+  btnHack.addEventListener('click', ()=>{ currentMode='hack'; updateModesUI(); });
+  updateModesUI();
+
+  // ---------- deepscan toggle ----------
+  let isDeepScanOn = false;
+  btnDeepScan.addEventListener('click', ()=>{
+    isDeepScanOn = !isDeepScanOn;
+    btnDeepScan.setAttribute('aria-pressed', isDeepScanOn);
+    deepScanInput.value = isDeepScanOn ? 'true' : 'false';
+    if(isDeepScanOn){
+      btnDeepScan.classList.add('border-brand-accent','text-brand-accent','shadow-glow-accent');
+      btnDeepScan.classList.remove('border-slate-300','text-slate-400');
+    } else {
+      btnDeepScan.classList.remove('border-brand-accent','text-brand-accent','shadow-glow-accent');
+      btnDeepScan.classList.add('border-slate-300','text-slate-400');
+    }
+  });
+
+  // ---------- upload / scan: show "Coming soon" only ----------
+  function showToast(msg, ms=1200){
+    const t = document.createElement('div');
+    t.className = 'short-toast';
+    t.textContent = msg;
+    document.body.appendChild(t);
+    setTimeout(()=> t.classList.add('fade'), 20);
+    setTimeout(()=> {
+      if(t.parentNode) t.parentNode.removeChild(t);
+    }, ms);
+  }
+  btnUpload.addEventListener('click', ()=> {
+    showToast('📸 Coming soon — image upload will be enabled later', 1200);
+  });
+  btnCamera.addEventListener('click', ()=> {
+    showToast('📷 Coming soon — camera capture will be enabled later', 1200);
+  });
+
+  // ---------- file preview (only if file added via paste or manual dev) ----------
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files && fileInput.files[0];
+    if(!f) { filePreview.src=''; filePreview.classList.add('hidden'); return; }
+    const url = URL.createObjectURL(f);
+    filePreview.src = url;
+    filePreview.classList.remove('hidden');
+  });
+
+  // ---------- clipboard paste (text + images) ----------
+  window.addEventListener('paste', async (e)=>{
+    if(!e.clipboardData) return;
+    const items = e.clipboardData.items;
+    for(let i=0;i<items.length;i++){
+      const it = items[i];
+      if(it.type && it.type.startsWith && it.type.startsWith('image/')){
+        const blob = it.getAsFile();
+        const dt = new DataTransfer();
+        dt.items.add(blob);
+        fileInput.files = dt.files;
+        filePreview.src = URL.createObjectURL(blob);
+        filePreview.classList.remove('hidden');
+        return;
+      }
+    }
+    const text = e.clipboardData.getData('text');
+    if(text) {
+      const pos = textarea.selectionStart || textarea.value.length;
+      const before = textarea.value.slice(0,pos);
+      const after = textarea.value.slice(pos);
+      textarea.value = before + text + after;
+      textarea.dispatchEvent(new Event('input'));
+    }
+  });
+
+  // ---------- processing / abort / fake progress ----------
+  let currentController = null;
+  let progressInterval = null;
+  function startFakeProgress(){
+    clearInterval(progressInterval);
+    let p = 20;
+    progressBar.style.width = p + '%';
+    progressInterval = setInterval(()=>{
+      if(p < 80){ p += Math.random()*6; if(p>80) p=80; progressBar.style.width = Math.floor(p)+'%'; }
+    }, 450);
+  }
+  function stopFakeProgress(){
+    clearInterval(progressInterval);
+    progressInterval = null;
+  }
+
+  // ---------- helper: convert file to base64 dataURL ----------
+  function fileToDataURL(file){
+    return new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = ()=> resolve(r.result);
+      r.onerror = reject;
+      r.readAsDataURL(file);
+    });
+  }
+
+  // ---------- form submit: send JSON (no multipart) ----------
+  form.addEventListener('submit', async (ev)=>{
+    ev.preventDefault();
+
+    const question = textarea.value && textarea.value.trim();
+    if(!question && (!fileInput.files || fileInput.files.length===0)){
+      alert('Please enter a question or paste an image.');
+      return;
+    }
+
+    switchState(stateIdle, stateProcessing);
+    stateProcessing.setAttribute('aria-busy','true');
+    processingLine.textContent = '> Preparing request...';
+    progressBar.style.width = '15%';
+    startFakeProgress();
+
+    let imageBase64 = null;
+    if(fileInput.files && fileInput.files[0]){
+      try {
+        imageBase64 = await fileToDataURL(fileInput.files[0]);
+      } catch(e){
+        console.error('Failed to convert file to base64', e);
+        imageBase64 = null;
+      }
+    }
+
+    const payload = {
+      question: question || '',
+      mode: modeInput.value || currentMode,
+      deepScan: (deepScanInput.value === 'true' || isDeepScanOn === true),
+      image: imageBase64
+    };
+
+    currentController = new AbortController();
+
+    try {
+      const res = await fetch(form.action, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+        signal: currentController.signal
+      });
+
+      processingLine.textContent = '> Awaiting model output...';
+      progressBar.style.width = '85%';
+
+      const json = await res.json();
+
+      stopFakeProgress();
+      progressBar.style.width = '100%';
+
+      // -------------------------------------------------------------
+      // UPDATED JSON PARSING BLOCK
+      // -------------------------------------------------------------
+      
+      // 1. Map Core Content
+      const output = json.definition || json.output || json.text || '';
+      const title = json.title || 'Result';
+      const formulaHtml = json.latex_formula || '';
+      const hookText = json.hook_text || '';
+      const hookSubtext = json.hook_subtext || '';
+      const hookLabel = json.hook_label || (currentMode === 'lore' ? 'Lore Engine Narrative:' : 'Neural Hack Mnemonic:');
+
+      aiTitle.textContent = title;
+      aiContent.innerHTML = output;
+
+      // 2. Map Formula (with KaTeX rendering)
+      if (formulaHtml) {
+        // Remove the $$ delimiters for KaTeX
+        const cleanFormula = formulaHtml.replace(/\$\$/g, '').trim();
+        try {
+          katex.render(cleanFormula, aiFormula, {
+            displayMode: true,
+            throwOnError: false
+          });
+        } catch (error) {
+          console.error("KaTeX Rendering Error:", error);
+          aiFormula.textContent = formulaHtml; // Fallback to plain text if rendering fails
+        }
+        aiFormula.classList.remove('hidden');
+      } else {
+        aiFormula.classList.add('hidden');
+        aiFormula.innerHTML = ''; // Clear previous rendering
+      }
+
+      // 3. Map Mnemonic / Lore Hook
+      if (hookText) {
+        const strongLabel = aiMnemonic.querySelector('strong');
+        if (strongLabel) strongLabel.textContent = hookLabel;
+        
+        aiMnemonicText.textContent = hookText;
+        aiMnemonicSub.textContent = hookSubtext;
+        aiMnemonic.classList.remove('hidden');
+      } else {
+        aiMnemonic.classList.add('hidden');
+      }
+
+      // 4. Visual Cortex Label - Kept static "Coming Soon" in HTML for now.
+      // if (json.visual_cortex && json.visual_cortex.tooltip_label) { ... }
+
+      // 5. Map Source Matrix (Dynamic Injection)
+      if (json.source_matrix && Array.isArray(json.source_matrix)) {
+          const headerHtml = `
+            <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
+              <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
+            </h3>`;
+          
+          let panelsHtml = '';
+          
+          json.source_matrix.forEach((source, index) => {
+              const colorClass = index === 0 ? 'border-l-brand-primary' : 'border-l-brand-accent';
+              const textClass = index === 0 ? 'text-brand-primary' : 'text-brand-accent';
+              const icon = source.icon_type === 'file' ? 'file-text' : 'book-open';
+
+              panelsHtml += `
+              <div class="hud-panel p-3 rounded-xl border-l-4 ${colorClass} hover:-translate-y-1 transition-transform cursor-pointer mb-3">
+                  <div class="flex justify-between items-start mb-2">
+                      <span class="text-xs font-bold text-slate-900 dark:text-white">${source.title || 'Source'}</span>
+                      <span class="text-[10px] font-mono bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20">${source.match_percentage || ''}</span>
+                  </div>
+                  <div class="h-16 bg-slate-200 dark:bg-slate-800 rounded mb-2 flex items-center justify-center overflow-hidden border border-brand-lightborder dark:border-white/5">
+                      <i data-lucide="${icon}" class="text-slate-400 w-6 h-6"></i>
+                  </div>
+                  <button id="btn-view-context-${index + 1}" class="text-[10px] font-bold w-full text-center ${textClass}">View Context</button>
+              </div>`;
+          });
+          
+          sourceMatrixContainer.innerHTML = headerHtml + panelsHtml;
+          
+          // Re-initialize Lucide icons for the new HTML
+          if(window.lucide) window.lucide.createIcons();
+      }
+
+      stateProcessing.setAttribute('aria-busy','false');
+      switchState(stateProcessing, stateOutput);
+
+    } catch (err) {
+      console.error(err);
+      stopFakeProgress();
+      progressBar.style.width = '0%';
+      stateProcessing.setAttribute('aria-busy','false');
+      switchState(stateProcessing, stateIdle);
+
+      if(err.name === 'AbortError'){
+        alert('Request cancelled.');
+      } else {
+        // Check if it's a JSON parsing error from the response
+        if(err instanceof SyntaxError) {
+           alert('Server error: Received invalid response format.');
+        } else {
+           alert('Request failed. Check console for details.');
+        }
+      }
+    } finally {
+      currentController = null;
+      stopFakeProgress();
+    }
+  });
+
+  // ---------- cancel ----------
+  btnCancel.addEventListener('click', ()=>{
+    if(currentController) currentController.abort();
+    stateProcessing.setAttribute('aria-busy','false');
+    switchState(stateProcessing, stateIdle);
+    progressBar.style.width = '0%';
+  });
+
+  // ---------- reset / new query ----------
+  btnReset.addEventListener('click', ()=>{
+    form.reset();
+    filePreview.src = ''; filePreview.classList.add('hidden');
+    aiContent.innerHTML = '';
+    aiTitle.textContent = 'Result';
+    aiFormula.classList.add('hidden'); aiMnemonic.classList.add('hidden');
+    progressBar.style.width = '0%';
+    
+    // Reset Source Matrix Container to original state
+    sourceMatrixContainer.innerHTML = `
+      <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
+        <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
+      </h3>`;
+    if(window.lucide) window.lucide.createIcons();
+
+    switchState(stateOutput, stateIdle);
+    textarea.focus();
+  });
+
+  // ---------- copy & download ----------
+  function copyText(text){
+    navigator.clipboard.writeText(text).then(()=>{
+      const el = document.createElement('div');
+      el.className = 'short-toast';
+      el.textContent = 'Copied to clipboard';
+      document.body.appendChild(el);
+      setTimeout(()=> document.body.removeChild(el), 900);
+    });
+  }
+  btnCopyOutput.addEventListener('click', ()=> {
+    const txt = aiContent.innerText || aiContent.textContent || '';
+    if(!txt) return alert('No content to copy');
+    copyText(txt);
+  });
+
+  btnSaveTxt.addEventListener('click', ()=> {
+    const txt = aiContent.innerText || aiContent.textContent || '';
+    if(!txt) return alert('No content to save');
+    const blob = new Blob([txt], { type: 'text/plain' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'boardalgo-output.txt';
+    a.click();
+  });
+  btnDownloadOutputTop.addEventListener('click', ()=> btnSaveTxt.click());
+
+  // ---------- view context placeholders ("Coming Soon") ----------
+  sourceMatrixContainer.addEventListener('click', (e) => {
+    // Check if the clicked element or its parent is a view-context button
+    const button = e.target.closest('button');
+    if (button && button.id && button.id.startsWith('btn-view-context-')) {
+      alert('Context viewer is coming soon!');
+    }
+  });
+
+  // ---------- shortcut ----------
+  textarea.addEventListener('keydown', (e)=>{
+    if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ btnGenerate.click(); }
+  });
+
+  // ---------- theme toggle ----------
+  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+  if(prefersDark) htmlElement.classList.add('dark');
+  themeToggleBtn.addEventListener('click', ()=>{ htmlElement.classList.toggle('dark'); updateThreeJSColors(); });
+
+  // ---------- three.js background ----------
+  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let scene, camera, renderer, grid, particlesMesh;
+  function initThreeJS(){
+    if(prefersReducedMotion) return;
+    const container = document.getElementById('canvas-container');
+    scene = new THREE.Scene();
+    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+    camera.position.set(0,3,10); camera.rotation.x = -0.2;
+    renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(window.devicePixelRatio);
+    container.appendChild(renderer.domElement);
+
+    const gridGeo = new THREE.PlaneGeometry(200,200,60,60);
+    const gridMat = new THREE.MeshBasicMaterial({ color:0x6C2BD9, wireframe:true, transparent:true, opacity:0.12 });
+    grid = new THREE.Mesh(gridGeo, gridMat);
+    grid.rotation.x = -Math.PI/2; scene.add(grid);
+
+    const particlesGeo = new THREE.BufferGeometry();
+    const particlesCount = 300;
+    const posArray = new Float32Array(particlesCount*3);
+    for(let i=0;i<posArray.length;i++) posArray[i] = (Math.random()-0.5) * 60;
+    particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    const particlesMat = new THREE.PointsMaterial({ size:0.08, color:0xffffff, transparent:true, opacity:0.4 });
+    particlesMesh = new THREE.Points(particlesGeo, particlesMat);
+    scene.add(particlesMesh);
+
+    updateThreeJSColors();
+
+    let time = 0;
+    function animate(){
+      requestAnimationFrame(animate);
+      time += 0.003;
+      grid.position.z = (time*10) % 5;
+      const positions = gridGeo.attributes.position;
+      for(let i=0;i<positions.count;i++){
+        positions.setZ(i, Math.sin(i/5 + time*5) * 0.2);
+      }
+      positions.needsUpdate = true;
+      renderer.render(scene, camera);
+    }
+    animate();
+
+    window.addEventListener('resize', ()=>{
+      camera.aspect = window.innerWidth/window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    });
+  }
+  function updateThreeJSColors(){
+    if(!scene) return;
+    const isDark = htmlElement.classList.contains('dark');
+    if(isDark){
+      scene.fog = new THREE.FogExp2(0x020617, 0.03);
+      if(particlesMesh) particlesMesh.material.color.setHex(0xffffff);
+    } else {
+      scene.fog = new THREE.FogExp2(0xF9FAFB, 0.03);
+      if(particlesMesh) particlesMesh.material.color.setHex(0x6C2BD9);
+    }
+  }
+  initThreeJS();
+
+  // ---------- initialize UI visibility ----------
+  stateIdle.classList.remove('hidden');
+  stateProcessing.classList.add('hidden');
+  stateOutput.classList.add('hidden');
+
+  </script>
+
+</body>
+</html>

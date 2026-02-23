@@ -1,0 +1,490 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Board Algo | Neural Calibration</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            black: '#020617',
+                            surface: '#0f172a',
+                            border: '#1e293b',
+                            primary: '#6366f1',
+                            accent: '#8b5cf6',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Outfit', 'sans-serif'],
+                    },
+                    backgroundImage: {
+                        'gradient-glow': 'radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, rgba(2, 6, 23, 0) 70%)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            background-color: #020617;
+            color: #f8fafc;
+            overflow-x: hidden;
+        }
+
+        /* Glassmorphism */
+        .glass {
+            background: rgba(15, 23, 42, 0.4);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* Hide standard radio buttons */
+        input[type="radio"] {
+            display: none;
+        }
+
+        /* Custom Card Styling */
+        .selection-card {
+            cursor: pointer;
+            display: block;
+            width: 100%;
+        }
+
+        .card-content {
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* Active State / Selected State */
+        input[type="radio"]:checked + .card-content {
+            border-color: #6366f1;
+            background: rgba(99, 102, 241, 0.1);
+            transform: scale(1.02) translateY(-2px);
+            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.5);
+        }
+
+        input[type="radio"]:checked + .card-content .icon-container {
+            background: #6366f1;
+            color: #ffffff;
+        }
+
+        input[type="radio"]:checked + .card-content::after {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.2), transparent 60%);
+            pointer-events: none;
+        }
+
+        /* Step Transitions */
+        .step-container {
+            opacity: 0;
+            transform: translateY(20px);
+            display: none;
+            transition: opacity 0.4s ease, transform 0.4s ease;
+        }
+
+        .step-container.active {
+            opacity: 1;
+            transform: translateY(0);
+            display: block;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: #020617; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
+    </style>
+</head>
+<body class="selection:bg-brand-primary selection:text-white min-h-screen flex flex-col relative">
+
+    <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow rounded-full pointer-events-none z-0"></div>
+
+    <nav class="fixed top-0 w-full z-50 border-b border-white/5 bg-brand-black/80 backdrop-blur-md">
+        <div class="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
+            <button id="btn-back" class="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium opacity-0 pointer-events-none">
+                <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+            </button>
+            <div class="text-sm font-mono text-brand-primary font-bold tracking-widest uppercase">
+                Phase <span id="current-step-display">1</span>/6
+            </div>
+        </div>
+        <div class="h-1 w-full bg-brand-surface">
+            <div id="progress-bar" class="h-full bg-brand-primary transition-all duration-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]" style="width: 16.66%;"></div>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex items-center justify-center relative z-10 px-4 pt-24 pb-12">
+        <form method="POST" action="/api/onboard" id="onboard-form" class="w-full max-w-2xl">
+
+            <div class="step-container active" data-step="1">
+                <div class="text-center mb-10">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
+                        <i data-lucide="swords" class="w-4 h-4 text-brand-accent"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Level Select</span>
+                    </div>
+                    <h2 class="text-3xl md:text-5xl font-display font-bold text-white mb-3">Which battlefield are you entering?</h2>
+                    <p class="text-slate-400">Select your current academic tier.</p>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <label class="selection-card">
+                        <input type="radio" name="class_level" value="10" required>
+                        <div class="card-content glass p-6 rounded-2xl flex flex-col items-center text-center gap-4 hover:bg-white/5">
+                            <div class="icon-container w-16 h-16 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center transition-colors">
+                                <span class="font-display font-bold text-2xl">10</span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-white">Class 10th Boards</h3>
+                                <p class="text-xs text-slate-400 mt-1">The First Checkpoint</p>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="class_level" value="12">
+                        <div class="card-content glass p-6 rounded-2xl flex flex-col items-center text-center gap-4 hover:bg-white/5">
+                            <div class="icon-container w-16 h-16 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center transition-colors">
+                                <span class="font-display font-bold text-2xl">12</span>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-lg text-white">Class 12th Boards</h3>
+                                <p class="text-xs text-slate-400 mt-1">The Final Boss</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="step-container" data-step="2">
+                <div class="text-center mb-10">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
+                        <i data-lucide="smartphone" class="w-4 h-4 text-brand-primary"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Attention Mapping</span>
+                    </div>
+                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">When you have 0% energy at 2 AM, what keeps you awake?</h2>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <label class="selection-card">
+                        <input type="radio" name="dopamine_schema" value="system_builder" required>
+                        <div class="card-content glass p-5 rounded-2xl flex items-start gap-4 hover:bg-white/5">
+                            <div class="icon-container w-10 h-10 rounded-lg bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="book-open" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white">Deep-Lore Rabbit Holes</h3>
+                                <p class="text-xs text-slate-400 mt-1">Anime arcs, MCU theories, gaming meta breakdowns.</p>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="dopamine_schema" value="emotional_coder">
+                        <div class="card-content glass p-5 rounded-2xl flex items-start gap-4 hover:bg-white/5">
+                            <div class="icon-container w-10 h-10 rounded-lg bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="flame" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white">High-Stakes Drama</h3>
+                                <p class="text-xs text-slate-400 mt-1">Bigg Boss fights, gossip, toxic relationship reels.</p>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="dopamine_schema" value="competitor">
+                        <div class="card-content glass p-5 rounded-2xl flex items-start gap-4 hover:bg-white/5">
+                            <div class="icon-container w-10 h-10 rounded-lg bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white">Aggressive Stats & Debates</h3>
+                                <p class="text-xs text-slate-400 mt-1">Virat vs Rohit, football stats, sigma edits.</p>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="dopamine_schema" value="absurdist">
+                        <div class="card-content glass p-5 rounded-2xl flex items-start gap-4 hover:bg-white/5">
+                            <div class="icon-container w-10 h-10 rounded-lg bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="zap" class="w-5 h-5"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white">Pure Brain-Rot</h3>
+                                <p class="text-xs text-slate-400 mt-1">3-second absurd memes, shitposting, roasting.</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="step-container" data-step="3">
+                <div class="text-center mb-10">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
+                        <i data-lucide="brain-circuit" class="w-4 h-4 text-red-400"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Panic Mechanics</span>
+                    </div>
+                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">Exam hall panic. 5-mark question. Your mind goes blank. What do you do?</h2>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <label class="selection-card">
+                        <input type="radio" name="cortisol_response" value="audio_kinesthetic" required>
+                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
+                            <h3 class="font-bold text-white mb-2"><i data-lucide="headphones" class="w-4 h-4 inline mr-2 text-brand-primary"></i>The Echo Chamber</h3>
+                            <p class="text-sm text-slate-400">I pace around in my mind, trying to hear the teacher's voice or my own voice explaining it.</p>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="cortisol_response" value="spatial_visual">
+                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
+                            <h3 class="font-bold text-white mb-2"><i data-lucide="eye" class="w-4 h-4 inline mr-2 text-brand-accent"></i>The Scanner</h3>
+                            <p class="text-sm text-slate-400">I try to 'see' the textbook page, my messy handwriting, or where I highlighted it.</p>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="cortisol_response" value="chunking">
+                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
+                            <h3 class="font-bold text-white mb-2"><i data-lucide="link" class="w-4 h-4 inline mr-2 text-green-400"></i>The Chain Reaction</h3>
+                            <p class="text-sm text-slate-400">I desperately try to remember the first letter of the first word to trigger the rest.</p>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="cortisol_response" value="algorithmic">
+                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
+                            <h3 class="font-bold text-white mb-2"><i data-lucide="binary" class="w-4 h-4 inline mr-2 text-blue-400"></i>The Engineer</h3>
+                            <p class="text-sm text-slate-400">I try to remember the logical formula or the 'cheat code' to derive the answer from scratch.</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="step-container" data-step="4">
+                <div class="text-center mb-10">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
+                        <i data-lucide="sparkles" class="w-4 h-4 text-yellow-400"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Memory Anomalies</span>
+                    </div>
+                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">How bizarre and 'unhinged' should we make your memory tricks?</h2>
+                </div>
+                <div class="grid grid-cols-1 gap-4">
+                    <label class="selection-card">
+                        <input type="radio" name="von_restorff" value="unhinged" required>
+                        <div class="card-content glass p-5 rounded-2xl flex items-center justify-between hover:bg-white/5">
+                            <div>
+                                <h3 class="font-bold text-white">Completely Unhinged</h3>
+                                <p class="text-sm text-slate-400 mt-1">Dark humor, savage insults, absolute absurdity.</p>
+                            </div>
+                            <div class="text-2xl opacity-50">💀</div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="von_restorff" value="melodramatic">
+                        <div class="card-content glass p-5 rounded-2xl flex items-center justify-between hover:bg-white/5">
+                            <div>
+                                <h3 class="font-bold text-white">Filmy & Melodramatic</h3>
+                                <p class="text-sm text-slate-400 mt-1">Bollywood climax, betrayal, heavy dialogues.</p>
+                            </div>
+                            <div class="text-2xl opacity-50">🎬</div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="von_restorff" value="heroic">
+                        <div class="card-content glass p-5 rounded-2xl flex items-center justify-between hover:bg-white/5">
+                            <div>
+                                <h3 class="font-bold text-white">Epic & Heroic</h3>
+                                <p class="text-sm text-slate-400 mt-1">Video game final boss fight, intense sports final.</p>
+                            </div>
+                            <div class="text-2xl opacity-50">⚔️</div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="von_restorff" value="grounded">
+                        <div class="card-content glass p-5 rounded-2xl flex items-center justify-between hover:bg-white/5">
+                            <div>
+                                <h3 class="font-bold text-white">Clever but Grounded</h3>
+                                <p class="text-sm text-slate-400 mt-1">Strictly logical, clean, academically safe.</p>
+                            </div>
+                            <div class="text-2xl opacity-50">📐</div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="step-container" data-step="5">
+                <div class="text-center mb-10">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
+                        <i data-lucide="hourglass" class="w-4 h-4 text-orange-400"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Data Loss Profile</span>
+                    </div>
+                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">When you forget a 10-point answer the next day, what went wrong?</h2>
+                </div>
+                <div class="grid sm:grid-cols-2 gap-4">
+                    <label class="selection-card">
+                        <input type="radio" name="memory_decay" value="serial_position" required>
+                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
+                            <h3 class="font-bold text-white mb-2">The Serial Position Trap</h3>
+                            <p class="text-sm text-slate-400">I remember the start and end, but the middle is an absolute black hole.</p>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="memory_decay" value="jumbled_mess">
+                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
+                            <h3 class="font-bold text-white mb-2">The Jumbled Mess</h3>
+                            <p class="text-sm text-slate-400">I remember the points, but I totally mix up the exact chronological order.</p>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="memory_decay" value="vocab_block">
+                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
+                            <h3 class="font-bold text-white mb-2">The Vocabulary Block</h3>
+                            <p class="text-sm text-slate-400">I understand the core concept, but my brain deletes the exact scientific keywords.</p>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="memory_decay" value="wall_of_text">
+                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
+                            <h3 class="font-bold text-white mb-2">The Wall of Text</h3>
+                            <p class="text-sm text-slate-400">It all looks exactly the same. My brain just refuses to absorb a giant paragraph.</p>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <div class="step-container" data-step="6">
+                <div class="text-center mb-10">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
+                        <i data-lucide="target" class="w-4 h-4 text-pink-400"></i>
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Final Motivation</span>
+                    </div>
+                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">If you memorized the whole syllabus today, what's your drive?</h2>
+                </div>
+                <div class="grid grid-cols-1 gap-4 mb-10">
+                    <label class="selection-card">
+                        <input type="radio" name="social_ego" value="teacher" required>
+                        <div class="card-content glass p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5">
+                            <div class="icon-container w-12 h-12 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="graduation-cap" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-lg">The Teacher</h3>
+                                <p class="text-sm text-slate-400">I want to be the smartest person in the room and explain it to my friends.</p>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="social_ego" value="hacker">
+                        <div class="card-content glass p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5">
+                            <div class="icon-container w-12 h-12 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="terminal" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-lg">The Hacker</h3>
+                                <p class="text-sm text-slate-400">I want to secretly know all the answers while pretending I didn't study at all.</p>
+                            </div>
+                        </div>
+                    </label>
+                    <label class="selection-card">
+                        <input type="radio" name="social_ego" value="survivor">
+                        <div class="card-content glass p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5">
+                            <div class="icon-container w-12 h-12 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
+                                <i data-lucide="shield-alert" class="w-6 h-6"></i>
+                            </div>
+                            <div>
+                                <h3 class="font-bold text-white text-lg">The Survivor</h3>
+                                <p class="text-sm text-slate-400">I literally just want to pass the passing marks and get this over with.</p>
+                            </div>
+                        </div>
+                    </label>
+                </div>
+                
+                <div class="text-center">
+                    <button type="submit" class="w-full sm:w-auto px-10 py-5 rounded-xl bg-white text-brand-black font-bold text-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,255,255,0.3)] mx-auto disabled:opacity-50 disabled:cursor-not-allowed" id="btn-submit" disabled>
+                        <i data-lucide="cpu" class="w-6 h-6"></i>
+                        Generate My Algorithm
+                    </button>
+                    <p class="text-xs text-slate-500 mt-4">By continuing, you agree to optimize your neural pathways.</p>
+                </div>
+            </div>
+
+        </form>
+    </main>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Onboarding Logic
+        document.addEventListener('DOMContentLoaded', () => {
+            const steps = document.querySelectorAll('.step-container');
+            const btnBack = document.getElementById('btn-back');
+            const currentStepDisplay = document.getElementById('current-step-display');
+            const progressBar = document.getElementById('progressBar'); // Adjusted below
+            const totalSteps = steps.length;
+            let currentStep = 1;
+
+            const updateUI = () => {
+                // Hide all steps, show current
+                steps.forEach((step, index) => {
+                    if (index + 1 === currentStep) {
+                        step.classList.add('active');
+                    } else {
+                        step.classList.remove('active');
+                    }
+                });
+
+                // Update Progress & Text
+                currentStepDisplay.innerText = currentStep;
+                document.getElementById('progress-bar').style.width = `${(currentStep / totalSteps) * 100}%`;
+
+                // Handle Back Button Visibility
+                if (currentStep > 1) {
+                    btnBack.classList.remove('opacity-0', 'pointer-events-none');
+                } else {
+                    btnBack.classList.add('opacity-0', 'pointer-events-none');
+                }
+            };
+
+            // Auto-advance mechanism for Gen-Z flow (tap and go)
+            steps.forEach((step, index) => {
+                const radios = step.querySelectorAll('input[type="radio"]');
+                radios.forEach(radio => {
+                    radio.addEventListener('change', () => {
+                        // If it's the last step, just enable the submit button
+                        if (currentStep === totalSteps) {
+                            document.getElementById('btn-submit').disabled = false;
+                            return;
+                        }
+                        
+                        // Add a tiny delay so the user sees the "selected/glow" state before jumping
+                        setTimeout(() => {
+                            currentStep++;
+                            updateUI();
+                        }, 400); // 400ms feels snappy but deliberate
+                    });
+                });
+            });
+
+            // Back Button Logic
+            btnBack.addEventListener('click', (e) => {
+                e.preventDefault();
+                if (currentStep > 1) {
+                    currentStep--;
+                    updateUI();
+                }
+            });
+        });
+    </script>
+</body>
+</html>
