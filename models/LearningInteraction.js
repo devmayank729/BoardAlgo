@@ -12,7 +12,7 @@ const LearningInteractionSchema = new Schema({
 
   feature_type: { 
     type: String, 
-    enum: ['DOUBT_SOLVER', 'CONCEPT_PREDICTOR', 'BOARD_EVALUATOR' , 'MNEMONIC_GENERATOR'], 
+    enum: ['DOUBT_SOLVER', 'CONCEPT_PREDICTOR', 'BOARD_EVALUATOR' , 'MNEMONIC_GENERATOR' , 'SUB_QUESTION'], 
     required: true 
   },
 

@@ -37,15 +37,24 @@ app.use(session({
 
 function isLoggedIn (req,res,next)
 {
+
+
     if(req.session && req.session.user)
     {
         next() ; 
+        console.log("yes user is logged in, passed") ; 
     }
 
     else 
     {
-        res.render("login" , {message : "please login/signup first"}) ; 
-        // console.log("unauthorized user tried to access", req) ; 
+      if (req.originalUrl.startsWith("/api"))
+            {
+              console.log("/api is accessed without logging in, so error ") ; 
+            return res.status(401).json({error: "Unauthorized. Please login."});
+            }
+
+        console.log("user is not logged in, so redirected to login page") ; 
+        res.render("login" , {message : "please login/signup first"}) ;  
     }
 }
 
@@ -54,6 +63,7 @@ function isLoggedIn (req,res,next)
 
 // Parse JSON data (for APIs)
 app.use(express.json());
+
 
 // Parse form data
 app.use(express.urlencoded({ extended: true }));
@@ -147,8 +157,81 @@ res.render("dash" , {user : req.session.user , recentInteractions : null , inter
 })
 
 
+//visitor log 
 
 
+// routes/analytics.js
+
+const geoip = require('geoip-lite');
+const VisitorLog = require('./models/VisitorLog'); // Adjust path to your schema
+
+app.post('/api/analytics/log-visit', async (req, res) => {
+  try {
+    const { 
+      session_cookie_id, 
+      utm_source, 
+      utm_campaign, 
+      landing_page, 
+      drop_off_page, 
+      time_spent_sec, 
+      device_type,
+      is_update // Custom flag from frontend to distinguish initial load vs page exit
+    } = req.body;
+
+    // 1. If it's an update (user leaving the page), just update the existing log
+    if (is_update) {
+      await VisitorLog.findOneAndUpdate(
+        { session_cookie_id },
+        { 
+          drop_off_page,
+          $inc: { time_spent_sec: time_spent_sec } 
+        },
+        { sort: { createdAt: -1 } } // Get their most recent session
+      );
+      return res.status(200).json({ success: true });
+    }
+
+    // 2. Initial Visit: Setup IP and GeoIP logic
+    const ip = req.ip || req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const geo = geoip.lookup(ip);
+
+    const logData = {
+      session_cookie_id,
+      ip_address: ip,
+      utm_source,
+      utm_campaign,
+      landing_page,
+      drop_off_page: landing_page, // Defaults to landing page until they leave
+      device_type,
+      time_spent_sec: 0
+    };
+
+    // Apply your exact geoip logic
+    if (geo) {
+      logData.country = geo.country;
+      logData.region = geo.region;
+      logData.city = geo.city;
+      logData.latitude = geo.ll[0];
+      logData.longitude = geo.ll[1];
+      logData.timezone = geo.timezone;
+    }
+
+    // 3. Save to database
+    const newLog = new VisitorLog(logData);
+    await newLog.save();
+
+    res.status(201).json({ success: true, logId: newLog._id });
+
+  } catch (error) {
+    console.error('Tracking Error:', error);
+    res.status(500).json({ error: 'Failed to log visit' });
+  }
+});
+
+
+
+
+//visitor log end here 
 
 
 
@@ -194,7 +277,7 @@ app.post("/loginsubmit" , async(req,res)=>
             req.session.user = existingUser ; 
             
             const existingInteraction = await interaction.find({user_id : req.session.user._id}) ; 
-            const recentInteraction = await interaction.findOne({user_id : req.session.user._id}).sort({timestamp : -1}) ;
+            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : -1}) ;
 
             res.render("dash" , {user : req.session.user , interaction : existingInteraction , recentInteractions : recentInteraction} ) ; 
         }
@@ -275,7 +358,7 @@ res.render("mnemonic") ;
 
 
 // to get the user's input for mnemonic generation 
-app.post("/api/generate-mnemonic" , async function(req,res)
+app.post("/api/generate-mnemonic" ,isLoggedIn , async function(req,res)
 {
 
 const question = req.body.question ; 
@@ -441,35 +524,334 @@ catch (error)
 )
 
 
-
-
-
-
-
-
-
-
+app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
+{
+    res.render("solutionfinder") ; 
+}
+)
 
 
 // solution finder 
 
-app.post("/api/generate-solution" , async function (req,res)
+app.post("/api/generate-solution", isLoggedIn , async function (req,res)
 {
-    
+
+const question = req.body.question ;
+    const user = req.session.user ;  
+
+const newLI = await interaction.create (
+    {
+        user_query_text : question , 
+        feature_type : "DOUBT_SOLVER" , 
+        user_id : req.session.user._id , 
+    }
+)
+const systemprompt = `You are "BoardAlgo Synapse", the Chief Examiner and Paper Setter for CBSE/ICSE Board Exams (Class 10 & 12). Your ONLY purpose is to generate the ultimate, highly-targeted 5-mark answer key. 
+
+CRITICAL EXAMINER RULES:
+1. ZERO VASTNESS: Board students need ultra-targeted, easy-to-memorize points to score full marks. Absolutely no conversational filler or long paragraphs. 
+2. 5-MARK STRUCTURE: If it is a theory question, give exactly 5 crisp, highly impactful points. If it is a numerical/derivation, provide the exact sequential steps an examiner checks for step-marking.
+3. DIFFERENCES = TABLES: If the question asks for a difference or comparison, you MUST use a KaTeX array in the 'latex' field to create a table. (e.g., \\begin{array}{|l|l|} \\hline \\textbf{Feature} & \\textbf{Details} \\\\ \\hline ... \\end{array}).
+4. NO CHATBOT FLUFF: Never say "Let's solve this" or "Here is the answer". Only output the exact words the student must write on their exam sheet.
+
+### PSYCHOLOGICAL 4-COLOR INK PROTOCOL
+1. "blue" (The Structure): Use for 'Given:', 'To Find:', standard definitions, or headings.
+2. "red" (The Anchor): Use for CORE FORMULAS, THEOREMS, or highly critical keywords examiners hunt for. Red stays in memory, so put the most important board-keywords here.
+3. "black" (The Execution): Use for calculations, derivations, and the body of KaTeX tables/arrays.
+4. "green" (The Victory): Use ONLY for the final boxed answer with SI units, or the concluding 5th point.
+
+### OUTPUT FORMAT
+Return ONLY valid JSON. Absolutely no markdown blocks (like \`\`\`json). Escape all backslashes in LaTeX (e.g., \\\\frac or \\\\begin{array}).
+
+{
+  "problem_statement": "Brief 1-sentence summary of the topic.",
+  "steps": [
+    {
+      "text": "Ultra-concise text (Max 10-15 words). Pure exam language.",
+      "latex": "Pure LaTeX equation or \\\\begin{array} table. Null if no math/table.",
+      "ink": "blue" | "black" | "red" | "green"
+    }
+  ]
+}
+
+### EXAMPLES
+
+**Example 1: Difference/Theory Question**
+User: "Difference between arteries and veins"
+{
+  "problem_statement": "Distinguish between Arteries and Veins.",
+  "steps": [
+    {
+      "text": "The primary differences between arteries and veins are:",
+      "latex": null,
+      "ink": "blue"
+    },
+    {
+      "text": "Memorize this 5-point table for guaranteed full marks:",
+      "latex": "\\\\begin{array}{|l|l|} \\\\hline \\\\textbf{Artery} & \\\\textbf{Vein} \\\\ \\\\hline \\\\text{Carries blood away from heart} & \\\\text{Carries blood to the heart} \\\\ \\\\hline \\\\text{Thick, highly elastic walls} & \\\\text{Thin, less elastic walls} \\\\ \\\\hline \\\\text{Carries oxygenated blood (mostly)} & \\\\text{Carries deoxygenated blood (mostly)} \\\\ \\\\hline \\\\text{Valves absent} & \\\\text{Valves present to prevent backflow} \\\\ \\\\hline \\\\text{Deep-seated in the body} & \\\\text{Superficial, closer to skin} \\\\ \\\\hline \\\\end{array}",
+      "ink": "black"
+    },
+    {
+      "text": "Note: Pulmonary artery and pulmonary vein are exceptions to the oxygenation rule.",
+      "latex": null,
+      "ink": "red"
+    }
+  ]
+}
+
+**Example 2: Math/Derivation Question**
+User: "Find roots of x^2 - 5x + 6 = 0"
+{
+  "problem_statement": "Finding roots of the quadratic equation x^2 - 5x + 6 = 0.",
+  "steps": [
+    {
+      "text": "Given equation and coefficients:",
+      "latex": "a = 1, \\\\quad b = -5, \\\\quad c = 6",
+      "ink": "blue"
+    },
+    {
+      "text": "State the quadratic formula (1 mark):",
+      "latex": "x = \\\\frac{-b \\\\pm \\\\sqrt{b^2 - 4ac}}{2a}",
+      "ink": "red"
+    },
+    {
+      "text": "Substitute values into the formula:",
+      "latex": "x = \\\\frac{-(-5) \\\\pm \\\\sqrt{(-5)^2 - 4(1)(6)}}{2(1)}",
+      "ink": "blue"
+    },
+    {
+      "text": "Simplify the discriminant:",
+      "latex": "x = \\\\frac{5 \\\\pm \\\\sqrt{25 - 24}}{2} = \\\\frac{5 \\\\pm 1}{2}",
+      "ink": "black"
+    },
+    {
+      "text": "Final roots. Box your answer.",
+      "latex": "x_1 = 3, \\\\quad x_2 = 2",
+      "ink": "green"
+    }
+  ]
+}
+
+Process the user query and generate the targeted 5-mark board JSON.`;
 
 
-    
-    
+
+//system prompt ends here 
+
+//=========================================calling geminiAPI again 
 
 
 
-} )
+try
+{
+const startTime = Date.now() ; 
+
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro"});
+
+// ---calling gemini ----
+
+const result = await model.generateContent(
+    {
+        contents : [
+            {
+            role : "user" , 
+            parts : [
+                {text : systemprompt} , 
+                {text : `Question : ${question}`}
+                    ]
+            }
+        ], 
+
+        generationConfig : {
+            temperature : 0.4 , 
+            responseMimeType : "application/json"
+        }
+
+    }) ;
+
+
+    const textResponse = result.response.text() ; 
+
+
+// pasre in JSON format 
+
+let parsed ;
+
+try 
+{
+    parsed = JSON.parse(textResponse) ; 
+}
+
+catch
+{
+    parsed = {output : textResponse} ; 
+}
+
+
+// ---time taken ---
+const endTime = Date.now() ; 
+const timeTaken = endTime - startTime ; 
+
+
+// save 
+
+await interaction.findByIdAndUpdate(newLI._id , 
+    {
+       initial_ai_response : parsed , 
+       time_taken_ms : timeTaken 
+    }
+) ;
+
+
+//  --- send to frontend 
+
+res.json(parsed) ; 
+}
+
+
+catch (error)
+{
+    res.send("AI is unable to generate at this time",Date.now()) ;
+    console.log("\n Date :", Date.now()) ; 
+    console.log("\n GEMINI ERROR : ", error )  ;
+}
+
+}
+
+
+
+//calling ended here
+
+
+)
 
 
 
 
 
+app.post("/tool/subdoubt" ,isLoggedIn , async function(req,res)
+  {
+    const question = req.body.subquestion ;
+    console.log(req.body)
+// console.log("Parent's LI :", newLI) ;
 
+const newLI_child = await interaction.create(
+    {
+
+        user_query_text : question , 
+        feature_type : "SUB_QUESTION" , 
+        user_id : req.session.user._id ,
+        // user_id : req.body._id ,  // only for postman
+    }
+)
+
+
+const systemprompt = `You are the "BoardAlgo Tutor", a highly empathetic, brilliant mentor for CBSE/ICSE Class 10 and 12 students. 
+The student is reviewing a strict, 5-mark board solution and has highlighted a specific step to ask a clarifying question.
+
+Your ONLY goal is to instantly clear their confusion in the most encouraging, human-like way possible.
+
+### PERSONA & TONE
+- Act like a friendly teacher writing a quick tip on a sticky note.
+- Start with an encouraging hook like "Great question!", "Ah, good catch!", or "I see where the confusion is!"
+- End with a tiny burst of motivation like "Keep it up!", "You've got this!", or "Keep practicing!"
+- Be ultra-concise. You are writing on a small yellow sticky note. Maximum 3 to 4 short sentences.
+
+### FORMATTING RULES (CRITICAL)
+- The frontend will inject your response directly into a div using innerHTML. 
+- Return ONLY raw HTML/Text. Absolutely NO markdown wrappers (like \`\`\`html or \`\`\`).
+- Use <br><br> for paragraph breaks.
+- Use <b>text</b> to highlight key numbers or concepts.
+- DO NOT use complex LaTeX (like $$ or \\frac). Because this is a quick handwritten note, use simple HTML for math (e.g., x<sup>2</sup>, H<sub>2</sub>O, &plusmn;).
+
+### EXAMPLE GENERATION
+User: 
+Regarding: "x = \\frac{5 \\pm \\sqrt{25 - 24}}{4}"
+My doubt is: Where did the 25 come from?
+
+Your exact output MUST look like this:
+Great question! <br><br>The 25 comes from squaring the 'b' term in the quadratic formula. Since b = -5, when you calculate <b>(-5)<sup>2</sup></b>, the negative cancels out and gives you a positive 25. <br><br>Watch out for that sign, it's a very common trap! You're doing great.
+
+Now, read the student's doubt and write the perfect sticky-note explanation.`;
+
+
+try
+{
+
+  console.log("subquestion : ",question)  ; 
+const startTime = Date.now() ; 
+
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash"});
+
+// ---calling gemini ----
+
+const result = await model.generateContent(
+    {
+        contents : [
+            {
+            role : "user" , 
+            parts : [
+                {text : systemprompt} , 
+                {text : `Question : ${question}`}
+                    ]
+            }
+        ], 
+
+        generationConfig : {
+            temperature : 0.6 , 
+            // responseMimeType : "application/json"
+        }
+
+    }) ;
+
+
+    const textResponse = result.response.text() ; 
+
+
+// pasre in JSON format 
+
+let parsed ;
+
+try 
+{
+    parsed = JSON.parse(textResponse) ; 
+}
+
+catch
+{
+    parsed = {output : textResponse} ; 
+}
+
+
+// ---time taken ---
+const endTime = Date.now() ; 
+const timeTaken = endTime - startTime ; 
+
+
+// save 
+
+await interaction.findByIdAndUpdate(newLI_child._id , 
+    {
+       initial_ai_response : parsed , 
+       time_taken_ms : timeTaken 
+    }
+) ;
+
+
+//  --- send to frontend 
+
+res.json(parsed) ; 
+}
+
+
+catch (error)
+{
+    res.send("AI is unable to generate at this time",Date.now()) ;
+    console.log("\n Date :", Date.now()) ; 
+    console.log("\n GEMINI ERROR : ", error )  ;
+}
+
+  })
 
 
 
@@ -486,3 +868,5 @@ app.use(function (req, res) {
 app.listen(PORT, function () {
     console.log(`Server running on http://localhost:${PORT}`);
 });
+
+

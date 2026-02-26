@@ -81,24 +81,24 @@
 
     <nav class="fixed top-0 w-full z-50 glass border-b-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16">
-                <a href="/" class="flex items-center gap-2">
-                    <div class="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center text-white font-bold font-display">B</div>
-                    <span class="text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white">BOARD <span class="text-brand-primary">Algo</span></span>
+            <div class="flex items-center justify-between h-16 gap-2 sm:gap-4">
+                <a href="/" class="flex items-center gap-2 min-w-0">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-primary flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-sm sm:text-base">B</div>
+                    <span class="text-lg sm:text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white truncate">BOARD <span class="text-brand-primary">Algo</span></span>
                 </a>
 
-                <div class="flex items-center gap-4">
+                <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
                     <button id="theme-toggle" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 transition-colors">
-                        <i data-lucide="sun" class="hidden dark:block w-5 h-5"></i>
-                        <i data-lucide="moon" class="block dark:hidden w-5 h-5"></i>
+                        <i data-lucide="sun" class="hidden dark:block w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <i data-lucide="moon" class="block dark:hidden w-4 h-4 sm:w-5 sm:h-5"></i>
                     </button>
 
-                    <div class="flex items-center gap-3 pl-4 border-l border-gray-200 dark:border-gray-800">
+                    <div class="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-gray-200 dark:border-gray-800">
                         <div class="text-right hidden sm:block">
                             <p class="text-sm font-semibold text-slate-900 dark:text-white"><%= user.username %></p>
                             <p class="text-xs text-brand-primary font-medium"><%= user.subscription_status === 'ACTIVE' ? 'Pro Member' : 'Free Plan' %></p>
                         </div>
-                        <div class="h-9 w-9 rounded-full bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center text-brand-primary font-bold">
+                        <div class="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center text-brand-primary font-bold text-sm sm:text-base flex-shrink-0">
                             <%= user.username.charAt(0).toUpperCase() %>
                         </div>
                     </div>
@@ -107,93 +107,93 @@
         </div>
     </nav>
 
-    <main class="flex-grow pt-24 pb-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-10">
+    <main class="flex-grow pt-20 sm:pt-24 pb-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
 
             <div class="gsap-entry space-y-2">
-                <h1 class="text-4xl md:text-5xl font-display font-bold text-slate-900 dark:text-white tracking-tight">
-                    Hi, <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent"><%= user.username %></span>.
+                <h1 class="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+                    Hi, <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent break-words"><%= user.username %></span>.
                 </h1>
-                <p class="text-xl text-slate-600 dark:text-gray-400">Your personalized learning command center.</p>
+                <p class="text-lg sm:text-xl text-slate-600 dark:text-gray-400">Your personalized learning command center.</p>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <a href="/tools/solution-finder" class="gsap-entry glow-card glass rounded-2xl p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-12 h-12 rounded-xl bg-brand-primary/20 flex items-center justify-center text-brand-primary mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="search" class="w-6 h-6"></i>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+                <a href="/tools/solution-finder" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-primary/20 flex items-center justify-center text-brand-primary mb-4 group-hover:scale-110 transition-transform">
+                        <i data-lucide="search" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Solution Finder</h3>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Solution Finder</h3>
                     <p class="text-sm text-slate-600 dark:text-gray-400">Step-by-step solutions for Physics & Math.</p>
                 </a>
 
-                <a href="/tools/predictor" class="gsap-entry glow-card glass rounded-2xl p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-12 h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="brain-circuit" class="w-6 h-6"></i>
+                <a href="/tools/predictor" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-4 group-hover:scale-110 transition-transform">
+                        <i data-lucide="brain-circuit" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Concept Predictor</h3>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Concept Predictor</h3>
                     <p class="text-sm text-slate-600 dark:text-gray-400">AI analysis of past paper trends.</p>
                 </a>
 
-                <a href="/tools/question-bank" class="gsap-entry glow-card glass rounded-2xl p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-12 h-12 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-600 dark:text-pink-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="library" class="w-6 h-6"></i>
+                <a href="/tools/question-bank" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-600 dark:text-pink-400 mb-4 group-hover:scale-110 transition-transform">
+                        <i data-lucide="library" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Question Bank</h3>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Question Bank</h3>
                     <p class="text-sm text-slate-600 dark:text-gray-400">5000+ curated board-level questions.</p>
                 </a>
 
-                <a href="/examiner" class="gsap-entry glow-card glass rounded-2xl p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-12 h-12 rounded-xl bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="gavel" class="w-6 h-6"></i>
+                <a href="/examiner" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 group-hover:scale-110 transition-transform">
+                        <i data-lucide="gavel" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Strict Examiner</h3>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Strict Examiner</h3>
                     <p class="text-sm text-slate-600 dark:text-gray-400">Grading with strict marking schemes.</p>
                 </a>
 
-                <a href="/mnemonic" class="gsap-entry glow-card glass rounded-2xl p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-12 h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-600 dark:text-yellow-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="lightbulb" class="w-6 h-6"></i>
+                <a href="/mnemonic" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-600 dark:text-yellow-400 mb-4 group-hover:scale-110 transition-transform">
+                        <i data-lucide="lightbulb" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Mnemonics</h3>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Mnemonics</h3>
                     <p class="text-sm text-slate-600 dark:text-gray-400">Generate phrases to remember formulas.</p>
                 </a>
 
-                <a href="/reports" class="gsap-entry glow-card glass rounded-2xl p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-12 h-12 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="bar-chart-2" class="w-6 h-6"></i>
+                <a href="/reports" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-4 group-hover:scale-110 transition-transform">
+                        <i data-lucide="bar-chart-2" class="w-5 h-5 sm:w-6 sm:h-6"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white mb-2">Progress Report</h3>
+                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Progress Report</h3>
                     <p class="text-sm text-slate-600 dark:text-gray-400">View your accuracy and weak areas.</p>
                 </a>
             </div>
 
             <div class="gsap-entry">
-                <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white mb-6">Recent Activity</h2>
-                <div class="space-y-4">
+                <h2 class="text-xl sm:text-2xl font-display font-bold text-slate-900 dark:text-white mb-4 sm:mb-6">Recent Activity</h2>
+                <div class="space-y-3 sm:space-y-4">
                     <% if (recentInteractions && recentInteractions.length > 0) { %>
                         <% recentInteractions.forEach(function(interaction) { %>
-                            <div class="glass p-4 rounded-xl border border-gray-200 dark:border-white/5 flex items-center justify-between hover:bg-white/5 transition-colors">
-                                <div class="flex items-center gap-4">
-                                    <div class="p-2 rounded-lg bg-brand-primary/10 text-brand-primary">
-                                        <% if(interaction.feature_type === 'DOUBT_SOLVER') { %> <i data-lucide="search" class="w-5 h-5"></i> <% } %>
-                                        <% if(interaction.feature_type === 'MNEMONIC') { %> <i data-lucide="lightbulb" class="w-5 h-5"></i> <% } %>
-                                        <% if(interaction.feature_type === 'BOARD_EVALUATOR') { %> <i data-lucide="gavel" class="w-5 h-5"></i> <% } %>
+                            <div class="glass p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-white/5 flex items-center justify-between hover:bg-white/5 transition-colors gap-2">
+                                <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                                    <div class="p-2 rounded-lg bg-brand-primary/10 text-brand-primary flex-shrink-0">
+                                        <% if(interaction.feature_type === 'DOUBT_SOLVER') { %> <i data-lucide="search" class="w-4 h-4 sm:w-5 sm:h-5"></i> <% } %>
+                                        <% if(interaction.feature_type === 'MNEMONIC') { %> <i data-lucide="lightbulb" class="w-4 h-4 sm:w-5 sm:h-5"></i> <% } %>
+                                        <% if(interaction.feature_type === 'BOARD_EVALUATOR') { %> <i data-lucide="gavel" class="w-4 h-4 sm:w-5 sm:h-5"></i> <% } %>
                                     </div>
-                                    <div>
-                                        <p class="text-sm font-semibold text-slate-900 dark:text-white truncate max-w-xs md:max-w-md">
-                                            <%= interaction.user_query_text ? interaction.user_query_text.substring(0, 50) + '...' : 'Image Upload' %>
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                            <%= interaction.user_query_text ? interaction.user_query_text : 'Image Upload' %>
                                         </p>
-                                        <p class="text-xs text-slate-500 dark:text-gray-500">
+                                        <p class="text-xs text-slate-500 dark:text-gray-500 truncate mt-0.5">
                                             <%= new Date(interaction.timestamp).toLocaleDateString() %> • <%= interaction.feature_type.replace('_', ' ') %>
                                         </p>
                                     </div>
                                 </div>
-                                <a href="/history/<%= interaction._id %>" class="text-xs font-medium text-brand-primary hover:text-brand-accent">View</a>
+                                <a href="/history/<%= interaction._id %>" class="text-xs sm:text-sm font-medium text-brand-primary hover:text-brand-accent flex-shrink-0 pl-2">View</a>
                             </div>
                         <% }); %>
                     <% } else { %>
-                        <div class="text-center py-8 text-gray-500">
-                            <p>No recent activity found. Start solving!</p>
+                        <div class="text-center py-6 sm:py-8 text-gray-500">
+                            <p class="text-sm sm:text-base">No recent activity found. Start solving!</p>
                         </div>
                     <% } %>
                 </div>
@@ -203,12 +203,12 @@
     </main>
 
     <footer class="glass border-t border-brand-border/30 z-10 relative mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
-            <div class="grid grid-cols-1 md:grid-cols-4 gap-8 mb-8">
-                <div class="col-span-1 md:col-span-1">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+                <div class="col-span-1 sm:col-span-2 md:col-span-1">
                     <div class="flex items-center gap-2 mb-4">
-                        <div class="w-8 h-8 rounded-lg bg-brand-primary flex items-center justify-center text-white font-bold font-display">B</div>
-                        <span class="text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white">BOARD <span class="text-brand-primary">Algo</span></span>
+                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-primary flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-sm sm:text-base">B</div>
+                        <span class="text-lg sm:text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white">BOARD <span class="text-brand-primary">Algo</span></span>
                     </div>
                     <p class="text-gray-400 text-sm leading-relaxed">
                         The ultimate AI-powered study companion for Board Exam aspirants. 
@@ -216,7 +216,7 @@
                 </div>
                 
                 <div>
-                    <h4 class="text-slate-900 dark:text-white font-semibold mb-4">Platform</h4>
+                    <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4">Platform</h4>
                     <ul class="space-y-2">
                         <li><a href="/features" class="footer-link">Features</a></li>
                         <li><a href="/pricing" class="footer-link">Pricing</a></li>
@@ -224,7 +224,7 @@
                     </ul>
                 </div>
                 <div>
-                    <h4 class="text-slate-900 dark:text-white font-semibold mb-4">Resources</h4>
+                    <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4">Resources</h4>
                     <ul class="space-y-2">
                         <li><a href="/blog" class="footer-link">Study Tips</a></li>
                         <li><a href="/syllabus" class="footer-link">Syllabus</a></li>
@@ -232,19 +232,19 @@
                     </ul>
                 </div>
                 <div>
-                    <h4 class="text-slate-900 dark:text-white font-semibold mb-4">Legal</h4>
+                    <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4">Legal</h4>
                     <ul class="space-y-2">
                         <li><a href="/privacy" class="footer-link">Privacy Policy</a></li>
                         <li><a href="/terms" class="footer-link">Terms of Service</a></li>
                     </ul>
                 </div>
             </div>
-            <div class="border-t border-gray-200 dark:border-gray-800 pt-8 flex flex-col md:flex-row justify-between items-center gap-4">
-                <p class="text-gray-500 text-sm">© 2024 BoardAlgo. All rights reserved.</p>
+            <div class="border-t border-gray-200 dark:border-gray-800 pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+                <p class="text-gray-500 text-xs sm:text-sm">© 2024 BoardAlgo. All rights reserved.</p>
                 <div class="flex gap-4">
-                    <a href="#" class="text-gray-400 hover:text-brand-primary"><i data-lucide="twitter" class="w-5 h-5"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-brand-primary"><i data-lucide="instagram" class="w-5 h-5"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-brand-primary"><i data-lucide="linkedin" class="w-5 h-5"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-brand-primary transition-colors"><i data-lucide="twitter" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-brand-primary transition-colors"><i data-lucide="instagram" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
+                    <a href="#" class="text-gray-400 hover:text-brand-primary transition-colors"><i data-lucide="linkedin" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
                 </div>
             </div>
         </div>
@@ -313,9 +313,17 @@
         let mouseX = 0;
         let mouseY = 0;
 
+        // Mobile touch support for the background parallax effect
         document.addEventListener('mousemove', (event) => {
             mouseX = event.clientX / window.innerWidth - 0.5;
             mouseY = event.clientY / window.innerHeight - 0.5;
+        });
+
+        document.addEventListener('touchmove', (event) => {
+            if(event.touches.length > 0) {
+                mouseX = event.touches[0].clientX / window.innerWidth - 0.5;
+                mouseY = event.touches[0].clientY / window.innerHeight - 0.5;
+            }
         });
 
         const animate = () => {
@@ -339,5 +347,9 @@
             renderer.setSize(window.innerWidth, window.innerHeight);
         });
     </script>
+
+    
+<script src="/js/tracking.js" defer></script>
+
 </body>
 </html>

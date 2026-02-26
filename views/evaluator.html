@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="en" class="dark scroll-smooth">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>BoardAlgo | Strict Evaluator</title>
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.css" rel="stylesheet">
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/cropperjs/1.5.13/cropper.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            primary: '#6C2BD9', /* Purple */
+                            accent: '#16A34A',  /* Green */
+                            evaluator: '#DC2626', /* Red for strict marking */
+                            dark: '#020617',
+                            surface: '#0f172a',
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter','sans-serif'],
+                        display: ['Poppins','sans-serif'],
+                    },
+                    boxShadow: {
+                        'glow-evaluator': '0 0 25px rgba(220, 38, 38, 0.4)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body { overflow-x: hidden; transition: background-color .3s ease, color .3s ease; }
+        #canvas-container { position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; pointer-events:none; }
+        
+        .hud-panel { background: rgba(15,23,42,.7); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid rgba(255,255,255,.1); box-shadow:0 8px 32px 0 rgba(0,0,0,.3); }
+        html:not(.dark) .hud-panel { background: rgba(255,255,255,.95); border:1px solid rgba(0,0,0,.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,.05); }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar{ width:8px; height: 8px; } 
+        ::-webkit-scrollbar-track{ background:transparent } 
+        ::-webkit-scrollbar-thumb{ background:#DC2626; border-radius:4px }
+
+        /* Perfected Marks Radio Buttons */
+        .marks-radio:checked + label {
+            background-color: #DC2626;
+            color: white;
+            border-color: #DC2626;
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.5);
+            transform: scale(1.05);
+        }
+        .marks-radio + label {
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        /* Cropper Container */
+        .img-container { max-height: 50vh; width: 100%; background-color: #020617; display: flex; justify-content: center; align-items: center; border-radius: 0.5rem;}
+        .img-container img { max-width: 100%; max-height: 100%; }
+    </style>
+</head>
+
+<body class="bg-[#F9FAFB] dark:bg-[#020617] text-slate-800 dark:text-slate-200 min-h-screen flex flex-col relative w-full overflow-x-hidden">
+
+    <div id="canvas-container" aria-hidden="true"></div>
+
+    <nav class="fixed top-0 w-full z-50 border-b border-white/10 bg-white/70 dark:bg-[#0f172a]/70 backdrop-blur-md">
+        <div class="w-full px-4 sm:px-6 h-16 flex items-center justify-between">
+            <a href="/" class="flex items-center gap-2 hover:opacity-80 transition-opacity">
+                <i data-lucide="gavel" class="w-6 h-6 text-brand-evaluator"></i>
+                <span class="text-xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
+                    BOARD <span class="text-brand-evaluator">Algo</span>
+                </span>
+            </a>
+            <div class="flex items-center gap-4">
+                <span class="text-xs font-bold text-slate-500 hidden md:block uppercase tracking-widest border border-slate-200 dark:border-slate-700 px-3 py-1 rounded-full">Evaluator Engine</span>
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors">
+                    <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
+                    <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-brand-evaluator"></i>
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="relative z-10 w-full px-2 sm:px-6 pt-24 pb-20 flex-grow flex flex-col gap-6 items-center">
+
+        <header class="text-center mb-2">
+            <h1 class="text-3xl md:text-5xl font-display font-extrabold text-slate-900 dark:text-white mb-2 tracking-tight">Strict Examiner</h1>
+            <p class="text-slate-500 text-sm md:text-base max-w-2xl mx-auto px-4">Upload a single question and get your answer graded rigorously.</p>
+        </header>
+
+        <form id="evaluation-form" action="/api/evaluate" method="POST" enctype="multipart/form-data" class="w-full max-w-3xl flex flex-col gap-6">
+            
+            <input type="hidden" name="input_type" id="input_type" value="text">
+            <input type="file" name="student_answer_image" id="final-image-file" class="hidden">
+
+            <div class="hud-panel rounded-2xl p-6 md:p-8 shadow-lg w-full">
+                <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                    <div>
+                        <h3 class="text-lg font-display font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i data-lucide="target" class="w-5 h-5 text-brand-evaluator"></i> Question Weightage
+                        </h3>
+                        <p class="text-xs text-slate-500 mt-1">Select the maximum marks to calibrate the CBSE grading strictness.</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 md:grid-cols-6 gap-3">
+                    <% const markOptions = [1, 2, 3, 4, 5, 6]; %>
+                    <% markOptions.forEach(mark => { %>
+                        <div class="relative w-full">
+                            <input type="radio" name="max_marks" id="mark_<%= mark %>" value="<%= mark %>" class="marks-radio hidden" <%= mark === 5 ? 'checked' : '' %> required>
+                            <label for="mark_<%= mark %>" class="w-full aspect-square md:aspect-auto md:py-3 flex flex-col items-center justify-center rounded-xl border-2 border-slate-200 dark:border-slate-700/50 bg-slate-50 dark:bg-black/30 text-slate-600 dark:text-slate-400 font-display font-bold text-xl cursor-pointer shadow-sm hover:border-brand-evaluator/50">
+                                <span><%= mark %></span>
+                                <span class="text-[10px] uppercase tracking-wider font-sans opacity-70">Mark<%= mark > 1 ? 's' : '' %></span>
+                            </label>
+                        </div>
+                    <% }); %>
+                </div>
+            </div>
+
+            <div class="hud-panel rounded-2xl overflow-hidden shadow-lg flex flex-col w-full">
+                
+                <div class="flex border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-black/20">
+                    <button type="button" id="tab-text" class="flex-1 py-4 text-center font-bold text-brand-evaluator border-b-2 border-brand-evaluator transition-colors hover:bg-black/5 flex justify-center items-center gap-2">
+                        <i data-lucide="keyboard" class="w-4 h-4"></i> Type Answer
+                    </button>
+                    <button type="button" id="tab-image" class="flex-1 py-4 text-center font-bold text-slate-500 border-b-2 border-transparent transition-colors hover:bg-black/5 flex justify-center items-center gap-2">
+                        <i data-lucide="camera" class="w-4 h-4"></i> Upload Photo
+                    </button>
+                </div>
+
+                <div id="area-text" class="p-0 block">
+                    <textarea name="student_answer_text" id="student_answer_text" 
+                        class="w-full min-h-[250px] bg-transparent text-slate-900 dark:text-white p-6 resize-none font-medium placeholder-slate-400 text-lg border-none focus:ring-0"
+                        placeholder="Type your complete answer exactly as you would in the board exam..."></textarea>
+                </div>
+
+                <div id="area-image" class="p-6 hidden flex-col items-center justify-center gap-4 min-h-[250px]">
+                    
+                    <input type="file" id="camera-input" accept="image/*" capture="environment" class="hidden">
+                    <input type="file" id="gallery-input" accept="image/*" class="hidden">
+
+                    <div id="initial-upload-ui" class="flex flex-col items-center gap-4 w-full py-8">
+                        <div class="w-16 h-16 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-2">
+                            <i data-lucide="scan-line" class="w-8 h-8 text-brand-evaluator"></i>
+                        </div>
+                        <h4 class="font-bold text-lg text-slate-900 dark:text-white">Scan Handwritten Answer</h4>
+                        <div class="flex flex-col sm:flex-row gap-4 w-full justify-center mt-2">
+                            <button type="button" onclick="document.getElementById('camera-input').click()" class="flex-1 max-w-[200px] py-3 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold hover:scale-[1.02] transition-transform flex items-center justify-center gap-2 shadow-md">
+                                <i data-lucide="camera" class="w-5 h-5"></i> Open Camera
+                            </button>
+                            <button type="button" onclick="document.getElementById('gallery-input').click()" class="flex-1 max-w-[200px] py-3 rounded-xl border-2 border-slate-300 dark:border-slate-700 bg-transparent font-bold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors flex items-center justify-center gap-2">
+                                <i data-lucide="image" class="w-5 h-5"></i> Browse Gallery
+                            </button>
+                        </div>
+                        <p class="text-xs text-slate-500 text-center max-w-xs mt-2">Submit one answer per evaluation. Ensure handwriting is legible and well-lit.</p>
+                    </div>
+
+                    <div id="cropper-ui" class="hidden flex-col items-center w-full">
+                        <div class="w-full flex justify-between items-center mb-3">
+                            <span class="font-bold text-xs text-brand-evaluator uppercase tracking-widest flex items-center gap-1"><i data-lucide="crop" class="w-4 h-4"></i> Crop to single question</span>
+                            <button type="button" id="btn-cancel-crop" class="p-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-red-500 transition"><i data-lucide="x" class="w-4 h-4"></i></button>
+                        </div>
+                        <div class="img-container relative w-full border border-slate-200 dark:border-slate-800">
+                            <img id="image-to-crop" src="" alt="To be cropped">
+                        </div>
+                        <button type="button" id="btn-confirm-crop" class="mt-4 px-8 py-3 w-full bg-brand-evaluator text-white font-bold rounded-xl shadow-glow-evaluator hover:scale-[1.01] transition-transform flex justify-center items-center gap-2">
+                            <i data-lucide="check-circle" class="w-5 h-5"></i> Confirm & Attach
+                        </button>
+                    </div>
+
+                    <div id="preview-ui" class="hidden flex-col items-center w-full">
+                        <div class="relative w-full max-w-sm">
+                            <img id="cropped-preview" src="" class="w-full rounded-xl border border-slate-300 dark:border-slate-700 shadow-lg" />
+                            <div class="absolute -top-3 -right-3 bg-green-500 text-white p-1 rounded-full shadow-md">
+                                <i data-lucide="check" class="w-5 h-5"></i>
+                            </div>
+                        </div>
+                        <button type="button" id="btn-retake" class="mt-4 text-sm font-bold text-slate-500 hover:text-brand-evaluator transition flex items-center gap-1">
+                            <i data-lucide="refresh-cw" class="w-4 h-4"></i> Retake Photo
+                        </button>
+                    </div>
+
+                </div>
+            </div>
+
+            <button type="submit" id="btn-submit" class="w-full py-4 rounded-xl bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-display text-lg font-bold hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl flex items-center justify-center gap-3">
+                <i data-lucide="scan" class="w-6 h-6 text-brand-evaluator"></i> Run Strict Evaluation
+            </button>
+            
+        </form>
+    </main>
+
+    <script>
+        lucide.createIcons();
+
+        // 1. Tab Switching Logic (Text vs Image)
+        const tabText = document.getElementById('tab-text');
+        const tabImage = document.getElementById('tab-image');
+        const areaText = document.getElementById('area-text');
+        const areaImage = document.getElementById('area-image');
+        const inputType = document.getElementById('input_type');
+        const studentAnswerText = document.getElementById('student_answer_text');
+
+        function switchTab(type) {
+            if(type === 'text') {
+                tabText.classList.replace('text-slate-500', 'text-brand-evaluator');
+                tabText.classList.replace('border-transparent', 'border-brand-evaluator');
+                tabImage.classList.replace('text-brand-evaluator', 'text-slate-500');
+                tabImage.classList.replace('border-brand-evaluator', 'border-transparent');
+                
+                areaText.classList.remove('hidden');
+                areaImage.classList.add('hidden');
+                areaImage.classList.remove('flex');
+                
+                inputType.value = 'text';
+                studentAnswerText.required = true;
+            } else {
+                tabImage.classList.replace('text-slate-500', 'text-brand-evaluator');
+                tabImage.classList.replace('border-transparent', 'border-brand-evaluator');
+                tabText.classList.replace('text-brand-evaluator', 'text-slate-500');
+                tabText.classList.replace('border-brand-evaluator', 'border-transparent');
+                
+                areaImage.classList.remove('hidden');
+                areaImage.classList.add('flex');
+                areaText.classList.add('hidden');
+                
+                inputType.value = 'image';
+                studentAnswerText.required = false;
+            }
+        }
+
+        tabText.addEventListener('click', () => switchTab('text'));
+        tabImage.addEventListener('click', () => switchTab('image'));
+
+        // 2. Cropper.js Logic
+        let cropper = null;
+        const cameraInput = document.getElementById('camera-input');
+        const galleryInput = document.getElementById('gallery-input');
+        const imageToCrop = document.getElementById('image-to-crop');
+        
+        const initialUploadUi = document.getElementById('initial-upload-ui');
+        const cropperUi = document.getElementById('cropper-ui');
+        const previewUi = document.getElementById('preview-ui');
+        const croppedPreview = document.getElementById('cropped-preview');
+        const finalImageFile = document.getElementById('final-image-file');
+
+        function handleFileSelection(e) {
+            const files = e.target.files;
+            if (files && files.length > 0) {
+                const file = files[0];
+                const reader = new FileReader();
+                reader.onload = (event) => {
+                    imageToCrop.src = event.target.result;
+                    initialUploadUi.classList.add('hidden');
+                    cropperUi.classList.remove('hidden');
+                    cropperUi.classList.add('flex');
+                    
+                    if (cropper) cropper.destroy();
+                    cropper = new Cropper(imageToCrop, {
+                        viewMode: 2,
+                        autoCropArea: 0.9,
+                        background: false,
+                        zoomable: true,
+                        movable: true,
+                        guides: true,
+                    });
+                };
+                reader.readAsDataURL(file);
+            }
+            e.target.value = ''; // Reset input to allow re-selection of the same file
+        }
+
+        cameraInput.addEventListener('change', handleFileSelection);
+        galleryInput.addEventListener('change', handleFileSelection);
+
+        document.getElementById('btn-cancel-crop').addEventListener('click', () => {
+            if (cropper) { cropper.destroy(); cropper = null; }
+            cropperUi.classList.add('hidden');
+            cropperUi.classList.remove('flex');
+            initialUploadUi.classList.remove('hidden');
+            initialUploadUi.classList.add('flex');
+        });
+
+        document.getElementById('btn-retake').addEventListener('click', () => {
+            previewUi.classList.add('hidden');
+            previewUi.classList.remove('flex');
+            initialUploadUi.classList.remove('hidden');
+            initialUploadUi.classList.add('flex');
+            finalImageFile.value = ''; 
+        });
+
+        // Convert canvas to Blob and inject into form
+        document.getElementById('btn-confirm-crop').addEventListener('click', () => {
+            if (!cropper) return;
+            
+            const canvas = cropper.getCroppedCanvas({
+                width: 1200, 
+                imageSmoothingEnabled: true,
+                imageSmoothingQuality: 'high',
+            });
+
+            canvas.toBlob((blob) => {
+                const file = new File([blob], "strict_evaluation_image.jpg", { type: "image/jpeg" });
+                const dataTransfer = new DataTransfer();
+                dataTransfer.items.add(file);
+                finalImageFile.files = dataTransfer.files; 
+                
+                croppedPreview.src = canvas.toDataURL('image/jpeg');
+                cropperUi.classList.add('hidden');
+                cropperUi.classList.remove('flex');
+                previewUi.classList.remove('hidden');
+                previewUi.classList.add('flex');
+                
+                cropper.destroy();
+                cropper = null;
+            }, 'image/jpeg', 0.85); 
+        });
+
+        // 3. Form Submission Guard
+        document.getElementById('evaluation-form').addEventListener('submit', (e) => {
+            if(inputType.value === 'image' && finalImageFile.files.length === 0) {
+                e.preventDefault();
+                alert('Please upload and crop an image of your answer before submitting.');
+            } else {
+                const btn = document.getElementById('btn-submit');
+                btn.innerHTML = `<i data-lucide="loader-2" class="w-6 h-6 animate-spin text-brand-evaluator"></i> Processing via AI...`;
+                btn.classList.add('opacity-90', 'cursor-wait', 'scale-100');
+            }
+        });
+
+        // 4. Three.js Undulating Wave Background (Exact match to requested logic, colored Red)
+        const themeToggleBtn = document.getElementById('theme-toggle');
+        const htmlElement = document.documentElement;
+        themeToggleBtn.addEventListener('click', ()=>{ 
+            htmlElement.classList.toggle('dark'); 
+            updateThreeJSColors(); 
+        });
+
+        let scene, camera, renderer, grid;
+        function initThreeJS(){
+            const container = document.getElementById('canvas-container');
+            scene = new THREE.Scene();
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+            camera.position.set(0,3,10); camera.rotation.x = -0.2;
+            
+            renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            container.appendChild(renderer.domElement);
+
+            const gridGeo = new THREE.PlaneGeometry(200,200,60,60);
+            // 0xDC2626 is the exact hex for the Red Evaluator theme
+            const gridMat = new THREE.MeshBasicMaterial({ color:0xDC2626, wireframe:true, transparent:true, opacity:0.1 });
+            grid = new THREE.Mesh(gridGeo, gridMat);
+            grid.rotation.x = -Math.PI/2; 
+            scene.add(grid);
+
+            updateThreeJSColors();
+
+            let time = 0;
+            function animate(){
+                requestAnimationFrame(animate);
+                time += 0.002;
+                grid.position.z = (time*10) % 5;
+                const positions = gridGeo.attributes.position;
+                for(let i=0; i<positions.count; i++) {
+                    positions.setZ(i, Math.sin(i/5 + time*5) * 0.2);
+                }
+                positions.needsUpdate = true;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            window.addEventListener('resize', ()=>{
+                camera.aspect = window.innerWidth/window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+        
+        function updateThreeJSColors(){
+            if(!scene) return;
+            const isDark = htmlElement.classList.contains('dark');
+            scene.fog = new THREE.FogExp2(isDark ? 0x020617 : 0xF9FAFB, 0.04);
+        }
+        initThreeJS();
+
+    </script>
+</body>
+</html>
