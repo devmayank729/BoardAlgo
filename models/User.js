@@ -9,12 +9,23 @@ const UserSchema = new Schema({
     index: true // Faster lookups by role
   },
   username: { type: String, required: true, trim: true },
-  email: { type: String, required: true, unique: true, lowercase: true },
-  phone_number: { type: String, required: true, unique: true },
+  Class : {type : String , trim : true} ,
+  email: { type: String, required: true, unique: true, lowercase: true ,sparse: true },
+  phone_number: { type: String, unique: true, sparse: true},
   password_hash: { type: String, required: true }, // Don't return by default
   parent_phone_number : {type : String} ,
   // Relationships
   parent_linked_id: { type: Schema.Types.ObjectId, ref: 'User', default: null },
+
+// this is especially for google AUTH login 
+  provider: {
+    type: String,
+    enum: ["manual", "google"],
+    default: "manual"
+  },
+  providerId: {type : String} , 
+
+  photoURL : {type : String} , 
 
   // Subscription Logic
   subscription_status: {

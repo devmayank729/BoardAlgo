@@ -85,6 +85,8 @@
 </head>
 <body class="min-h-screen w-full flex flex-col lg:flex-row mesh-bg pt-20">
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>  
+
     <nav class="fixed top-0 w-full z-50 glass-nav transition-all duration-300">
         <div class="max-w-7xl mx-auto px-6 h-20 flex justify-between items-center">
             
@@ -139,7 +141,7 @@
                 <p class="text-slate-400 mt-2 text-sm">Start your 7-day free trial. No credit card required.</p>
             </div>
 
-            <button class="w-full flex items-center justify-center gap-3 bg-white text-brand-black font-bold py-3 px-4 rounded-xl hover:bg-slate-200 transition-colors">
+            <button id="custom-google-btn" class="w-full flex items-center justify-center gap-3 bg-white text-brand-black font-bold py-3 px-4 rounded-xl hover:bg-slate-200 transition-colors">
                 <svg class="w-5 h-5" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -155,9 +157,16 @@
             </div>
 
             <form class="space-y-5" id="signup-form" method="post" action="/signupsubmit" onsubmit="return attemptSignup(event)">
-                <div>
-                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Full Name</label>
-                    <input type="text" name="username" placeholder="Arjun Sharma" class="w-full p-3 rounded-lg glass-input text-white placeholder-slate-600 focus:text-white">
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Full Name</label>
+                        <input type="text" name="username" placeholder="Arjun Sharma" class="w-full p-3 rounded-lg glass-input text-white placeholder-slate-600 focus:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Class</label>
+                        <input type="text" name="Class" placeholder="e.g. 10th, 12th" class="w-full p-3 rounded-lg glass-input text-white placeholder-slate-600 focus:text-white">
+                    </div>
                 </div>
 
                 <div>
@@ -276,19 +285,70 @@
         }
 
         // 6. Submit Handling
-function attemptSignup(event) {
-    if (!isPasswordValid) {
-        event.preventDefault(); // Stop form
-        passwordInput.classList.add('invalid-input');
-        passwordInput.focus();
-        passwordHint.style.color = '#ef4444';
-        alert("Please meet password requirements.");
-        return false;
-    }
-    return true; // Allow submission
-}
+        function attemptSignup(event) {
+            if (!isPasswordValid) {
+                event.preventDefault(); // Stop form
+                passwordInput.classList.add('invalid-input');
+                passwordInput.focus();
+                passwordHint.style.color = '#ef4444';
+                alert("Please meet password requirements.");
+                return false;
+            }
+            return true; // Allow submission
+        }
 
     </script>
+
+
+
+
+
+
+
+<script>
+  window.onload = function () {
+    // Initialize the Google Client to ONLY ask for basic profile info
+    const client = google.accounts.oauth2.initTokenClient({
+        
+      client_id: '142684388060-j6ttjg7iru88tq3nalg7lc0uo0j0e323.apps.googleusercontent.com', 
+
+      scope: 'email profile', // This guarantees NO access to Drive/Gmail
+      callback: (response) => {
+        if (response.access_token) {
+          // Send this secure proof to your backend
+          verifyUserWithBackend(response.access_token);
+        }
+      },
+    });
+
+    document.getElementById('custom-google-btn').addEventListener('click', () => {
+      client.requestAccessToken();
+    });
+  };
+
+  async function verifyUserWithBackend(token) {
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token })
+      });
+      
+      const data = await res.json();
+    if (data.success) 
+    {
+        window.location = data.redirect;
+        }
+      }
+      
+     catch (error) {
+      console.error("Login failed:", error);
+    }
+  }
+</script>
+
+
+    
 
     <script src="/js/tracking.js" defer></script>
     

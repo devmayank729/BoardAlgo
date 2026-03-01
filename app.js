@@ -3,8 +3,13 @@ const express = require("express");
 const path = require("path");
 const mongoose = require("mongoose") ; 
 const bcrypt = require("bcrypt") ;
+const axios = require("axios") ; 
+const crypto = require("crypto") ;
 require("dotenv").config(); 
 const session = require("express-session") ; 
+const googleAuth = require('google-auth-library');
+const OAuth2Client = googleAuth.OAuth2Client ; 
+const client = new OAuth2Client('142684388060-j6ttjg7iru88tq3nalg7lc0uo0j0e323.apps.googleusercontent.com');
 // Create express app
 const app = express();
 
@@ -50,13 +55,38 @@ function isLoggedIn (req,res,next)
       if (req.originalUrl.startsWith("/api"))
             {
               console.log("/api is accessed without logging in, so error ") ; 
-            return res.status(401).json({error: "Unauthorized. Please login."});
+              res.render("login", {message : "please login first" , color : "red"}) ; 
             }
 
         console.log("user is not logged in, so redirected to login page") ; 
-        res.render("login" , {message : "please login/signup first"}) ;  
+        res.render("login" , {message : "please login/signup first" , color : "red"}) ;  
     }
 }
+
+
+app.get("/forgot/password" , async function(req , res)
+{
+res.render("forgot" , {message : null , color : null}) ; 
+}
+)
+
+app.post("/api/auth/forgot-password" , async function (req , res)
+{
+  console.log(req.body) ;
+  const email = req.body.email ; 
+  const existingUser = user.findOneAndDelete({email}) ; 
+  if(!existingUser)
+  {
+    res.render("forgot",{message : "Please enter a valid mail ID", color : red}) ;
+  }
+
+  else 
+  {
+    res.render("mailconfirmation.ejs") ;
+  }
+
+}
+)
 
 
 
@@ -106,12 +136,134 @@ app.get("/", async (req, res) => {
     // console.log("/ route is fetched") ; 
 });
 
+//google one tap auth 
+app.post("/api/auth/google", async function(req, res) {
+  const token = req.body.token;
 
+  // 1. Fetch the user's basic details securely from Google using the token
+  let username;
+  let email;
+  let picture;
+  let sub;
+
+  try {
+    const googleResponse = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: { Authorization: `Bearer ${token}` }
+    });
+
+    // googleResponse.data , email , sub , picture 
+    username = googleResponse.data.name;
+    email = googleResponse.data.email;
+    picture = googleResponse.data.picture;
+    sub = googleResponse.data.sub;
+
+  } catch (error) { // CHANGED: Added 'error' parameter to catch block to log the actual issue
+    console.log("Error is there while even calling the API", error); // CHANGED: Included the error variable in the log
+    return res.render("login", { message: "One Tap Login ERROR 404, please login manually" }); // ADDED: 'return' to stop execution and prevent app crash
+  }
+
+  let existingUser;
+  try {
+    existingUser = await user.findOne({ email });
+  } catch (e) {
+    console.log("ERROR : ", e);
+    return res.render("login", { message: "There is some Error, please do manually" }); // ADDED: 'return' to stop execution and prevent app crash
+  }
+
+  if (!existingUser) 
+    {
+    const newUser = await user.create({
+      username: username,
+      email: email,
+      photoURL: picture,
+      provider: 'google',
+      providerId: sub,
+      password_hash: 'GoogleGenerated',
+      role: 'STUDENT'
+    });
+
+    req.session.user = newUser;
+    console.log("--New uesr created by one tap login---");
+
+    req.session.save((err) => 
+      { 
+      if (err) { 
+        console.error("Session save error:", err); 
+        return res.status(500).json({ success: false, error: "Session error" }); 
+      } 
+      console.log("redirect to onertapsignup") ;
+
+      res.json({
+        success: true,
+        redirect: "/onetapsignup"
+    });
+
+
+    }); // CHANGED: Added semicolon
+  } 
+  
+  else 
+    {
+    try {
+      req.session.user = existingUser;
+      console.log("user already existed") ; 
+      req.session.save((err) => {
+        if (err) 
+          {
+          console.log("there is error in saving the session, user exist and one tap login") ; 
+          return res.json({ success: false });
+        }
+ 
+        return res.json({ success: true, redirect: "/dashboard" }); // CHANGED: Standardized 'redirect' key to 'redirectUrl' to match the 'newUser' block above
+      });
+    } catch (err) {
+      console.log("Error while one tap login of existing user :", err);
+      return res.render("login", { message: "Sorry! One Tap Login is facing some issue, please login manually" }); // ADDED: 'return' to stop execution
+    }
+  }
+});
+
+app.get("/onetapsignup", function(req, res) {
+  res.render("onetapsignup" , {message : "Google account securely connected! Please fill in your final details below." , color : "green"});
+});
+
+app.post("/api/auth/google/submit-details", async function(req, res) {
+  try { // ADDED: try-catch block to wrap async database calls so your server doesn't crash if the DB fails
+    const Class = req.body.Class;
+    const parent_phone_number = req.body.parent_phone_number;
+    const phone_number = req.body.phone_number;
+
+    const updatedUser = await user.findByIdAndUpdate( // CHANGED: Assigned the result directly to 'updatedUser'
+      req.session.user._id,
+      {
+        Class: Class,
+        phone_number: phone_number,
+        parent_phone_number: parent_phone_number,
+      },
+      { new: true } // ADDED: { new: true } tells Mongoose to return the newly updated document instead of the old one
+    );
+    // REMOVED: const updatedUser = await user.findOne({_id : req.session.user._id}) ; (No longer needed because of {new: true} above)
+
+    req.session.user = updatedUser;
+
+    req.session.save((err) => { // CHANGED: Added 'err' parameter to handle session save errors
+      if (err) { // ADDED: Error check
+        console.log("Session error:", err); // ADDED: Error logging
+        return res.status(500).send("Session error occurred"); // ADDED: Error response
+      } // ADDED: Closing brace
+      return res.redirect("/dashboard"); // CHANGED: Swapped res.render("dash") for res.redirect to prevent "Confirm Form Resubmission" browser warnings on refresh
+    });
+  } catch (error) { // ADDED: Catch block for the DB operations
+    console.log("Error saving details:", error); // ADDED: Error logging
+    return res.status(500).send("Database error occurred"); // ADDED: Error response sent to client
+  } // ADDED: Closing brace for catch
+});
 
 app.get("/signup" , function(req, res)
 {
     if(req.session.user)
     {
+
        return res.redirect("/dashboard") ; 
     }
     res.render("signup") ; 
@@ -123,6 +275,7 @@ const username = req.body.username ;
 const email = req.body.email ; 
 const phone_number = req.body.phone_number ;
 const password = req.body.password ;
+const Class = req.body.Class ; 
 const parent_phone_number = req.body.parent_phone_number ;  
 
 // console.log("Form Data : ", req.body) ; 
@@ -130,7 +283,7 @@ const parent_phone_number = req.body.parent_phone_number ;
 const existingUser = await user.findOne({email : email}) ; 
 if(existingUser)
 {
-   return res.render("/login" , {message : "Sorry!, Email already exist with us"}) ;   
+   return res.render("login" , {message : "Sorry!, Email already exist with us" , color : "red"}) ;   
 }
 
 const password_hash = await bcrypt.hash(password , 10) ; 
@@ -144,6 +297,7 @@ const newuser = new user
         phone_number : phone_number , 
         password_hash : password_hash , 
         parent_phone_number : parent_phone_number , 
+        Class : Class , 
         role : "STUDENT" ,  
 
     }
@@ -259,7 +413,7 @@ app.post("/loginsubmit" , async(req,res)=>
 
         if(!existingUser)
         {
-            return res.render("login", {message : "There is some problem with email or password "}) ; 
+            return res.render("login", {message : "There is some problem with email or password ", color : "red"}) ; 
         }
 
         else 
@@ -271,7 +425,7 @@ app.post("/loginsubmit" , async(req,res)=>
 
             if(!isMatch)
             {
-                return res.render("login" , {message : "Invalid Password"}) ; 
+                return res.render("login" , {message : "Invalid Password" , color : "red"}) ; 
             }
 
             req.session.user = existingUser ; 
@@ -387,7 +541,7 @@ const behaviour = await UserBehaviour.findOne({user : req.session.user._id , sta
 
     const systemprompt = 
     `
-    You are BoardAlgo AI, an advanced cognitive ingestion engine designed for CBSE Class 10 and 12 students. Your objective is to take complex academic concepts and encode them into highly retrievable memory hooks based on the user's exact psychographic profile. 
+    You are BoardAlgo AI, an advanced cognitive ingestion engine designed for CBSE Class ${user.Class} students. Your objective is to take complex academic concepts and encode them into highly retrievable memory hooks based on the user's exact psychographic profile. 
 
 You must NEVER refer to yourself as an AI, an LLM, or Gemini. You are strictly "BoardAlgo AI Synapse".
 
@@ -545,8 +699,8 @@ const newLI = await interaction.create (
         feature_type : "DOUBT_SOLVER" , 
         user_id : req.session.user._id , 
     }
-)
-const systemprompt = `You are "BoardAlgo Synapse", the Chief Examiner and Paper Setter for CBSE/ICSE Board Exams (Class 10 & 12). Your ONLY purpose is to generate the ultimate, highly-targeted 5-mark answer key. 
+) 
+const systemprompt = `You are "BoardAlgo Synapse", the Chief Examiner and Paper Setter for CBSE/ICSE Board Exams (Class ${user.Class}). Your ONLY purpose is to generate the ultimate, highly-targeted 5-mark answer key. 
 
 CRITICAL EXAMINER RULES:
 1. ZERO VASTNESS: Board students need ultra-targeted, easy-to-memorize points to score full marks. Absolutely no conversational filler or long paragraphs. 
@@ -746,7 +900,7 @@ const newLI_child = await interaction.create(
 )
 
 
-const systemprompt = `You are the "BoardAlgo Tutor", a highly empathetic, brilliant mentor for CBSE/ICSE Class 10 and 12 students. 
+const systemprompt = `You are the "BoardAlgo Tutor", a highly empathetic, brilliant mentor for CBSE Class ${user.Class} students. 
 The student is reviewing a strict, 5-mark board solution and has highlighted a specific step to ask a clarifying question.
 
 Your ONLY goal is to instantly clear their confusion in the most encouraging, human-like way possible.

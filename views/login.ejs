@@ -65,6 +65,8 @@
 </head>
 <body class="h-screen w-full flex overflow-hidden mesh-bg">
 
+<script src="https://accounts.google.com/gsi/client" async defer></script>  
+
     <div class="hidden lg:flex w-1/2 relative items-center justify-center p-12">
         <div class="absolute inset-0 bg-brand-surface/30 backdrop-blur-sm"></div>
         
@@ -104,7 +106,7 @@
                 <p class="text-slate-400 mt-2 text-sm">Enter your credentials to access the dashboard.</p>
             </div>
 
-            <button class="w-full flex items-center justify-center gap-3 bg-white text-brand-black font-bold py-3 px-4 rounded-xl hover:bg-slate-200 transition-colors">
+            <button id="custom-google-btn" class="w-full flex items-center justify-center gap-3 bg-white text-brand-black font-bold py-3 px-4 rounded-xl hover:bg-slate-200 transition-colors">
                 <svg class="w-5 h-5" viewBox="0 0 24 24">
                     <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
                     <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
@@ -118,9 +120,23 @@
                 <div class="absolute inset-0 flex items-center"><span class="w-full border-t border-white/10"></span></div>
                 <div class="relative flex justify-center text-xs uppercase"><span class="bg-brand-black px-2 text-slate-500">Or log in with email</span></div>
             </div>
-                <% if (message) { %>
-    <p style="color: green;"><%= message %></p>
-<% } %>
+            
+            <% if (locals.message) { %>
+                <% 
+                    let msgColor = locals.color || 'green'; 
+                    let borderColor = msgColor === 'red' ? 'border-red-500/30' : 'border-green-500/30';
+                    let bgColor = msgColor === 'red' ? 'bg-red-500/10' : 'bg-green-500/10';
+                    let textColor = msgColor === 'red' ? 'text-red-400' : 'text-green-400';
+                    let iconType = msgColor === 'red' ? 'alert-circle' : 'check-circle-2';
+                %>
+                <div id="dynamic-message" class="p-4 rounded-xl border <%= borderColor %> <%= bgColor %> flex items-start gap-3 transition-all">
+                    <i data-lucide="<%= iconType %>" class="w-5 h-5 <%= textColor %> shrink-0 mt-0.5"></i>
+                    <p class="text-sm <%= textColor %> font-medium leading-relaxed">
+                        <%= message %>
+                    </p>
+                </div>
+            <% } %>
+
             <form class="space-y-5" method="post" action="/loginsubmit">
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Email</label>
@@ -130,7 +146,7 @@
                 <div>
                     <div class="flex justify-between items-center mb-1">
                         <label class="block text-xs font-bold text-slate-400 uppercase tracking-wider">Password</label>
-                        <a href="#" class="text-xs text-brand-primary hover:text-white transition-colors">Forgot password?</a>
+                        <a href="/forgot/password" class="text-xs text-brand-primary hover:text-white transition-colors">Forgot password?</a>
                     </div>
                     <input type="password" name="password" placeholder="••••••••" class="w-full p-3 rounded-lg glass-input text-white placeholder-slate-600">
                 </div>
@@ -146,6 +162,52 @@
             </p>
         </div>
     </div>
+    
+
+<script>
+  window.onload = function () {
+    // Initialize the Google Client to ONLY ask for basic profile info
+    const client = google.accounts.oauth2.initTokenClient({
+        
+      client_id: '142684388060-j6ttjg7iru88tq3nalg7lc0uo0j0e323.apps.googleusercontent.com', 
+
+      scope: 'email profile', // This guarantees NO access to Drive/Gmail
+      callback: (response) => {
+        if (response.access_token) {
+          // Send this secure proof to your backend
+          verifyUserWithBackend(response.access_token);
+        }
+      },
+    });
+
+    document.getElementById('custom-google-btn').addEventListener('click', () => {
+      client.requestAccessToken();
+    });
+  };
+
+  async function verifyUserWithBackend(token) {
+    try {
+      const res = await fetch('http://localhost:3000/api/auth/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token: token })
+      });
+      
+      const data = await res.json();
+        if (data.success) 
+        {
+        window.location = data.redirect;
+        }
+    } 
+    catch (error) {
+      console.error("Login failed:", error);
+    }
+  }
+</script>
+
+    <script>
+        lucide.createIcons();
+    </script>
 
     <script src="/js/tracking.js" defer></script>
 </body>
