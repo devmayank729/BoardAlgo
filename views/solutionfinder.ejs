@@ -175,11 +175,20 @@
       </form>
     </section>
 
-    <section id="ui-state-processing" class="hidden flex-col items-center justify-center w-full max-w-2xl mx-auto min-h-[300px] hud-panel rounded-2xl p-8 opacity-0">
-      <i data-lucide="pen-tool" class="w-12 h-12 text-brand-primary animate-bounce mb-4"></i>
-      <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white mb-2">Analyzing Board Parameters...</h2>
-      <div class="w-full max-w-xs bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-2 overflow-hidden">
-        <div class="bg-brand-primary h-2 rounded-full animate-pulse" style="width:100%"></div>
+    <section id="ui-state-processing" class="hidden flex-col items-center justify-center w-full max-w-2xl mx-auto min-h-[400px] hud-panel rounded-2xl p-8 opacity-0 relative overflow-hidden">
+      <div class="text-center z-10 w-full">
+        <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white mb-2" id="loader-title">Generating Solution...</h2>
+        <p class="text-slate-500 mb-10 h-6" id="loader-subtitle">Let's use this time to focus. Follow the circle.</p>
+        
+        <div class="relative w-32 h-32 mx-auto mb-12 flex items-center justify-center">
+            <div id="breathe-circle" class="absolute inset-0 bg-brand-primary/20 rounded-full border-2 border-brand-primary transition-all ease-in-out scale-[0.5]"></div>
+            <span id="breathe-text" class="font-bold text-brand-primary z-10 font-display transition-opacity duration-300">Ready</span>
+        </div>
+
+        <div class="flex items-center justify-center gap-2 text-sm font-mono text-slate-400 bg-slate-100 dark:bg-slate-800/50 py-2 px-4 rounded-lg inline-flex">
+            <i data-lucide="loader-2" class="w-4 h-4 animate-spin text-brand-primary"></i>
+            <span id="loading-fact">Initializing Synapse AI...</span>
+        </div>
       </div>
     </section>
 
@@ -293,7 +302,7 @@
     const btnFontInc = document.getElementById('btn-font-inc');
     const btnFontDec = document.getElementById('btn-font-dec');
 
-    // FIX 4: Context Variable to hold the entire generated solution
+    // Context Variable to hold the entire generated solution
     let currentSolutionContext = null;
     
     // Dynamic Font Sizing Logic
@@ -327,11 +336,65 @@
       }, 300);
     }
 
-    // Generate Solution
+    // ==========================================
+    // BREATHE EXERCISE LOGIC (NEW FEATURE)
+    // ==========================================
+    let breatheInterval, factInterval;
+
+    function startBreathingExercise() {
+      const circle = document.getElementById('breathe-circle');
+      const text = document.getElementById('breathe-text');
+      const factText = document.getElementById('loading-fact');
+      
+      const facts = [
+        "Analyzing past CBSE topper sheets...",
+        "Structuring step-by-step logic...",
+        "Calibrating formulas and equations...",
+        "Formulating high-yield keywords...",
+        "Finalizing board-ready layout..."
+      ];
+      let factIndex = 0;
+      factText.textContent = facts[0];
+      
+      factInterval = setInterval(() => {
+        factIndex = (factIndex + 1) % facts.length;
+        factText.textContent = facts[factIndex];
+      }, 4000);
+
+      const phases = [
+        { scale: 'scale-[1.5]', text: 'Breathe In...', duration: 'duration-[4000ms]' },
+        { scale: 'scale-[1.5]', text: 'Hold...', duration: 'duration-[4000ms]' },
+        { scale: 'scale-[0.5]', text: 'Exhale...', duration: 'duration-[4000ms]' },
+        { scale: 'scale-[0.5]', text: 'Hold...', duration: 'duration-[4000ms]' }
+      ];
+      
+      let phaseIndex = 0;
+      
+      function runPhase() {
+        const phase = phases[phaseIndex];
+        // Apply classes
+        circle.className = `absolute inset-0 bg-brand-primary/20 rounded-full border-2 border-brand-primary transition-all ease-in-out ${phase.duration} ${phase.scale}`;
+        text.textContent = phase.text;
+        phaseIndex = (phaseIndex + 1) % phases.length;
+      }
+      
+      runPhase(); // Run immediately
+      breatheInterval = setInterval(runPhase, 4000);
+    }
+
+    function stopBreathingExercise() {
+      clearInterval(breatheInterval);
+      clearInterval(factInterval);
+    }
+
+    // ==========================================
+    // GENERATE SOLUTION
+    // ==========================================
     form.addEventListener('submit', async (ev)=>{
       ev.preventDefault();
       switchState(stateIdle, stateProcessing);
       mainHeader.classList.add('hidden');
+      startBreathingExercise(); // <-- Start Game/Focus tool
 
       const payload = { question: document.getElementById('problem-input').value };
 
@@ -344,9 +407,7 @@
 
         const json = await res.json();
         
-        // Save Context for Doubt Fetching
         currentSolutionContext = json;
-
         notebookCanvas.innerHTML = ''; 
         
         if(json.problem_statement) {
@@ -397,11 +458,13 @@
             notebookCanvas.innerHTML = `<div class="ink-red font-bold p-4">Error: AI did not generate valid steps.</div>`;
         }
 
+        stopBreathingExercise();
         switchState(stateProcessing, stateOutput);
 
       } catch (err) {
         console.error(err);
         alert('Connection failed. Please check logs.');
+        stopBreathingExercise();
         switchState(stateProcessing, stateIdle);
         mainHeader.classList.remove('hidden');
       }
@@ -417,7 +480,7 @@
     });
 
     // ==========================================
-    // HIGHLIGHT TO ASK DOUBT (Fix 3: Absolute Body Positioning)
+    // HIGHLIGHT TO ASK DOUBT
     // ==========================================
     let selectedTextTemp = '';
 
@@ -464,7 +527,7 @@
     });
 
     // ==========================================
-    // DOUBT SOLVER FETCH (Fix 4: Full Context POST)
+    // DOUBT SOLVER FETCH (Fixed Full Context)
     // ==========================================
     doubtForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -477,11 +540,16 @@
         doubtLoader.classList.add('flex');
 
         try {
-            // Sending entire Context + User Doubt
+            const mainQuestionText = document.getElementById('problem-statement-title').textContent;
+            // Get visible text cleanly
+            const mainAnswerText = document.getElementById('notebook-canvas').innerText;
+
             const payload = {
                 doubt: doubtVal,
                 highlightedText: selectedTextTemp || "",
-                solutionContext: currentSolutionContext
+                solutionContext: currentSolutionContext,
+                mainQuestion: mainQuestionText,
+                mainAnswer: mainAnswerText
             };
 
             const res = await fetch(doubtForm.action, {
@@ -490,10 +558,7 @@
                 body: JSON.stringify(payload)
             });
             
-            // Awaiting backend response format { answer: "html string" }
             const result = await res.json();
-            
-            // Display Result
             doubtResponseCanvas.innerHTML = result.answer || result.output || "Tutor responded, but answer format was unexpected."; 
 
         } catch (error) {
@@ -508,7 +573,7 @@
     });
 
     // ==========================================
-    // PERFECT PDF EXPORT (Fix 2: Landscape & Page Breaks)
+    // PERFECT PDF EXPORT
     // ==========================================
     btnDownloadPdf.addEventListener('click', () => {
         const elementToPrint = document.getElementById('pdf-export-container');
@@ -527,8 +592,8 @@
             filename:     'BoardAlgo-Solution.pdf',
             image:        { type: 'jpeg', quality: 1 },
             html2canvas:  { scale: 2, useCORS: true },
-            jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }, // Landscape for tables
-            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }, // Prevents cutting lines
+            jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' },
+            pagebreak:    { mode: ['avoid-all', 'css', 'legacy'] }, 
             enableLinks:  true 
         };
 

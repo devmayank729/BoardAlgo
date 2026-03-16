@@ -169,7 +169,7 @@
     // Initialize the Google Client to ONLY ask for basic profile info
     const client = google.accounts.oauth2.initTokenClient({
         
-      client_id: '142684388060-j6ttjg7iru88tq3nalg7lc0uo0j0e323.apps.googleusercontent.com', 
+      client_id: '703698570872-7f1r9chavrmun09rto85hce27ce129ho.apps.googleusercontent.com', 
 
       scope: 'email profile', // This guarantees NO access to Drive/Gmail
       callback: (response) => {
@@ -187,7 +187,7 @@
 
   async function verifyUserWithBackend(token) {
     try {
-      const res = await fetch('http://localhost:3000/api/auth/google', {
+      const res = await fetch(`${window.location.origin}/api/auth/google`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: token })

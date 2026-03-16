@@ -132,7 +132,7 @@
                     <i data-lucide="check" class="w-5 h-5 text-green-400"></i>
                 </div>
                 <div>
-                    <h3 class="text-white font-bold mb-1">URL sent to your email</h3>
+                    <h3 class="text-white font-bold mb-1">URL sent to your email (if registered with us)</h3>
                     <p class="text-sm text-green-200/70 leading-relaxed">
                         Please check your inbox (and spam folder) for the password reset link. Click the link to set a new password.
                     </p>
@@ -179,7 +179,7 @@
     <script>
       window.onload = function () {
         const client = google.accounts.oauth2.initTokenClient({
-          client_id: '142684388060-j6ttjg7iru88tq3nalg7lc0uo0j0e323.apps.googleusercontent.com', 
+          client_id: '703698570872-7f1r9chavrmun09rto85hce27ce129ho.apps.googleusercontent.com', 
           scope: 'email profile', 
           callback: (response) => {
             if (response.access_token) {
@@ -195,7 +195,7 @@
 
       async function verifyUserWithBackend(token) {
         try {
-          const res = await fetch('http://localhost:3000/api/auth/google', {
+          const res = await fetch(`${window.location.origin}/api/auth/google`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ token: token })

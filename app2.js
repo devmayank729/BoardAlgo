@@ -9,8 +9,8 @@ require("dotenv").config();
 const session = require("express-session") ; 
 const googleAuth = require('google-auth-library');
 const OAuth2Client = googleAuth.OAuth2Client ; 
-// const client = new OAuth2Client('142684388060-j6ttjg7iru88tq3nalg7lc0uo0j0e323.apps.googleusercontent.com');
-const client = new OAuth2Client('703698570872-7f1r9chavrmun09rto85hce27ce129ho.apps.googleusercontent.com') ;
+// const client = new OAuth2Client('');
+const client = new OAuth2Client(process.env.Client_ID) ;
 // Create express app
 const app = express();
 
@@ -81,6 +81,8 @@ app.post("/api/auth/forgot-password" , async function (req , res)
 )
 
 
+
+
 // Parse JSON data (for APIs)
 app.use(express.json());
 
@@ -99,6 +101,8 @@ app.set("view engine", "ejs");
 app.set("views", path.join(__dirname, "views"));
 
 
+
+
 //==================
 // MONGODB 
 mongoose.connect("mongodb://127.0.0.1:27017/BOARDAlgo")
@@ -107,9 +111,8 @@ mongoose.connect("mongodb://127.0.0.1:27017/BOARDAlgo")
 
 const user = require("./models/User")  ;  
 const interaction = require("./models/LearningInteraction") ; 
-// const LearningInteraction = require("./models/LearningInteraction");
+const LearningInteraction = require("./models/LearningInteraction");
 const UserBehaviour = require("./models/UserPsychProfile");
-const passwordReset = require("./models/PasswordReset") ;
 const { render } = require("ejs");
  //======================
 
@@ -134,7 +137,6 @@ app.post("/api/auth/google", async function(req, res) {
   let email;
   let picture;
   let sub;
-  let client_id ; 
 
   try {
     const googleResponse = await axios.get('https://www.googleapis.com/oauth2/v3/userinfo', {
@@ -146,24 +148,17 @@ app.post("/api/auth/google", async function(req, res) {
     email = googleResponse.data.email;
     picture = googleResponse.data.picture;
     sub = googleResponse.data.sub;
-    client_id = googleResponse.data.client_id ; 
 
   } catch (error) { // CHANGED: Added 'error' parameter to catch block to log the actual issue
     console.log("Error is there while even calling the API", error); // CHANGED: Included the error variable in the log
     return res.render("login", { message: "One Tap Login ERROR 404, please login manually" }); // ADDED: 'return' to stop execution and prevent app crash
   }
 
-  console.log("-------------------client_id ",client_id) ;
-  if(client_id != process.env.Client_ID)
-  {
-    console.log("unauthorized access is tried by some hacker") ; 
-  }
-
   let existingUser;
   try {
     existingUser = await user.findOne({ email });
   } catch (e) {
-    console.log("ERROR : ",e);
+    console.log("ERROR : ", e);
     return res.render("login", { message: "There is some Error, please do manually" }); // ADDED: 'return' to stop execution and prevent app crash
   }
 
@@ -180,7 +175,7 @@ app.post("/api/auth/google", async function(req, res) {
     });
 
     req.session.user = newUser;
-    console.log("--New user created by one tap login---");
+    console.log("--New uesr created by one tap login---");
 
     req.session.save((err) => 
       { 
@@ -304,14 +299,7 @@ req.session.user = newuser ;
 await newuser.save() ; 
 
 
-            req.session.user = existingUser ; 
-            
-            const existingInteraction = await interaction.find({user_id : req.session.user._id}) ; 
-            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : -1}) ;
-
-            res.render("dash" , {user : req.session.user , interaction : existingInteraction , recentInteractions : recentInteraction} ) ; 
-
-// res.render("dash" , {user : req.session.user , recentInteractions : null , interaction : null}) ; 
+res.render("dash" , {user : req.session.user , recentInteractions : null , interaction : null}) ; 
 })
 
 
@@ -391,219 +379,10 @@ app.post('/api/analytics/log-visit', async (req, res) => {
 
 //visitor log end here 
 
-//forgot password starts here 
-
-app.get("/forgot/password" , async function(req , res)
-{
-res.render("forgot" , {message : null , color : null}) ; 
-}
-)
-
-// app.post("/api/auth/forgot-password" , async function (req , res)
-// {
-//   const userEmail = req.body.email ; 
-//   const existingUser =await user.findOne({userEmail}) ; 
-
-//   if(!existingUser)
-//   {
-//     res.render("forgot",{message : "Please enter a valid mail ID", color : "red"}) ;
-//   }
-
-//   else 
-//   {
-// console.log("--yes user exist, so I am sending--") ;
-
-// const nodemailer = require('nodemailer');
-// const SENDER_EMAIL = 'boardalgofounder@gmail.com'; 
-// const APP_PASSWORD = process.env.app_password ; // Store in .env
-
-// const createTransporter = () => {
-//   return nodemailer.createTransport({
-//     service: 'gmail',
-//     auth: {
-//       user: SENDER_EMAIL,
-//       pass: APP_PASSWORD 
-//     }
-//   });
-// };
-
-// const sendPasswordResetEmail = async (userEmail, resetLink) => {
-//   try {
-//     const transporter = createTransporter();
-    
-//     const mailOptions = {
-//       from: SENDER_EMAIL,
-//       to: userEmail,
-//       subject: 'Password Reset Request',
-//       text: `Click to reset your password: ${resetLink}`,
-//       html: `<p>Click to reset your password: <a href="${resetLink}">${resetLink}</a></p>`
-//     };
-
-//     const result = await transporter.sendMail(mailOptions);
-//     console.log('Email sent:', result.messageId);
-//     console.log("result : ",result) ; 
-//   } 
-  
-//   catch (error) {
-//     console.error('Email error:', error);
-//   }
-
-// const resetLink1 = `http://localhost:3000/reset-password?email=${userEmail}`;
-// await sendPasswordResetEmail(userEmail, resetLink1);
-
-
-//   console.log("sendPasswordResetEmail :",sendPasswordResetEmail) ; 
-//   return res.render("mailconfirmation.ejs") ;
-// };
-
-
-//   }
-
-// }
-// )
 
 
 
-const nodemailer = require('nodemailer'); // Move this to the top of your file
-const PasswordReset = require("./models/PasswordReset");
 
-app.post("/api/auth/forgot-password", async function (req, res) {
-  try {
-    const userEmail = req.body.email; 
-    
-    // FIX 1: Use findOne to search, not findOneAndDelete. 
-    // Assuming your schema uses 'email' as the field name. If it's 'userEmail', change it to { userEmail: userEmail }
-    const existingUser = await user.findOne({ email: userEmail }); 
-
-    // FIX 2: Flipped logic. If the user DOES NOT exist, show the error.
-    if (!existingUser) 
-    {
-      return res.render("mailconfirmation.ejs");
-    }
-
-    const reset_token = crypto.randomBytes(16).toString("hex") ; 
-    const protocol = req.protocol;           // http or https
-    const host = req.get("host");            // localhost:3000
-    const baseUrl = protocol + "://" + host;
-
-    console.log("--yes user exist, so I am sending--");
-
-    const SENDER_EMAIL = 'boardalgofounder@gmail.com'; 
-    const APP_PASSWORD = process.env.app_password; 
-
-    // FIX 3: Simplified the transporter setup to run directly in the route
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: SENDER_EMAIL,
-          pass: APP_PASSWORD 
-        }
-      });
-
-      const resetLink = `${baseUrl}/reset-password/mail?ID=${reset_token}`;
-      
-      const mailOptions = {
-        from: SENDER_EMAIL,
-        to: userEmail,
-        subject: 'Password Reset Request',
-        text: `Click to reset your password: ${resetLink}`,
-        html: `<p>Click to reset your password: <a href="${resetLink}">Tap Here</a></p>`
-      };
-
-    // Send the email and return the confirmation page
-    const result = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', result.messageId);
-    
-await passwordReset.create(
-  {
-    email : userEmail , 
-    senderEmail : SENDER_EMAIL , 
-    content : mailOptions , 
-    token : reset_token , 
-    resetStatus : "false" , 
-    messageId : result.messageId ,
-    expiryAt : new Date(Date.now() + 30*60*1000) ,
-    url : resetLink 
-  }) ;
-
-    return res.render("mailconfirmation.ejs");
-
-  } catch (error) {
-    console.error('Error processing password reset:', error);
-    return res.status(500).send("An error occurred while processing your request.");
-  }
-});
-
-// forgot password ends here
-
-
-app.get("/reset-password/mail" , async function(req,res)
-{
-  let PasswordResetUser ; 
-  try 
-  {
-    const reset_token = req.query.ID ; 
-    PasswordResetUser = await PasswordReset.findOne({token : reset_token , resetStatus : "false" }) ; 
-  }
-  catch(e)
-  {
-    res.render("login" , {message : "You have already used this URL, please login or reset again", color : "red"}) ;
-    console.log("Error while verifying user's reset URL :",e )
-  }
-
-  if (!PasswordResetUser)
-  {
-    console.log("529------ : passwordresetuser : ",PasswordResetUser) ; 
-    return res.render("login" , {message : "Invalid Token, Please login/Forgot again" , color : "red"}) ;
-  }
-
-  else if (PasswordResetUser.expiryAt < new Date())
-  {
-  return res.render("login" , {message : "Token already Expired" , color : "red"}) ; 
-  }
-
-      res.render("resetpassword") ;
-}
-) ;
-
-app.post("/api/auth/reset-password", async function(req,res)
-{
-  const password = req.body.password ;
-  const confirm_password = req.body.confirm_password ;
-  const token = req.body.token ;  
-  
-  if(password != confirm_password)
-  {
-    console.log("both password columns are not matching") ; 
-    return res.render("resetpassword") ; 
-  }
- 
-  const password_hash = await bcrypt.hash(password , 10) ; 
-
-    const tokenUser = await PasswordReset.findOneAndUpdate({token : token} , 
-    {
-      resetStatus: true , 
-      usedAt : new Date() ,
-    } , 
-    { new: true }
-  ) ;
-
-    const email = tokenUser.email ; 
-
-    console.log("email : ",email) ; 
-    console.log("status : ", tokenUser.resetStatus) ; 
-
-  await user.findOneAndUpdate({email : email } , 
-    {
-      password_hash : password_hash
-    }
-  ) ;
-
-  return res.render("login" , {message : "Congratulations! password got changed sucessfully" , color : "green"}) ; 
-}
-) ;
-
-// password reset doneeeee
 
 app.get("/login" , function(req,res)
 {
@@ -913,18 +692,17 @@ const newLI = await interaction.create (
         user_id : req.session.user._id , 
     }
 ) 
-const systemprompt = `You are "BoardAlgo Synapse", the Chief Examiner and Paper Setter for CBSE Board Exams (Class ${user.Class}). Your ONLY purpose is to generate the ultimate, highly-targeted 5-mark answer key. 
+const systemprompt = `You are "BoardAlgo Synapse", the Chief Examiner and Paper Setter for CBSE/ICSE Board Exams (Class ${user.Class}). Your ONLY purpose is to generate the ultimate, highly-targeted 5-mark answer key. 
 
 CRITICAL EXAMINER RULES:
 1. ZERO VASTNESS: Board students need ultra-targeted, easy-to-memorize points to score full marks. Absolutely no conversational filler or long paragraphs. 
 2. 5-MARK STRUCTURE: If it is a theory question, give exactly 5 crisp, highly impactful points. If it is a numerical/derivation, provide the exact sequential steps an examiner checks for step-marking.
 3. DIFFERENCES = TABLES: If the question asks for a difference or comparison, you MUST use a KaTeX array in the 'latex' field to create a table. (e.g., \\begin{array}{|l|l|} \\hline \\textbf{Feature} & \\textbf{Details} \\\\ \\hline ... \\end{array}).
 4. NO CHATBOT FLUFF: Never say "Let's solve this" or "Here is the answer". Only output the exact words the student must write on their exam sheet.
-5. STRICT QUESTION PRESERVATION (NO SUBSTITUTION): You are strictly forbidden from altering, modifying, or "fixing" the user's question to make it solvable. If the user asks something mathematically impossible (e.g., integrating root(sinx)) or strictly outside the CBSE Class ${user.Class} syllabus, DO NOT solve a similar question (like integrating root(tanx)). Instead, you must immediately output the "Out of Syllabus" JSON structure.
 
 ### PSYCHOLOGICAL 4-COLOR INK PROTOCOL
 1. "blue" (The Structure): Use for 'Given:', 'To Find:', standard definitions, or headings.
-2. "red" (The Anchor): Use for CORE FORMULAS, THEOREMS, highly critical keywords, or OUT-OF-SYLLABUS warnings.
+2. "red" (The Anchor): Use for CORE FORMULAS, THEOREMS, or highly critical keywords examiners hunt for. Red stays in memory, so put the most important board-keywords here.
 3. "black" (The Execution): Use for calculations, derivations, and the body of KaTeX tables/arrays.
 4. "green" (The Victory): Use ONLY for the final boxed answer with SI units, or the concluding 5th point.
 
@@ -967,25 +745,48 @@ User: "Difference between arteries and veins"
   ]
 }
 
-**Example 2: Out of Syllabus / Impossible Question (DO NOT ALTER QUESTION)**
-User: "integrate root(sinx)"
+**Example 2: Math/Derivation Question**
+User: "Find roots of x^2 - 5x + 6 = 0"
 {
-  "problem_statement": "Integration of root(sinx).",
+  "problem_statement": "Finding roots of the quadratic equation x^2 - 5x + 6 = 0.",
   "steps": [
     {
-      "text": "This specific problem is mathematically beyond the current scope or strictly out of the CBSE Class ${user.Class} syllabus.",
-      "latex": null,
+      "text": "Given equation and coefficients:",
+      "latex": "a = 1, \\\\quad b = -5, \\\\quad c = 6",
+      "ink": "blue"
+    },
+    {
+      "text": "State the quadratic formula (1 mark):",
+      "latex": "x = \\\\frac{-b \\\\pm \\\\sqrt{b^2 - 4ac}}{2a}",
       "ink": "red"
     },
     {
-      "text": "Examiners will not test this exact formulation. Please verify the question from your textbook.",
-      "latex": null,
+      "text": "Substitute values into the formula:",
+      "latex": "x = \\\\frac{-(-5) \\\\pm \\\\sqrt{(-5)^2 - 4(1)(6)}}{2(1)}",
       "ink": "blue"
+    },
+    {
+      "text": "Simplify the discriminant:",
+      "latex": "x = \\\\frac{5 \\\\pm \\\\sqrt{25 - 24}}{2} = \\\\frac{5 \\\\pm 1}{2}",
+      "ink": "black"
+    },
+    {
+      "text": "Final roots. Box your answer.",
+      "latex": "x_1 = 3, \\\\quad x_2 = 2",
+      "ink": "green"
     }
   ]
 }
 
-Process the user query and generate the targeted board JSON.`;
+Process the user query and generate the targeted 5-mark board JSON.`;
+
+
+
+//system prompt ends here 
+
+//=========================================calling geminiAPI again 
+
+
 
 try
 {
@@ -1076,15 +877,14 @@ catch (error)
 
 app.post("/tool/subdoubt" ,isLoggedIn , async function(req,res)
   {
-  const solution = JSON.stringify(req.body.solutionContext.steps , null , 2)
-console.log("--------body 2 ends here ------------") ; 
-    const subquestion = `Problem statement by user:${req.body.solutionContext.problem_statement}, solution provided by us:${solution} , Doubt :${req.body.doubt}` ;
+    const question = req.body.subquestion ;
+    console.log(req.body)
 // console.log("Parent's LI :", newLI) ;
 
 const newLI_child = await interaction.create(
     {
 
-        user_query_text : subquestion , 
+        user_query_text : question , 
         feature_type : "SUB_QUESTION" , 
         user_id : req.session.user._id ,
         // user_id : req.body._id ,  // only for postman
@@ -1124,7 +924,7 @@ Now, read the student's doubt and write the perfect sticky-note explanation.`;
 try
 {
 
-  console.log("subquestion : ",subquestion)  ; 
+  console.log("subquestion : ",question)  ; 
 const startTime = Date.now() ; 
 
 const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash"});
@@ -1138,7 +938,7 @@ const result = await model.generateContent(
             role : "user" , 
             parts : [
                 {text : systemprompt} , 
-                {text : `Question : ${subquestion}`}
+                {text : `Question : ${question}`}
                     ]
             }
         ], 
@@ -1214,5 +1014,3 @@ app.use(function (req, res) {
 app.listen(PORT, function () {
     console.log(`Server running on http://localhost:${PORT}`);
 });
-
-
