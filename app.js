@@ -101,7 +101,7 @@ app.set("views", path.join(__dirname, "views"));
 
 //==================
 // MONGODB 
-mongoose.connect("mongodb://127.0.0.1:27017/BOARDAlgo")
+mongoose.connect(`mongodb+srv://boardAlgo:${process.env.db_password}@cluster0.s8j6pk7.mongodb.net/?appName=Cluster0`)
 .then(() => console.log("Database Connected ✅"))
 .catch(err => console.log(err));
 
@@ -1212,7 +1212,7 @@ app.use(function (req, res) {
 // Server Start
 // ======================
 app.listen(PORT, function () {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
 
 
