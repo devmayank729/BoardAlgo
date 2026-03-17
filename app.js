@@ -56,29 +56,29 @@ function isLoggedIn (req,res,next)
 }
 
 
-app.get("/forgot/password" , async function(req , res)
-{
-res.render("forgot" , {message : null , color : null}) ; 
-}
-)
+// app.get("/forgot/password" , async function(req , res)
+// {
+// res.render("forgot" , {message : null , color : null}) ; 
+// }
+// )
 
-app.post("/api/auth/forgot-password" , async function (req , res)
-{
-  console.log(req.body) ;
-  const email = req.body.email ; 
-  const existingUser = user.findOneAndDelete({email}) ; 
-  if(!existingUser)
-  {
-    res.render("forgot",{message : "Please enter a valid mail ID", color : red}) ;
-  }
+// app.post("/api/auth/forgot-password" , async function (req , res)
+// {
+//   console.log(req.body) ;
+//   const email = req.body.email ; 
+//   const existingUser = user.findOne({email}) ; 
+//   if(!existingUser)
+//   {
+//     res.render("forgot",{message : "Please enter a valid mail ID", color : red}) ;
+//   }
 
-  else 
-  {
-    res.render("mailconfirmation.ejs") ;
-  }
+//   else 
+//   {
+//     res.render("mailconfirmation.ejs") ;
+//   }
 
-}
-)
+// }
+// )
 
 
 // Parse JSON data (for APIs)
@@ -111,7 +111,7 @@ const user = require("./models/User")  ;
 const interaction = require("./models/LearningInteraction") ; 
 // const LearningInteraction = require("./models/LearningInteraction");
 const UserBehaviour = require("./models/UserPsychProfile");
-const passwordReset = require("./models/PasswordReset") ;
+const PasswordReset = require("./models/PasswordReset") ;
 const { render } = require("ejs");
  //======================
 
@@ -467,11 +467,12 @@ res.render("forgot" , {message : null , color : null}) ;
 
 
 const nodemailer = require('nodemailer'); // Move this to the top of your file
-const PasswordReset = require("./models/PasswordReset");
 
 app.post("/api/auth/forgot-password", async function (req, res) {
+  console.log("line 473") ; 
   try {
     const userEmail = req.body.email; 
+    console.log("Email : ",userEmail);
     
     // FIX 1: Use findOne to search, not findOneAndDelete. 
     // Assuming your schema uses 'email' as the field name. If it's 'userEmail', change it to { userEmail: userEmail }
@@ -480,6 +481,7 @@ app.post("/api/auth/forgot-password", async function (req, res) {
     // FIX 2: Flipped logic. If the user DOES NOT exist, show the error.
     if (!existingUser) 
     {
+      console.log("--No user exist---") ; 
       return res.render("mailconfirmation.ejs");
     }
 
@@ -488,7 +490,7 @@ app.post("/api/auth/forgot-password", async function (req, res) {
     const host = req.get("host");            // localhost:3000
     const baseUrl = protocol + "://" + host;
 
-    console.log("--yes user exist, so I am sending--");
+    // console.log("--yes user exist, so I am sending--");
 
     const SENDER_EMAIL = 'boardalgofounder@gmail.com'; 
     const APP_PASSWORD = process.env.app_password; 
@@ -503,7 +505,7 @@ app.post("/api/auth/forgot-password", async function (req, res) {
       });
 
       const resetLink = `${baseUrl}/reset-password/mail?ID=${reset_token}`;
-      
+      console.log(resetLink) ; 
       const mailOptions = {
         from: SENDER_EMAIL,
         to: userEmail,
@@ -516,7 +518,7 @@ app.post("/api/auth/forgot-password", async function (req, res) {
     const result = await transporter.sendMail(mailOptions);
     console.log('Email sent:', result.messageId);
     
-await passwordReset.create(
+await PasswordReset.create(
   {
     email : userEmail , 
     senderEmail : SENDER_EMAIL , 
@@ -527,10 +529,12 @@ await passwordReset.create(
     expiryAt : new Date(Date.now() + 30*60*1000) ,
     url : resetLink 
   }) ;
-
+ 
     return res.render("mailconfirmation.ejs");
 
-  } catch (error) {
+  } 
+  
+  catch (error) {
     console.error('Error processing password reset:', error);
     return res.status(500).send("An error occurred while processing your request.");
   }
