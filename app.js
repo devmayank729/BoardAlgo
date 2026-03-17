@@ -101,7 +101,9 @@ app.set("views", path.join(__dirname, "views"));
 
 //==================
 // MONGODB 
-mongoose.connect(`mongodb+srv://boardAlgo:${process.env.db_password}@cluster0.s8j6pk7.mongodb.net/?appName=Cluster0`)
+// mongodb+srv://boardAlgo:<db_password>@cluster0.s8j6pk7.mongodb.net/?appName=Cluster0
+// mongoose.connect(`mongodb+srv://boardAlgo:${process.env.db_password}@cluster0.s8j6pk7.mongodb.net/?appName=Cluster0`)
+mongoose.connect(`mongodb+srv://boardAlgo:${process.env.db_password}@cluster0.s8j6pk7.mongodb.net/?appName=Cluster0`) 
 .then(() => console.log("Database Connected ✅"))
 .catch(err => console.log(err));
 
@@ -900,6 +902,7 @@ app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
 
 // solution finder 
 
+
 app.post("/api/generate-solution", isLoggedIn , async function (req,res)
 {
 
@@ -1062,15 +1065,39 @@ catch (error)
 }
 
 }
-
-
-
+)
 //calling ended here
 
+//---- comming soon page added 
 
+
+
+// comming soon page added 
+app.get("/tools/predictor" , function(req,res) 
+{
+  res.render("commingsoon") ; 
+})
+
+
+app.get("/tools/question-bank" , function(req,res)
+{
+  res.render("commingsoon") ; 
+})
+
+app.get("/examiner" , function(req,res)
+{
+  res.render("commingsoon") ; 
+}
+)
+
+app.get("/reports" , function(req,res)
+{
+  res.render("commingsoon"); 
+}
 )
 
 
+////////////////////
 
 
 
@@ -1214,5 +1241,4 @@ app.use(function (req, res) {
 app.listen(PORT, function () {
     console.log(`Server is running on port ${PORT}`);
 });
-
 

@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Coming Soon | BoardAlgo</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@500;600;700&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        brand: {
+                            black: '#020617', 
+                            surface: '#0f172a',
+                            border: '#1e293b',
+                            primary: '#6C2BD9', 
+                            accent: '#16A34A',  
+                        }
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Poppins', 'sans-serif'],
+                    },
+                    animation: {
+                        'float': 'float 6s ease-in-out infinite',
+                        'glow': 'glow 2s ease-in-out infinite alternate',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0)' },
+                            '50%': { transform: 'translateY(-10px)' },
+                        },
+                        glow: {
+                            '0%': { boxShadow: '0 0 15px rgba(108, 43, 217, 0.2)' },
+                            '100%': { boxShadow: '0 0 30px rgba(108, 43, 217, 0.6)' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            @apply bg-gray-50 text-slate-900 transition-colors duration-300;
+        }
+        .dark body {
+            background-color: #020617;
+            color: #f8fafc;
+        }
+        .glass {
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .dark .glass {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .footer-link {
+            @apply text-gray-400 hover:text-brand-primary transition-colors duration-200 text-sm;
+        }
+    </style>
+</head>
+<body class="antialiased min-h-screen flex flex-col relative overflow-hidden">
+
+    <canvas id="bg-canvas" class="fixed top-0 left-0 w-full h-full -z-10 opacity-40 dark:opacity-60 pointer-events-none"></canvas>
+
+    <nav class="fixed top-0 w-full z-50 glass border-b-0">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-2 sm:gap-4">
+                <a href="/" class="flex items-center gap-2 min-w-0">
+                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-primary flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-sm sm:text-base">B</div>
+                    <span class="text-lg sm:text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white truncate">BOARD <span class="text-brand-primary">Algo</span></span>
+                </a>
+
+                <div class="flex items-center gap-4 flex-shrink-0">
+                    <a href="javascript:history.back()" class="text-sm font-medium text-slate-600 dark:text-gray-300 hover:text-brand-primary dark:hover:text-brand-primary transition-colors flex items-center gap-2">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+                    </a>
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 transition-colors border-l border-gray-200 dark:border-gray-800 pl-4">
+                        <i data-lucide="sun" class="hidden dark:block w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <i data-lucide="moon" class="block dark:hidden w-4 h-4 sm:w-5 sm:h-5"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="flex-grow flex items-center justify-center pt-20 pb-10 px-4 relative z-10">
+        <div class="max-w-3xl w-full text-center space-y-8">
+            
+            <div class="gsap-entry mx-auto w-24 h-24 sm:w-28 sm:h-28 rounded-3xl glass bg-brand-primary/10 border-brand-primary/30 flex items-center justify-center animate-float animate-glow mb-6">
+                <i data-lucide="rocket" class="w-12 h-12 sm:w-14 sm:h-14 text-brand-primary"></i>
+            </div>
+
+            <div class="gsap-entry space-y-4">
+                <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full glass border-brand-primary/20 text-brand-primary text-xs sm:text-sm font-semibold uppercase tracking-wider mb-2">
+                    <span class="w-2 h-2 rounded-full bg-brand-primary animate-pulse"></span>
+                    Feature in Development
+                </div>
+                <h1 class="text-5xl sm:text-6xl md:text-7xl font-display font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+                    Coming <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent">Soon</span>
+                </h1>
+                <p class="text-lg sm:text-xl text-slate-600 dark:text-gray-400 max-w-xl mx-auto font-sans">
+                    We're engineering a massive upgrade to your learning command center. Get ready for next-level insights.
+                </p>
+            </div>
+
+            <div class="gsap-entry max-w-md mx-auto pt-6">
+                <form class="flex flex-col sm:flex-row gap-3 glass p-2 rounded-2xl">
+                    <div class="relative flex-grow flex items-center">
+                        <i data-lucide="mail" class="absolute left-4 w-5 h-5 text-gray-400"></i>
+                        <input type="email" placeholder="Enter your email address" required
+                            class="w-full bg-transparent border-none focus:ring-0 text-slate-900 dark:text-white placeholder-slate-500 pl-11 pr-4 py-3 outline-none font-sans">
+                    </div>
+                    <button type="submit" class="px-6 py-3 rounded-xl bg-brand-primary hover:bg-brand-primary/90 text-white font-medium transition-all duration-300 shadow-lg shadow-brand-primary/25 whitespace-nowrap active:scale-95 font-sans">
+                        Notify Me
+                    </button>
+                </form>
+                <p class="text-xs text-gray-500 dark:text-gray-500 mt-4">No spam. We'll only email you when it's live.</p>
+            </div>
+        </div>
+    </main>
+
+    <footer class="glass border-t border-brand-border/30 z-10 relative mt-auto">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+            <p class="text-gray-500 text-xs sm:text-sm">© 2024 BoardAlgo. All rights reserved.</p>
+            
+            <div class="flex flex-wrap justify-center gap-4 sm:gap-6 text-xs sm:text-sm text-gray-500 dark:text-gray-400">
+                <span class="flex items-center gap-1.5"><i data-lucide="code" class="w-4 h-4 text-brand-primary"></i> Developed by XCEEDJS</span>
+                <a href="https://xceedjs.com" class="hover:text-brand-primary transition-colors flex items-center gap-1.5"><i data-lucide="globe" class="w-4 h-4"></i> xceedjs.com</a>
+                <a href="mailto:Xceedjs@gmail.com" class="hover:text-brand-primary transition-colors flex items-center gap-1.5"><i data-lucide="mail" class="w-4 h-4"></i> Xceedjs@gmail.com</a>
+                <a href="https://wa.me/919024391398" class="hover:text-brand-accent transition-colors flex items-center gap-1.5"><i data-lucide="phone" class="w-4 h-4 text-brand-accent"></i> +91 90243 91398</a>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize Icons
+        lucide.createIcons();
+
+        // Theme Logic
+        const themeBtn = document.getElementById('theme-toggle');
+        const html = document.documentElement;
+        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            html.classList.add('dark');
+        } else {
+            html.classList.remove('dark');
+        }
+        themeBtn.addEventListener('click', () => {
+            html.classList.toggle('dark');
+            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+        });
+
+        // Form Submission Prevention (for demo)
+        document.querySelector('form').addEventListener('submit', (e) => {
+            e.preventDefault();
+            const btn = e.target.querySelector('button');
+            const originalText = btn.innerText;
+            btn.innerHTML = '<i data-lucide="check" class="w-5 h-5 inline"></i> Added!';
+            btn.classList.replace('bg-brand-primary', 'bg-brand-accent');
+            lucide.createIcons();
+            setTimeout(() => {
+                btn.innerText = originalText;
+                btn.classList.replace('bg-brand-accent', 'bg-brand-primary');
+                e.target.reset();
+            }, 3000);
+        });
+
+        // GSAP Animations
+        gsap.from('.gsap-entry', {
+            y: 30,
+            opacity: 0,
+            stagger: 0.15,
+            duration: 0.8,
+            ease: "power3.out",
+            delay: 0.2
+        });
+
+        // Three.js Background Logic (Retained exactly as requested)
+        const canvas = document.querySelector('#bg-canvas');
+        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+        const geometry = new THREE.BufferGeometry();
+        const count = 1500;
+        const posArray = new Float32Array(count * 3);
+        
+        for(let i = 0; i < count * 3; i++) {
+            posArray[i] = (Math.random() - 0.5) * 20; 
+        }
+
+        geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.02,
+            color: 0x6C2BD9, 
+            transparent: true,
+            opacity: 0.6,
+        });
+
+        const particlesMesh = new THREE.Points(geometry, material);
+        scene.add(particlesMesh);
+
+        camera.position.z = 4;
+
+        let mouseX = 0;
+        let mouseY = 0;
+
+        document.addEventListener('mousemove', (event) => {
+            mouseX = event.clientX / window.innerWidth - 0.5;
+            mouseY = event.clientY / window.innerHeight - 0.5;
+        });
+
+        document.addEventListener('touchmove', (event) => {
+            if(event.touches.length > 0) {
+                mouseX = event.touches[0].clientX / window.innerWidth - 0.5;
+                mouseY = event.touches[0].clientY / window.innerHeight - 0.5;
+            }
+        });
+
+        const animate = () => {
+            requestAnimationFrame(animate);
+            particlesMesh.rotation.y += 0.0005;
+            particlesMesh.rotation.x += 0.0002;
+            particlesMesh.rotation.x += mouseY * 0.05;
+            particlesMesh.rotation.y += mouseX * 0.05;
+            renderer.render(scene, camera);
+        };
+
+        animate();
+
+        window.addEventListener('resize', () => {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        });
+    </script>
+</body>
+</html>
