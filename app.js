@@ -648,20 +648,36 @@ app.post("/loginsubmit" , async(req,res)=>
             const existingInteraction = await interaction.find({user_id : req.session.user._id}) ; 
             const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : -1}) ;
 
+
             res.render("dash" , {user : req.session.user , interaction : existingInteraction , recentInteractions : recentInteraction} ) ; 
         }
     })
 
 
-// Example API route
 app.get("/dashboard" ,isLoggedIn  , async function(req,res)
 {            
             const existingInteraction = await interaction.find({user_id : req.session.user._id}) ; 
-            const recentInteraction = await interaction.findOne({user_id : req.session.user._id}).sort({timestamp : -1}) ;
+            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : -1}) ;
             res.render("dash" , {user : req.session.user , interaction : existingInteraction , recentInteractions : recentInteraction} ) ; 
 }
 )
 
+app.get("/history/:id" , async function(req,res) 
+{
+const data = await interaction.findOne(
+  {
+    _id : req.params.id , 
+    user_id : req.session.user._id 
+  })
+
+  if(!data)
+  {
+    return res.send("Not Found!!, please don't try to change the URL") ; 
+  }
+
+  res.render("solutionfinder" , {savedSolution : data}) ;
+}
+)
 
 app.get("/mnemonic" ,isLoggedIn, async function(req,res)
 {
