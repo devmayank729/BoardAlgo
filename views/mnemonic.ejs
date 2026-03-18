@@ -16,6 +16,9 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
+<script>
+window.__INJECTED_RESULT__ = <%- typeof savedSolution !== "undefined" ? JSON.stringify(savedSolution) : "null" %>;
+</script>
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -730,6 +733,73 @@
   stateIdle.classList.remove('hidden');
   stateProcessing.classList.add('hidden');
   stateOutput.classList.add('hidden');
+
+
+// ---------- injected result loader ----------
+(function(){
+
+  if(!window.__INJECTED_RESULT__) return;
+
+  const json =
+      window.__INJECTED_RESULT__.initial_ai_response ||
+      window.__INJECTED_RESULT__;
+
+switchState(stateIdle, stateOutput);
+
+  // populate title + content
+  aiTitle.textContent = json.title || "Result";
+  aiContent.innerHTML = json.definition || json.output || json.text || "";
+
+  // render formula
+  if(json.latex_formula){
+      const clean = json.latex_formula.replace(/\$\$/g,"").trim();
+      try{
+          katex.render(clean, aiFormula, { displayMode:true });
+      }catch(e){
+          aiFormula.textContent = json.latex_formula;
+      }
+      aiFormula.classList.remove("hidden");
+  }
+
+  // mnemonic / lore
+  if(json.hook_text){
+      aiMnemonic.classList.remove("hidden");
+      aiMnemonicText.textContent = json.hook_text;
+      aiMnemonicSub.textContent = json.hook_subtext || "";
+  }
+
+  // source matrix
+  if(Array.isArray(json.source_matrix)){
+
+      let html = `
+      <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
+        <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
+      </h3>`;
+
+      json.source_matrix.forEach((s)=>{
+
+          const icon = s.icon_type === "file" ? "file-text" : "book-open";
+
+          html += `
+          <div class="hud-panel p-3 rounded-xl border-l-4 border-l-brand-primary mb-3">
+            <div class="flex justify-between mb-2">
+              <span class="text-xs font-bold">${s.title || "Source"}</span>
+              <span class="text-[10px] font-mono">${s.match_percentage || ""}</span>
+            </div>
+
+            <div class="h-16 flex items-center justify-center">
+              <i data-lucide="${icon}" class="w-6 h-6"></i>
+            </div>
+          </div>`;
+      });
+
+      sourceMatrixContainer.innerHTML = html;
+
+      if(window.lucide) lucide.createIcons();
+  }
+
+})();
+
 
   </script>
 <script src="/js/tracking.js" defer></script>

@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BoardAlgo | Student Command Center</title>
     
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Outfit:wght@500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700&display=swap" rel="stylesheet">
     
     <script src="https://cdn.tailwindcss.com"></script>
-    
     <script src="https://unpkg.com/lucide@latest"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
@@ -20,15 +19,15 @@
                 extend: {
                     colors: {
                         brand: {
-                            black: '#020617', // Obsidian
-                            surface: '#0f172a', // Slate 900
-                            border: '#1e293b',
-                            primary: '#6C2BD9', // Brand Purple
-                            accent: '#16A34A',  // Action Green
+                            black:   '#020617',
+                            surface: '#0f172a',
+                            border:  '#1e293b',
+                            primary: '#6C2BD9',
+                            accent:  '#16A34A',
                         }
                     },
                     fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
+                        sans:    ['Inter', 'sans-serif'],
                         display: ['Poppins', 'sans-serif'],
                     }
                 }
@@ -37,323 +36,913 @@
     </script>
 
     <style>
-        /* Base Styles */
-        body {
-            @apply bg-gray-50 text-slate-900 transition-colors duration-300;
-        }
-        .dark body {
-            background-color: #020617;
-            color: #f8fafc;
-        }
+        /* ─── Base ─────────────────────────────────────── */
+        body { background-color: #f8fafc; color: #0f172a; transition: background-color 0.3s, color 0.3s; }
+        .dark body { background-color: #020617; color: #f8fafc; }
 
-        /* Dark Glass Aesthetic */
+        /* ─── Glass ────────────────────────────────────── */
         .glass {
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(0, 0, 0, 0.05);
+            background: rgba(255,255,255,0.72);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid rgba(0,0,0,0.06);
             transition: all 0.3s ease;
         }
         .dark .glass {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(15,23,42,0.65);
+            border: 1px solid rgba(255,255,255,0.08);
         }
 
-        /* Glow Card Logic */
+        /* ─── Glow cards ───────────────────────────────── */
         .glow-card {
-            position: relative;
-            overflow: hidden;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            position: relative; overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease;
         }
         .glow-card:hover {
             transform: translateY(-4px);
-            @apply shadow-xl shadow-brand-primary/20;
+            box-shadow: 0 20px 40px rgba(108,43,217,0.18);
+            border-color: rgba(108,43,217,0.3) !important;
+        }
+        .glow-card .card-arrow {
+            opacity: 0; transform: translateX(-4px);
+            transition: opacity 0.2s, transform 0.2s;
+        }
+        .glow-card:hover .card-arrow { opacity: 1; transform: translateX(0); }
+
+        /* ─── Inputs ───────────────────────────────────── */
+        .glass-input {
+            width: 100%;
+            background: rgba(255,255,255,0.6);
+            border: 1px solid rgba(0,0,0,0.1);
+            border-radius: 10px;
+            padding: 9px 14px;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.875rem;
+            color: #0f172a;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .dark .glass-input {
+            background: rgba(0,0,0,0.25);
+            border-color: rgba(255,255,255,0.1);
+            color: #f1f5f9;
+        }
+        .glass-input:focus {
+            border-color: #6C2BD9;
+            box-shadow: 0 0 0 3px rgba(108,43,217,0.15);
+        }
+        .glass-input option { background: #0f172a; color: #f1f5f9; }
+
+        /* ─── Stat tiles ───────────────────────────────── */
+        .stat-tile {
+            position: relative; overflow: hidden;
+            transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+        }
+        .stat-tile::before {
+            content: '';
+            position: absolute; inset: 0;
+            background: radial-gradient(circle at top left, rgba(108,43,217,0.07), transparent 60%);
+            pointer-events: none;
+        }
+        .stat-tile:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 30px rgba(108,43,217,0.12);
+            border-color: rgba(108,43,217,0.25) !important;
         }
 
-        /* Footer Styles */
-        .footer-link {
-            @apply text-gray-400 hover:text-brand-primary transition-colors duration-200 text-sm;
+        /* ─── Upgrade banner ───────────────────────────── */
+        .upgrade-banner {
+            background: linear-gradient(135deg, rgba(108,43,217,0.14) 0%, rgba(99,102,241,0.08) 50%, rgba(22,163,74,0.07) 100%);
+            border: 1px solid rgba(108,43,217,0.3);
+            position: relative; overflow: hidden;
         }
+        .dark .upgrade-banner { background: linear-gradient(135deg, rgba(108,43,217,0.18), rgba(99,102,241,0.1), rgba(22,163,74,0.08)); }
+        .upgrade-banner::before {
+            content: ''; position: absolute; top: -50px; right: -50px;
+            width: 220px; height: 220px;
+            background: radial-gradient(circle, rgba(108,43,217,0.2) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        /* ─── Activity item ────────────────────────────── */
+        .activity-item {
+            transition: background-color 0.2s, border-color 0.2s, transform 0.2s;
+        }
+        .activity-item:hover {
+            transform: translateX(3px);
+            border-color: rgba(108,43,217,0.25) !important;
+        }
+        .dark .activity-item:hover { background: rgba(255,255,255,0.03) !important; }
+        .activity-item:hover { background: rgba(108,43,217,0.03) !important; }
+
+        /* ─── Modal ────────────────────────────────────── */
+        #profile-modal {
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+        }
+        .modal-scroll::-webkit-scrollbar { width: 4px; }
+        .modal-scroll::-webkit-scrollbar-track { background: transparent; }
+        .modal-scroll::-webkit-scrollbar-thumb { background: rgba(108,43,217,0.3); border-radius: 2px; }
+
+        /* ─── Tab buttons ──────────────────────────────── */
+        .modal-tab {
+            flex: 1; padding: 7px 4px; border-radius: 8px; border: none;
+            font-family: 'Inter', sans-serif; font-size: 0.78rem; font-weight: 600;
+            cursor: pointer; transition: all 0.2s; white-space: nowrap;
+        }
+        .modal-tab.active { background: #6C2BD9; color: white; box-shadow: 0 3px 10px rgba(108,43,217,0.35); }
+        .modal-tab:not(.active) { background: transparent; color: #64748b; }
+        .dark .modal-tab:not(.active) { color: #94a3b8; }
+        .modal-tab:not(.active):hover { background: rgba(108,43,217,0.08); color: #6C2BD9; }
+
+        /* ─── Badge ────────────────────────────────────── */
+        .badge {
+            display: inline-flex; align-items: center; gap: 3px;
+            padding: 2px 8px; border-radius: 99px;
+            font-size: 0.68rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase;
+        }
+        .badge-pro   { background: rgba(108,43,217,0.15); color: #a78bfa; border: 1px solid rgba(108,43,217,0.3); }
+        .badge-trial { background: rgba(22,163,74,0.12);  color: #4ade80; border: 1px solid rgba(22,163,74,0.25); }
+        .badge-free  { background: rgba(245,158,11,0.12); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+        .badge-exp   { background: rgba(239,68,68,0.12);  color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+
+        /* ─── Scrollbar ────────────────────────────────── */
+        ::-webkit-scrollbar { width: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: rgba(108,43,217,0.25); border-radius: 3px; }
+
+        /* ─── Avatar ring ──────────────────────────────── */
+        .avatar-ring {
+            background: conic-gradient(#6C2BD9 0%, #a78bfa 45%, #16A34A 70%, #6C2BD9 100%);
+            border-radius: 50%; padding: 2px; display: inline-flex;
+        }
+        .avatar-inner {
+            border-radius: 50%; overflow: hidden;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'Poppins', sans-serif; font-weight: 700;
+        }
+
+        /* ─── Glow dot ─────────────────────────────────── */
+        .glow-dot {
+            width: 7px; height: 7px; border-radius: 50%;
+            background: #16A34A; box-shadow: 0 0 6px #16A34A;
+            display: inline-block; animation: dotpulse 2s ease-in-out infinite;
+        }
+        @keyframes dotpulse {
+            0%,100% { opacity:1; transform:scale(1); }
+            50% { opacity:0.55; transform:scale(0.82); }
+        }
+
+        /* ─── Danger zone btn ──────────────────────────── */
+        .btn-danger {
+            padding: 7px 16px; border-radius: 9px;
+            border: 1px solid rgba(239,68,68,0.35);
+            background: rgba(239,68,68,0.07);
+            color: #f87171; font-size: 0.8rem; font-weight: 600;
+            cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.2s;
+        }
+        .btn-danger:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.5); }
+
+        /* ─── Footer link ──────────────────────────────── */
+        .footer-link { color: #94a3b8; font-size: 0.875rem; text-decoration: none; transition: color 0.2s; }
+        .footer-link:hover { color: #6C2BD9; }
+
+        /* ─── Feature table row ────────────────────────── */
+        .feat-row:nth-child(odd)  { background: rgba(108,43,217,0.03); }
+        .dark .feat-row:nth-child(odd) { background: rgba(108,43,217,0.06); }
+
+        /* ─── Logout btn ───────────────────────────────── */
+        .logout-btn {
+            display: flex; align-items: center; gap: 6px;
+            padding: 7px 13px; border-radius: 9px;
+            border: 1px solid rgba(239,68,68,0.28);
+            background: rgba(239,68,68,0.07);
+            color: #f87171; font-size: 0.8rem; font-weight: 500;
+            text-decoration: none; font-family: 'Inter', sans-serif;
+            transition: all 0.2s;
+        }
+        .logout-btn:hover { background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.45); }
     </style>
 </head>
+
 <body class="antialiased min-h-screen flex flex-col relative overflow-x-hidden">
 
-    <canvas id="bg-canvas" class="fixed top-0 left-0 w-full h-full -z-10 opacity-40 dark:opacity-60 pointer-events-none"></canvas>
+<!-- Particle background -->
+<canvas id="bg-canvas" class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none" style="opacity:0.35;"></canvas>
+<div class="fixed inset-0 -z-10 pointer-events-none dark:opacity-100 opacity-0 transition-opacity duration-500" style="background:radial-gradient(ellipse 80% 50% at 50% -20%, rgba(108,43,217,0.12), transparent);"></div>
 
-    <nav class="fixed top-0 w-full z-50 glass border-b-0">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div class="flex items-center justify-between h-16 gap-2 sm:gap-4">
-                <a href="/" class="flex items-center gap-2 min-w-0">
-                    <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-primary flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-sm sm:text-base">B</div>
-                    <span class="text-lg sm:text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white truncate">BOARD <span class="text-brand-primary">Algo</span></span>
+<!-- ══════════════════════ NAV ══════════════════════ -->
+<nav class="fixed top-0 w-full z-50 glass" style="border-bottom:1px solid rgba(0,0,0,0.05);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16 gap-2 sm:gap-4">
+
+            <!-- Logo -->
+            <a href="/" class="flex items-center gap-2 min-w-0 flex-shrink-0">
+                <div class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-base" style="background:linear-gradient(135deg,#6C2BD9,#a855f7);box-shadow:0 3px 10px rgba(108,43,217,0.4);">B</div>
+                <span class="text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white truncate">BOARD <span class="text-brand-primary">Algo</span></span>
+            </a>
+
+            <!-- Right cluster -->
+            <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+
+                <!-- Theme toggle -->
+                <button id="theme-toggle" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 transition-colors">
+                    <i data-lucide="sun"  class="hidden dark:block w-4 h-4 sm:w-5 sm:h-5"></i>
+                    <i data-lucide="moon" class="block dark:hidden w-4 h-4 sm:w-5 sm:h-5"></i>
+                </button>
+
+                <!-- Settings -->
+                <button id="open-profile-btn" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 transition-colors" title="Profile & Settings">
+                    <i data-lucide="settings" class="w-4 h-4 sm:w-5 sm:h-5"></i>
+                </button>
+
+                <!-- Logout (desktop) -->
+                <a href="/auth/logout" class="logout-btn hidden sm:flex">
+                    <i data-lucide="log-out" class="w-3.5 h-3.5"></i>
+                    <span>Logout</span>
                 </a>
 
-                <div class="flex items-center gap-2 sm:gap-4 flex-shrink-0">
-                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 transition-colors">
-                        <i data-lucide="sun" class="hidden dark:block w-4 h-4 sm:w-5 sm:h-5"></i>
-                        <i data-lucide="moon" class="block dark:hidden w-4 h-4 sm:w-5 sm:h-5"></i>
-                    </button>
-
-                    <div class="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-4 border-l border-gray-200 dark:border-gray-800">
-                        <div class="text-right hidden sm:block">
-                            <p class="text-sm font-semibold text-slate-900 dark:text-white"><%= user.username %></p>
-                            <p class="text-xs text-brand-primary font-medium"><%= user.subscription_status === 'ACTIVE' ? 'Pro Member' : 'Free Plan' %></p>
+                <!-- Divider + avatar chip -->
+                <div class="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 border-l border-gray-200 dark:border-gray-800 cursor-pointer hover:opacity-80 transition-opacity" onclick="document.getElementById('open-profile-btn').click()">
+                    <div class="text-right hidden sm:block">
+                        <p class="text-sm font-semibold text-slate-900 dark:text-white leading-tight"><%= user.username %></p>
+                        <%
+                        let navBadgeLabel = 'Free Trial';
+                        if(user.subscription_status === 'ACTIVE') navBadgeLabel = 'Pro Member';
+                        else if(user.subscription_status === 'EXPIRED' || user.subscription_status === 'CHURNED') navBadgeLabel = 'Plan Expired';
+                        %>
+                        <p class="text-xs font-medium mt-0.5" style="color:#6C2BD9;"><%= navBadgeLabel %></p>
+                    </div>
+                    <% if(user.photoURL) { %>
+                    <div class="avatar-ring flex-shrink-0" style="width:36px;height:36px;">
+                        <div class="avatar-inner" style="width:100%;height:100%;">
+                            <img src="<%= user.photoURL %>" style="width:100%;height:100%;object-fit:cover;">
                         </div>
-                        <div class="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-brand-primary/20 border border-brand-primary/30 flex items-center justify-center text-brand-primary font-bold text-sm sm:text-base flex-shrink-0">
-                            <%= user.username.charAt(0).toUpperCase() %>
-                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </nav>
-
-    <main class="flex-grow pt-20 sm:pt-24 pb-10">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
-
-            <div class="gsap-entry space-y-2">
-                <h1 class="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
-                    Hi, <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent break-words"><%= user.username %></span>.
-                </h1>
-                <p class="text-lg sm:text-xl text-slate-600 dark:text-gray-400">Your personalized learning command center.</p>
-            </div>
-
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
-                <a href="/tools/solution-finder" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-brand-primary/20 flex items-center justify-center text-brand-primary mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="search" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Solution Finder</h3>
-                    <p class="text-sm text-slate-600 dark:text-gray-400">Step-by-step solutions for Physics & Math.</p>
-                </a>
-
-                <a href="/tools/predictor" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-purple-500/20 flex items-center justify-center text-purple-600 dark:text-purple-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="brain-circuit" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Concept Predictor</h3>
-                    <p class="text-sm text-slate-600 dark:text-gray-400">AI analysis of past paper trends.</p>
-                </a>
-
-                <a href="/tools/question-bank" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-pink-500/20 flex items-center justify-center text-pink-600 dark:text-pink-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="library" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Question Bank</h3>
-                    <p class="text-sm text-slate-600 dark:text-gray-400">50k+ curated board-level questions.</p>
-                </a>
-
-                <a href="/examiner" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-red-500/20 flex items-center justify-center text-red-600 dark:text-red-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="gavel" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Strict Examiner</h3>
-                    <p class="text-sm text-slate-600 dark:text-gray-400">Grading with strict marking schemes.</p>
-                </a>
-
-                <a href="/mnemonic" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-yellow-500/20 flex items-center justify-center text-yellow-600 dark:text-yellow-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="lightbulb" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Mnemonics</h3>
-                    <p class="text-sm text-slate-600 dark:text-gray-400">Generate phrases to remember formulas.</p>
-                </a>
-
-                <a href="/reports" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
-                    <div class="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-teal-500/20 flex items-center justify-center text-teal-600 dark:text-teal-400 mb-4 group-hover:scale-110 transition-transform">
-                        <i data-lucide="bar-chart-2" class="w-5 h-5 sm:w-6 sm:h-6"></i>
-                    </div>
-                    <h3 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white mb-1 sm:mb-2">Progress Report</h3>
-                    <p class="text-sm text-slate-600 dark:text-gray-400">View your accuracy and weak areas.</p>
-                </a>
-            </div>
-
-            
-
-
-
-            <div class="gsap-entry">
-                <h2 class="text-xl sm:text-2xl font-display font-bold text-slate-900 dark:text-white mb-4 sm:mb-6">Recent Activity</h2>
-                <div class="space-y-3 sm:space-y-4">
-                    <% if (recentInteractions && recentInteractions.length > 0) { %>
-                        <% recentInteractions.forEach(function(interaction) { %>
-                            <div class="glass p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-white/5 flex items-center justify-between hover:bg-white/5 transition-colors gap-2">
-                                <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
-                                    <div class="p-2 rounded-lg bg-brand-primary/10 text-brand-primary flex-shrink-0">
-                                        <% if(interaction.feature_type === 'DOUBT_SOLVER') { %> <i data-lucide="search" class="w-4 h-4 sm:w-5 sm:h-5"></i> <% } %>
-                                        <% if(interaction.feature_type === 'MNEMONIC') { %> <i data-lucide="lightbulb" class="w-4 h-4 sm:w-5 sm:h-5"></i> <% } %>
-                                        <% if(interaction.feature_type === 'BOARD_EVALUATOR') { %> <i data-lucide="gavel" class="w-4 h-4 sm:w-5 sm:h-5"></i> <% } %>
-                                    </div>
-                                    <div class="flex-1 min-w-0">
-                                        <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">
-                                            <%= interaction.user_query_text ? interaction.user_query_text : 'Image Upload' %>
-                                        </p>
-                                        <p class="text-xs text-slate-500 dark:text-gray-500 truncate mt-0.5">
-                                            <%= new Date(interaction.createdAt).toLocaleDateString() %> • <%= interaction.feature_type ? interaction.feature_type.replace('_',' ') : '' %>
-                                        </p>
-                                    </div>
-                                </div>
-                                <a href="/history/<%= interaction._id %>" class="text-xs sm:text-sm font-medium text-brand-primary hover:text-brand-accent flex-shrink-0 pl-2">View</a>
-                            </div>
-                        <% }); %>
                     <% } else { %>
-                        <div class="text-center py-6 sm:py-8 text-gray-500">
-                            <p class="text-sm sm:text-base">No recent activity found. Start solving!</p>
-                        </div>
+                    <div class="h-9 w-9 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-base" style="background:linear-gradient(135deg,rgba(108,43,217,0.8),rgba(168,85,247,0.7));border:2px solid rgba(108,43,217,0.4);">
+                        <%= user.username.charAt(0).toUpperCase() %>
+                    </div>
                     <% } %>
                 </div>
             </div>
-
         </div>
-    </main>
+    </div>
+</nav>
 
-    <footer class="glass border-t border-brand-border/30 z-10 relative mt-auto">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-            <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-                <div class="col-span-1 sm:col-span-2 md:col-span-1">
-                    <div class="flex items-center gap-2 mb-4">
-                        <div class="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-brand-primary flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-sm sm:text-base">B</div>
-                        <span class="text-lg sm:text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white">BOARD <span class="text-brand-primary">Algo</span></span>
+<!-- ══════════════════ PROFILE MODAL ══════════════════ -->
+<div id="profile-modal" class="fixed inset-0 z-[100] hidden items-center justify-center bg-black/60 opacity-0 transition-opacity duration-300 px-4 py-6" style="backdrop-filter:blur(6px);">
+    <div id="profile-modal-content" class="glass w-full rounded-2xl transform scale-95 transition-transform duration-300 modal-scroll" style="max-width:520px;max-height:92vh;overflow-y:auto;">
+        <div class="p-6 sm:p-7">
+
+            <!-- Header -->
+            <div class="flex justify-between items-start mb-5">
+                <div>
+                    <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white">Profile Settings</h2>
+                    <p class="text-xs text-slate-500 dark:text-gray-400 mt-1">Manage your account information</p>
+                </div>
+                <button id="close-profile-btn" class="p-1.5 rounded-lg hover:bg-black/5 dark:hover:bg-white/5 text-slate-400 hover:text-slate-600 dark:hover:text-white transition-colors flex-shrink-0 ml-4">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <!-- Tab bar -->
+            <div class="flex gap-1 p-1 rounded-xl mb-6" style="background:rgba(0,0,0,0.05);">
+                <button class="modal-tab active" data-tab="info"     onclick="switchTab('info')">Personal Info</button>
+                <button class="modal-tab"        data-tab="security" onclick="switchTab('security')">Security</button>
+                <button class="modal-tab"        data-tab="plan"     onclick="switchTab('plan')">Plan & Billing</button>
+            </div>
+
+            <!-- ── TAB: Personal Info ── -->
+            <div id="tab-info" class="tab-panel">
+                <!-- Avatar + quick info -->
+                <div class="flex items-center gap-4 p-4 rounded-xl mb-5 border border-gray-200 dark:border-white/8" style="background:rgba(108,43,217,0.04);">
+                    <div class="flex-shrink-0">
+                        <% if(user.photoURL) { %>
+                        <div class="avatar-ring" style="width:60px;height:60px;">
+                            <div class="avatar-inner" style="width:100%;height:100%;">
+                                <img src="<%= user.photoURL %>" style="width:100%;height:100%;object-fit:cover;">
+                            </div>
+                        </div>
+                        <% } else { %>
+                        <div class="avatar-ring" style="width:60px;height:60px;">
+                            <div class="avatar-inner w-full h-full text-white text-2xl font-display font-bold" style="background:linear-gradient(135deg,#6C2BD9,#a855f7);">
+                                <%= user.username.charAt(0).toUpperCase() %>
+                            </div>
+                        </div>
+                        <% } %>
                     </div>
-                    <p class="text-gray-400 text-sm leading-relaxed">
-                        The ultimate AI-powered study companion for Board Exam aspirants. 
-                    </p>
+                    <div class="flex-1 min-w-0">
+                        <p class="font-bold text-slate-900 dark:text-white text-base truncate"><%= user.username %></p>
+                        <p class="text-xs text-slate-500 dark:text-gray-400 truncate mt-0.5"><%= user.email %></p>
+                        <div class="flex items-center gap-2 mt-2 flex-wrap">
+                            <span class="glow-dot"></span>
+                            <%
+                            let statusLabel2 = 'Free Trial';
+                            let badgeClass2 = 'badge-trial';
+                            if(user.subscription_status === 'ACTIVE') { statusLabel2='Pro Member'; badgeClass2='badge-pro'; }
+                            else if(user.subscription_status === 'EXPIRED' || user.subscription_status === 'CHURNED') { statusLabel2='Expired'; badgeClass2='badge-exp'; }
+                            %>
+                            <span class="badge <%= badgeClass2 %>"><%= statusLabel2 %></span>
+                            <% if(user.Class) { %>
+                            <span class="text-xs text-slate-500 dark:text-gray-400">Class <%= user.Class %></span>
+                            <% } %>
+                            <% if(user.provider === 'google') { %>
+                            <span class="text-xs font-medium" style="color:#4285F4;">Google Account</span>
+                            <% } %>
+                        </div>
+                    </div>
+                    <!-- Mobile logout inside modal -->
+                    <a href="/auth/logout" class="sm:hidden p-2 rounded-lg text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors" title="Logout">
+                        <i data-lucide="log-out" class="w-4 h-4"></i>
+                    </a>
                 </div>
-                
-                <div>
-                    <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4">Platform</h4>
-                    <ul class="space-y-2">
-                        <li><a href="/features" class="footer-link">Features</a></li>
-                        <li><a href="/pricing" class="footer-link">Pricing</a></li>
-                        <li><a href="/about" class="footer-link">About Us</a></li>
-                    </ul>
+
+                <!-- Edit Form -->
+                <form method="POST" action="/user/update-profile" id="profile-edit-form">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Username</label>
+                            <input type="text" name="username" value="<%= user.username %>" class="glass-input" required placeholder="Your display name">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Class / Grade</label>
+                            <select name="Class" class="glass-input">
+                                <option value="">Select class</option>
+                                <% ['9','10','11','12'].forEach(function(c){ %>
+                                <option value="<%= c %>" <%= user.Class === c ? 'selected' : '' %>>Class <%= c %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Email</label>
+                            <input type="email" name="email" value="<%= user.email %>" class="glass-input"
+                                   <%= user.provider === 'google' ? 'readonly' : '' %>
+                                   style="<%= user.provider === 'google' ? 'opacity:0.6;cursor:not-allowed;' : '' %>">
+                            <% if(user.provider === 'google') { %><p class="text-xs text-slate-400 mt-1">Managed by Google</p><% } %>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Phone</label>
+                            <input type="tel" name="phone_number" value="<%= user.phone_number || '' %>" class="glass-input" placeholder="+91 XXXXXXXXXX">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Parent's Phone</label>
+                            <input type="tel" name="parent_phone_number" value="<%= user.parent_phone_number || '' %>" class="glass-input" placeholder="+91 XXXXXXXXXX">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Target Year</label>
+                            <select name="board_year" class="glass-input">
+                                <% [2025,2026,2027].forEach(function(y){ %>
+                                <option value="<%= y %>">Board <%= y %></option>
+                                <% }); %>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 pt-2">
+                        <button type="button" id="cancel-profile-btn" class="flex-1 px-4 py-2.5 rounded-xl border border-gray-300 dark:border-gray-600 text-slate-700 dark:text-gray-300 text-sm font-semibold hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">Cancel</button>
+                        <button type="submit" id="save-profile-btn" class="flex-2 flex-1 px-4 py-2.5 rounded-xl text-white text-sm font-semibold transition-all" style="background:linear-gradient(135deg,#6C2BD9,#7c3aed);box-shadow:0 4px 14px rgba(108,43,217,0.35);">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ── TAB: Security ── -->
+            <div id="tab-security" class="tab-panel hidden">
+                <% if(user.provider !== 'google') { %>
+                <form method="POST" action="/user/change-password" class="space-y-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Current Password</label>
+                        <input type="password" name="current_password" class="glass-input" placeholder="Enter current password">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">New Password</label>
+                        <input type="password" name="new_password" class="glass-input" placeholder="Min. 8 characters">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Confirm New Password</label>
+                        <input type="password" name="confirm_password" class="glass-input" placeholder="Re-enter new password">
+                    </div>
+                    <button type="submit" class="w-full py-2.5 rounded-xl text-white text-sm font-semibold" style="background:linear-gradient(135deg,#6C2BD9,#7c3aed);box-shadow:0 4px 14px rgba(108,43,217,0.3);">Update Password</button>
+                </form>
+                <% } else { %>
+                <div class="text-center py-8">
+                    <div class="w-14 h-14 rounded-2xl mx-auto mb-3 flex items-center justify-center" style="background:rgba(66,133,244,0.1);">
+                        <svg width="30" height="30" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+                    </div>
+                    <p class="font-semibold text-slate-900 dark:text-white">Google Account</p>
+                    <p class="text-sm text-slate-500 dark:text-gray-400 mt-1 leading-relaxed">Passwords are managed through your Google account settings.</p>
                 </div>
-                <div>
-                    <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4">Resources</h4>
-                    <ul class="space-y-2">
-                        <li><a href="/blog" class="footer-link">Study Tips</a></li>
-                        <li><a href="/syllabus" class="footer-link">Syllabus</a></li>
-                        <li><a href="/faq" class="footer-link">FAQ</a></li>
-                    </ul>
-                </div>
-                <div>
-                    <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4">Legal</h4>
-                    <ul class="space-y-2">
-                        <li><a href="/privacy" class="footer-link">Privacy Policy</a></li>
-                        <li><a href="/terms" class="footer-link">Terms of Service</a></li>
-                    </ul>
+                <% } %>
+
+                <!-- Danger zone -->
+                <div class="mt-5 p-4 rounded-xl border border-dashed border-red-300/50 dark:border-red-500/25" style="background:rgba(239,68,68,0.04);">
+                    <p class="text-xs font-bold text-red-400 uppercase tracking-widest mb-2">Danger Zone</p>
+                    <p class="text-sm text-slate-500 dark:text-gray-400 mb-3">Permanently delete your account. This cannot be undone.</p>
+                    <button class="btn-danger">Delete Account</button>
                 </div>
             </div>
-            <div class="border-t border-gray-200 dark:border-gray-800 pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
-                <p class="text-gray-500 text-xs sm:text-sm">© 2024 BoardAlgo. All rights reserved.</p>
-                <div class="flex gap-4">
-                    <a href="#" class="text-gray-400 hover:text-brand-primary transition-colors"><i data-lucide="twitter" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-brand-primary transition-colors"><i data-lucide="instagram" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
-                    <a href="#" class="text-gray-400 hover:text-brand-primary transition-colors"><i data-lucide="linkedin" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
+
+            <!-- ── TAB: Plan & Billing ── -->
+            <div id="tab-plan" class="tab-panel hidden">
+                <%
+                let planLabel = 'Free Trial';
+                let planBadge = 'badge-trial';
+                if(user.subscription_status === 'ACTIVE') { planLabel = 'Pro'; planBadge = 'badge-pro'; }
+                else if(user.subscription_status === 'EXPIRED' || user.subscription_status === 'CHURNED') { planLabel = 'Expired'; planBadge = 'badge-exp'; }
+                %>
+                <!-- Current plan card -->
+                <div class="p-4 rounded-xl border border-gray-200 dark:border-white/8 mb-4" style="background:rgba(108,43,217,0.04);">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="font-bold text-slate-900 dark:text-white text-sm">Current Plan</p>
+                        <span class="badge <%= planBadge %>"><%= planLabel %></span>
+                    </div>
+                    <% if(user.subscription_status === 'ACTIVE' && user.plan_expiry_date) { %>
+                    <div class="flex items-center gap-2 text-sm text-slate-500 dark:text-gray-400 mb-3">
+                        <i data-lucide="calendar" class="w-3.5 h-3.5 flex-shrink-0"></i>
+                        <span>Expires <strong class="text-slate-700 dark:text-gray-200"><%= new Date(user.plan_expiry_date).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}) %></strong></span>
+                    </div>
+                    <% } %>
+                    <% if(user.subscription_status !== 'ACTIVE') { %>
+                    <p class="text-sm text-slate-500 dark:text-gray-400 mb-3 leading-relaxed">Upgrade to unlock unlimited AI solutions, board analytics, priority support, and more.</p>
+                    <a href="/pricing" onclick="closeModal()">
+                        <button class="w-full py-2.5 rounded-xl text-white text-sm font-bold transition-all hover:opacity-90" style="background:linear-gradient(135deg,#6C2BD9,#16A34A);box-shadow:0 4px 16px rgba(108,43,217,0.35);">
+                            🚀 Upgrade to Pro
+                        </button>
+                    </a>
+                    <% } else { %>
+                    <a href="/pricing" onclick="closeModal()">
+                        <button class="w-full py-2 rounded-xl text-sm font-semibold border border-gray-300 dark:border-gray-600 text-slate-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-white/5 transition-colors">Manage Subscription</button>
+                    </a>
+                    <% } %>
+                </div>
+
+                <!-- Feature comparison -->
+                <div class="rounded-xl overflow-hidden border border-gray-200 dark:border-white/8">
+                    <div class="px-4 py-2.5 border-b border-gray-200 dark:border-white/8" style="background:rgba(0,0,0,0.03);">
+                        <div class="flex text-xs font-bold uppercase tracking-widest text-slate-400">
+                            <span class="flex-1">Feature</span>
+                            <span class="w-16 text-center">Free</span>
+                            <span class="w-16 text-center" style="color:#6C2BD9;">Pro ✦</span>
+                        </div>
+                    </div>
+                    <% const features = [
+                        ['Unlimited solutions','—','✓'],
+                        ['Question bank','—','✓'],
+                        ['Concept Predictor','5/day','Unlimited'],
+                        ['Priority support','—','✓'],
+                        ['Board analytics','—','✓'],
+                        ['Download PDF','—','✓'],
+                    ]; %>
+                    <% features.forEach(function(f,i){ %>
+                    <div class="feat-row flex items-center px-4 py-2.5">
+                        <span class="flex-1 text-sm text-slate-700 dark:text-gray-200"><%= f[0] %></span>
+                        <span class="w-16 text-center text-sm text-slate-400"><%= f[1] %></span>
+                        <span class="w-16 text-center text-sm font-semibold" style="color:<%= f[2]==='✓'?'#16A34A':'inherit' %>;"><%= f[2] %></span>
+                    </div>
+                    <% }); %>
+                </div>
+            </div>
+
+        </div><!-- /inner -->
+    </div>
+</div>
+
+<!-- ══════════════════════ MAIN ══════════════════════ -->
+<main class="flex-grow pt-20 sm:pt-24 pb-12">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
+
+        <!-- Greeting -->
+        <div class="gsap-entry space-y-2">
+            <p class="text-sm font-medium text-slate-500 dark:text-gray-400">
+                <%= new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'}) %>
+            </p>
+            <h1 class="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+                Hi, <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent break-words"><%= user.username %></span> 👋
+            </h1>
+            <p class="text-lg sm:text-xl text-slate-500 dark:text-gray-400">Your personalized learning command center.</p>
+        </div>
+
+        <!-- Stats row -->
+        <%
+        const totalSessions   = recentInteractions ? recentInteractions.filter(i=>i.feature_type!=='SUB_QUESTION').length : 0;
+        const solverCount     = recentInteractions ? recentInteractions.filter(i=>i.feature_type==='DOUBT_SOLVER').length : 0;
+        const examinerCount   = recentInteractions ? recentInteractions.filter(i=>i.feature_type==='BOARD_EVALUATOR').length : 0;
+        const predictorCount  = recentInteractions ? recentInteractions.filter(i=>i.feature_type==='CONCEPT_PREDICTOR').length : 0;
+        %>
+        <div class="gsap-entry grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div class="stat-tile glass glow-card rounded-2xl p-4 border border-gray-200 dark:border-white/5">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Sessions</p>
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:rgba(108,43,217,0.12);">
+                        <i data-lucide="activity" class="w-4 h-4" style="color:#a78bfa;"></i>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold font-display text-slate-900 dark:text-white leading-none"><%= totalSessions %></p>
+                <p class="text-xs text-slate-400 dark:text-gray-500 mt-1">total interactions</p>
+            </div>
+            <div class="stat-tile glass glow-card rounded-2xl p-4 border border-gray-200 dark:border-white/5">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Solved</p>
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:rgba(22,163,74,0.12);">
+                        <i data-lucide="check-circle" class="w-4 h-4" style="color:#4ade80;"></i>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold font-display text-slate-900 dark:text-white leading-none"><%= solverCount %></p>
+                <p class="text-xs text-slate-400 dark:text-gray-500 mt-1">doubts solved</p>
+            </div>
+            <div class="stat-tile glass glow-card rounded-2xl p-4 border border-gray-200 dark:border-white/5">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Graded</p>
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:rgba(239,68,68,0.1);">
+                        <i data-lucide="gavel" class="w-4 h-4" style="color:#f87171;"></i>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold font-display text-slate-900 dark:text-white leading-none"><%= examinerCount %></p>
+                <p class="text-xs text-slate-400 dark:text-gray-500 mt-1">answers graded</p>
+            </div>
+            <div class="stat-tile glass glow-card rounded-2xl p-4 border border-gray-200 dark:border-white/5">
+                <div class="flex items-center justify-between mb-3">
+                    <p class="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-wide">Predicted</p>
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center" style="background:rgba(245,158,11,0.1);">
+                        <i data-lucide="flame" class="w-4 h-4" style="color:#fbbf24;"></i>
+                    </div>
+                </div>
+                <p class="text-3xl font-bold font-display text-slate-900 dark:text-white leading-none"><%= predictorCount %></p>
+                <p class="text-xs text-slate-400 dark:text-gray-500 mt-1">concepts predicted</p>
+            </div>
+        </div>
+
+        <!-- Upgrade Banner (non-pro only) -->
+        <% if(user.subscription_status !== 'ACTIVE') { %>
+        <div class="gsap-entry upgrade-banner rounded-2xl p-5 sm:p-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
+                <div class="flex items-center gap-4">
+                    <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#6C2BD9,#a855f7);box-shadow:0 4px 14px rgba(108,43,217,0.4);">
+                        <i data-lucide="crown" class="w-5 h-5 text-white"></i>
+                    </div>
+                    <div>
+                        <p class="font-bold text-slate-900 dark:text-white font-display text-base">Unlock unlimited AI power</p>
+                        <p class="text-sm text-slate-500 dark:text-gray-400 mt-0.5">Unlimited solutions, board analytics, priority AI, and PDF exports.</p>
+                    </div>
+                </div>
+                <a href="/pricing" class="flex-shrink-0">
+                    <button class="px-5 py-2.5 rounded-xl text-white text-sm font-bold transition-all hover:opacity-90 hover:scale-105 whitespace-nowrap" style="background:linear-gradient(135deg,#6C2BD9,#16A34A);box-shadow:0 4px 16px rgba(108,43,217,0.4);">
+                        Upgrade to Pro →
+                    </button>
+                </a>
+            </div>
+        </div>
+        <% } %>
+
+        <!-- Tool Cards -->
+        <div class="gsap-entry">
+            <div class="flex items-center justify-between mb-4 sm:mb-5">
+                <h2 class="text-xl sm:text-2xl font-display font-bold text-slate-900 dark:text-white">AI Tools</h2>
+                <span class="text-xs text-slate-400 dark:text-gray-500 font-medium">6 tools available</span>
+            </div>
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+
+                <a href="/tools/solution-finder" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style="background:rgba(108,43,217,0.12);">
+                            <i data-lucide="search" class="w-5 h-5 sm:w-6 sm:h-6" style="color:#6C2BD9;"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="card-arrow w-4 h-4 mt-1" style="color:#6C2BD9;"></i>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-bold font-display text-slate-900 dark:text-white mb-1.5">Solution Finder</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Step-by-step solutions for Physics & Math.</p>
+                </a>
+
+                <a href="/tools/predictor" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style="background:rgba(99,102,241,0.12);">
+                            <i data-lucide="brain-circuit" class="w-5 h-5 sm:w-6 sm:h-6" style="color:#818cf8;"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="card-arrow w-4 h-4 mt-1" style="color:#818cf8;"></i>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-bold font-display text-slate-900 dark:text-white mb-1.5">Concept Predictor</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">AI analysis of past paper trends.</p>
+                </a>
+
+                <a href="/tools/question-bank" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style="background:rgba(236,72,153,0.1);">
+                            <i data-lucide="library" class="w-5 h-5 sm:w-6 sm:h-6" style="color:#f472b6;"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="card-arrow w-4 h-4 mt-1" style="color:#f472b6;"></i>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-bold font-display text-slate-900 dark:text-white mb-1.5">Question Bank</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">50k+ curated board-level questions.</p>
+                </a>
+
+                <a href="/examiner" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style="background:rgba(239,68,68,0.1);">
+                            <i data-lucide="gavel" class="w-5 h-5 sm:w-6 sm:h-6" style="color:#f87171;"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="card-arrow w-4 h-4 mt-1" style="color:#f87171;"></i>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-bold font-display text-slate-900 dark:text-white mb-1.5">Strict Examiner</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Grading with strict marking schemes.</p>
+                </a>
+
+                <a href="/mnemonic" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style="background:rgba(245,158,11,0.1);">
+                            <i data-lucide="lightbulb" class="w-5 h-5 sm:w-6 sm:h-6" style="color:#fbbf24;"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="card-arrow w-4 h-4 mt-1" style="color:#fbbf24;"></i>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-bold font-display text-slate-900 dark:text-white mb-1.5">Mnemonics</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">Generate phrases to remember formulas.</p>
+                </a>
+
+                <a href="/reports" class="gsap-entry glow-card glass rounded-2xl p-5 sm:p-6 group block border border-gray-200 dark:border-white/5">
+                    <div class="flex items-start justify-between mb-4">
+                        <div class="w-11 h-11 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform" style="background:rgba(20,184,166,0.1);">
+                            <i data-lucide="bar-chart-2" class="w-5 h-5 sm:w-6 sm:h-6" style="color:#2dd4bf;"></i>
+                        </div>
+                        <i data-lucide="arrow-up-right" class="card-arrow w-4 h-4 mt-1" style="color:#2dd4bf;"></i>
+                    </div>
+                    <h3 class="text-base sm:text-lg font-bold font-display text-slate-900 dark:text-white mb-1.5">Progress Report</h3>
+                    <p class="text-sm text-slate-500 dark:text-gray-400">View your accuracy and weak areas.</p>
+                </a>
+
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="gsap-entry">
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4 sm:mb-6">
+                <h2 class="text-xl sm:text-2xl font-display font-bold text-slate-900 dark:text-white">Recent Activity</h2>
+                <div class="flex gap-2">
+                    <select id="filterSelect" class="glass px-3 py-2 rounded-lg text-sm outline-none cursor-pointer focus:ring-2 text-slate-700 dark:text-gray-200 dark:bg-slate-800 border-0" style="--tw-ring-color:#6C2BD9;">
+                        <option value="ALL">All Tools</option>
+                        <option value="DOUBT_SOLVER">Solution Finder</option>
+                        <option value="CONCEPT_PREDICTOR">Predictor</option>
+                        <option value="BOARD_EVALUATOR">Examiner</option>
+                        <option value="MNEMONIC_GENERATOR">Mnemonics</option>
+                    </select>
+                    <select id="sortSelect" class="glass px-3 py-2 rounded-lg text-sm outline-none cursor-pointer focus:ring-2 text-slate-700 dark:text-gray-200 dark:bg-slate-800 border-0" style="--tw-ring-color:#6C2BD9;">
+                        <option value="NEW">Newest</option>
+                        <option value="OLD">Oldest</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="activityContainer" class="space-y-3 sm:space-y-3">
+                <% if (recentInteractions && recentInteractions.length > 0) { %>
+                    <% recentInteractions.forEach(function(interaction) { %>
+                        <% if(interaction.feature_type !== "SUB_QUESTION") { %>
+                        <%
+                        let iconName = 'search';
+                        let iconColor = '#6C2BD9';
+                        let iconBg = 'rgba(108,43,217,0.1)';
+                        if(interaction.feature_type === 'MNEMONIC_GENERATOR' || interaction.feature_type === 'MNEMONIC') { iconName='lightbulb'; iconColor='#fbbf24'; iconBg='rgba(245,158,11,0.1)'; }
+                        if(interaction.feature_type === 'BOARD_EVALUATOR') { iconName='gavel'; iconColor='#f87171'; iconBg='rgba(239,68,68,0.1)'; }
+                        if(interaction.feature_type === 'CONCEPT_PREDICTOR') { iconName='brain-circuit'; iconColor='#818cf8'; iconBg='rgba(99,102,241,0.1)'; }
+                        let redirectUrl = "/history/" + interaction._id;
+                        if(interaction.feature_type === "MNEMONIC_GENERATOR" || interaction.feature_type === "MNEMONIC") { redirectUrl = "/mne/history/" + interaction._id; }
+                        %>
+                        <div class="activity-item glass p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-white/5 flex items-center justify-between gap-2"
+                             data-type="<%= interaction.feature_type %>"
+                             data-date="<%= interaction.createdAt %>">
+                            <div class="flex items-center gap-3 sm:gap-4 flex-1 min-w-0">
+                                <div class="p-2 sm:p-2.5 rounded-xl flex-shrink-0" style="background:<%= iconBg %>;">
+                                    <i data-lucide="<%= iconName %>" class="w-4 h-4 sm:w-5 sm:h-5" style="color:<%= iconColor %>;"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold text-slate-900 dark:text-white truncate">
+                                        <%= interaction.user_query_text ? interaction.user_query_text : 'Image Upload' %>
+                                    </p>
+                                    <p class="text-xs text-slate-400 dark:text-gray-500 mt-0.5 truncate">
+                                        <%= new Date(interaction.createdAt).toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'}) %>
+                                        &nbsp;·&nbsp;
+                                        <%= interaction.feature_type ? interaction.feature_type.replace(/_/g,' ') : '' %>
+                                    </p>
+                                </div>
+                            </div>
+                            <a href="<%= redirectUrl %>" class="flex-shrink-0 flex items-center gap-1 text-xs sm:text-sm font-semibold hover:opacity-70 transition-opacity pl-2" style="color:#6C2BD9;">
+                                View <i data-lucide="arrow-up-right" class="w-3 h-3 sm:w-3.5 sm:h-3.5"></i>
+                            </a>
+                        </div>
+                        <% } %>
+                    <% }); %>
+                <% } else { %>
+                <div class="text-center py-10 sm:py-12">
+                    <div class="w-14 h-14 rounded-2xl mx-auto mb-4 flex items-center justify-center" style="background:rgba(108,43,217,0.08);">
+                        <i data-lucide="inbox" class="w-7 h-7" style="color:#6C2BD9;"></i>
+                    </div>
+                    <p class="font-semibold text-slate-700 dark:text-gray-300">No recent activity yet</p>
+                    <p class="text-sm text-slate-400 dark:text-gray-500 mt-1">Start solving to see your history here.</p>
+                    <a href="/tools/solution-finder">
+                        <button class="mt-5 px-5 py-2.5 rounded-xl text-white text-sm font-semibold" style="background:linear-gradient(135deg,#6C2BD9,#7c3aed);box-shadow:0 4px 14px rgba(108,43,217,0.3);">
+                            Start Solving →
+                        </button>
+                    </a>
+                </div>
+                <% } %>
+            </div>
+        </div>
+
+    </div>
+</main>
+
+<!-- ══════════════════════ FOOTER ══════════════════════ -->
+<footer class="glass mt-auto relative z-10" style="border-top:1px solid rgba(0,0,0,0.06);">
+    <div class="dark" style="border-top-color:rgba(255,255,255,0.05);"></div>
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
+        <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-8 mb-8">
+            <div class="col-span-1 sm:col-span-2 md:col-span-1">
+                <div class="flex items-center gap-2 mb-4">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold font-display text-base flex-shrink-0" style="background:linear-gradient(135deg,#6C2BD9,#a855f7);">B</div>
+                    <span class="text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white">BOARD <span style="color:#6C2BD9;">Algo</span></span>
+                </div>
+                <p class="text-slate-400 text-sm leading-relaxed">The ultimate AI-powered study companion for Board Exam aspirants.</p>
+            </div>
+            <div>
+                <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4 text-sm">Platform</h4>
+                <ul class="space-y-2">
+                    <li><a href="/features" class="footer-link">Features</a></li>
+                    <li><a href="/pricing" class="footer-link">Pricing</a></li>
+                    <li><a href="/about" class="footer-link">About Us</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4 text-sm">Resources</h4>
+                <ul class="space-y-2">
+                    <li><a href="/blog" class="footer-link">Study Tips</a></li>
+                    <li><a href="/syllabus" class="footer-link">Syllabus</a></li>
+                    <li><a href="/faq" class="footer-link">FAQ</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="text-slate-900 dark:text-white font-semibold mb-3 sm:mb-4 text-sm">Legal</h4>
+                <ul class="space-y-2">
+                    <li><a href="/privacy" class="footer-link">Privacy Policy</a></li>
+                    <li><a href="/terms" class="footer-link">Terms of Service</a></li>
+                </ul>
+                <!-- Footer logout link -->
+                <div class="mt-4">
+                    <a href="/auth/logout" class="footer-link flex items-center gap-1.5 hover:text-red-400" style="transition:color 0.2s;">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i> Logout
+                    </a>
                 </div>
             </div>
         </div>
-    </footer>
+        <div class="border-t border-gray-200 dark:border-gray-800 pt-6 sm:pt-8 flex flex-col md:flex-row justify-between items-center gap-4 text-center md:text-left">
+            <p class="text-slate-400 text-xs sm:text-sm">© 2025 BoardAlgo. All rights reserved.</p>
+            <div class="flex gap-4">
+                <a href="#" class="text-slate-400 hover:text-brand-primary transition-colors"><i data-lucide="twitter" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
+                <a href="#" class="text-slate-400 hover:text-brand-primary transition-colors"><i data-lucide="instagram" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
+                <a href="#" class="text-slate-400 hover:text-brand-primary transition-colors"><i data-lucide="linkedin" class="w-4 h-4 sm:w-5 sm:h-5"></i></a>
+            </div>
+        </div>
+    </div>
+</footer>
 
-    <script>
-        // 1. Icons
-        lucide.createIcons();
+<!-- ══════════════════════ JS ══════════════════════ -->
+<script>
+// ── 1. Icons ──────────────────────────────────────────
+lucide.createIcons();
 
-        // 2. Theme Logic
-        const themeBtn = document.getElementById('theme-toggle');
-        const html = document.documentElement;
-        if (localStorage.theme === 'dark' || (!('theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-            html.classList.add('dark');
-        } else {
-            html.classList.remove('dark');
+// ── 2. Theme ──────────────────────────────────────────
+const html = document.documentElement;
+(function() {
+    const saved = localStorage.theme;
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+        html.classList.add('dark');
+    } else {
+        html.classList.remove('dark');
+    }
+})();
+document.getElementById('theme-toggle').addEventListener('click', () => {
+    html.classList.toggle('dark');
+    localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+});
+
+// ── 3. Profile Modal ──────────────────────────────────
+const profileModal   = document.getElementById('profile-modal');
+const profileContent = document.getElementById('profile-modal-content');
+
+function openModal() {
+    profileModal.classList.remove('hidden');
+    profileModal.classList.add('flex');
+    setTimeout(() => {
+        profileModal.classList.remove('opacity-0');
+        profileContent.classList.remove('scale-95');
+        profileContent.classList.add('scale-100');
+    }, 10);
+}
+function closeModal() {
+    profileModal.classList.add('opacity-0');
+    profileContent.classList.remove('scale-100');
+    profileContent.classList.add('scale-95');
+    setTimeout(() => {
+        profileModal.classList.add('hidden');
+        profileModal.classList.remove('flex');
+    }, 300);
+}
+
+document.getElementById('open-profile-btn').addEventListener('click', openModal);
+document.getElementById('close-profile-btn').addEventListener('click', closeModal);
+document.getElementById('cancel-profile-btn').addEventListener('click', closeModal);
+profileModal.addEventListener('click', e => { if (e.target === profileModal) closeModal(); });
+
+// Profile form feedback
+document.getElementById('profile-edit-form').addEventListener('submit', function() {
+    const btn = document.getElementById('save-profile-btn');
+    btn.textContent = 'Saving…';
+    btn.disabled = true;
+    btn.style.opacity = '0.8';
+});
+
+// ── 4. Tab Switcher ───────────────────────────────────
+function switchTab(tab) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.add('hidden'));
+    document.querySelectorAll('.modal-tab').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + tab).classList.remove('hidden');
+    document.querySelector(`.modal-tab[data-tab="${tab}"]`).classList.add('active');
+    // Re-init lucide icons inside modal in case new content rendered
+    lucide.createIcons();
+}
+
+// ── 5. GSAP ───────────────────────────────────────────
+gsap.from('.gsap-entry', {
+    y: 20, opacity: 0, stagger: 0.08, duration: 0.6, ease: 'power2.out'
+});
+
+// ── 6. Filter & Sort ──────────────────────────────────
+const filterSelect      = document.getElementById('filterSelect');
+const sortSelect        = document.getElementById('sortSelect');
+const activityContainer = document.getElementById('activityContainer');
+
+function updateCards() {
+    const cards = [...document.querySelectorAll('.activity-item')];
+    if (!cards.length) return;
+    const fv = filterSelect.value, sv = sortSelect.value;
+    cards.forEach(c => {
+        c.style.display = (fv === 'ALL' || c.dataset.type === fv) ? 'flex' : 'none';
+    });
+    cards.sort((a, b) => {
+        const da = new Date(a.dataset.date), db = new Date(b.dataset.date);
+        return sv === 'NEW' ? db - da : da - db;
+    });
+    cards.forEach(c => activityContainer.appendChild(c));
+}
+if (filterSelect && sortSelect) {
+    filterSelect.addEventListener('change', updateCards);
+    sortSelect.addEventListener('change',   updateCards);
+}
+
+// ── 7. Three.js Background ────────────────────────────
+(function() {
+    const canvas   = document.getElementById('bg-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+    const scene    = new THREE.Scene();
+    const camera   = new THREE.PerspectiveCamera(75, innerWidth/innerHeight, 0.1, 1000);
+
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+
+    const count = 1500;
+    const pos   = new Float32Array(count * 3);
+    for (let i = 0; i < count * 3; i++) pos[i] = (Math.random() - 0.5) * 20;
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat = new THREE.PointsMaterial({ size: 0.02, color: 0x6C2BD9, transparent: true, opacity: 0.6 });
+    const mesh = new THREE.Points(geo, mat);
+    scene.add(mesh);
+    camera.position.z = 4;
+
+    let mouseX = 0, mouseY = 0;
+    document.addEventListener('mousemove', e => {
+        mouseX = e.clientX / innerWidth  - 0.5;
+        mouseY = e.clientY / innerHeight - 0.5;
+    });
+    document.addEventListener('touchmove', e => {
+        if (e.touches.length > 0) {
+            mouseX = e.touches[0].clientX / innerWidth  - 0.5;
+            mouseY = e.touches[0].clientY / innerHeight - 0.5;
         }
-        themeBtn.addEventListener('click', () => {
-            html.classList.toggle('dark');
-            localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
-        });
+    });
 
-        // 3. GSAP Animations
-        gsap.from('.gsap-entry', {
-            y: 20,
-            opacity: 0,
-            stagger: 0.08,
-            duration: 0.6,
-            ease: "power2.out"
-        });
+    function animate() {
+        requestAnimationFrame(animate);
+        mesh.rotation.y += 0.0005 + mouseX * 0.002;
+        mesh.rotation.x += 0.0002 + mouseY * 0.001;
+        renderer.render(scene, camera);
+    }
+    animate();
 
-        // 4. Three.js Background (Uniform Particle Grid)
-        const canvas = document.querySelector('#bg-canvas');
-        const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
-        const scene = new THREE.Scene();
-        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    window.addEventListener('resize', () => {
+        camera.aspect = innerWidth/innerHeight;
+        camera.updateProjectionMatrix();
+        renderer.setSize(innerWidth, innerHeight);
+    });
+})();
+</script>
 
-        renderer.setSize(window.innerWidth, window.innerHeight);
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-
-        // Particles
-        const geometry = new THREE.BufferGeometry();
-        const count = 1500;
-        const posArray = new Float32Array(count * 3);
-        
-        // Create a wider spread for the "command center" feel
-        for(let i = 0; i < count * 3; i++) {
-            posArray[i] = (Math.random() - 0.5) * 20; 
-        }
-
-        geometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-
-        const material = new THREE.PointsMaterial({
-            size: 0.02,
-            color: 0x6C2BD9, // Using Brand Primary (#6C2BD9)
-            transparent: true,
-            opacity: 0.6,
-        });
-
-        const particlesMesh = new THREE.Points(geometry, material);
-        scene.add(particlesMesh);
-
-        camera.position.z = 4;
-
-        // Interaction
-        let mouseX = 0;
-        let mouseY = 0;
-
-        // Mobile touch support for the background parallax effect
-        document.addEventListener('mousemove', (event) => {
-            mouseX = event.clientX / window.innerWidth - 0.5;
-            mouseY = event.clientY / window.innerHeight - 0.5;
-        });
-
-        document.addEventListener('touchmove', (event) => {
-            if(event.touches.length > 0) {
-                mouseX = event.touches[0].clientX / window.innerWidth - 0.5;
-                mouseY = event.touches[0].clientY / window.innerHeight - 0.5;
-            }
-        });
-
-        const animate = () => {
-            requestAnimationFrame(animate);
-            // Slow, consistent rotation
-            particlesMesh.rotation.y += 0.0005;
-            particlesMesh.rotation.x += 0.0002;
-
-            // Mouse parallax
-            particlesMesh.rotation.x += mouseY * 0.05;
-            particlesMesh.rotation.y += mouseX * 0.05;
-
-            renderer.render(scene, camera);
-        };
-
-        animate();
-
-        window.addEventListener('resize', () => {
-            camera.aspect = window.innerWidth / window.innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(window.innerWidth, window.innerHeight);
-        });
-    </script>
-
-    
 <script src="/js/tracking.js" defer></script>
-
 </body>
 </html>

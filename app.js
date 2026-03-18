@@ -148,17 +148,10 @@ app.post("/api/auth/google", async function(req, res) {
     email = googleResponse.data.email;
     picture = googleResponse.data.picture;
     sub = googleResponse.data.sub;
-    client_id = googleResponse.data.client_id ; 
 
   } catch (error) { // CHANGED: Added 'error' parameter to catch block to log the actual issue
     console.log("Error is there while even calling the API", error); // CHANGED: Included the error variable in the log
     return res.render("login", { message: "One Tap Login ERROR 404, please login manually" }); // ADDED: 'return' to stop execution and prevent app crash
-  }
-
-  console.log("-------------------client_id ",client_id) ;
-  if(client_id != process.env.Client_ID)
-  {
-    console.log("unauthorized access is tried by some hacker") ; 
   }
 
   let existingUser;
@@ -309,7 +302,7 @@ await newuser.save() ;
             req.session.user = existingUser ; 
             
             const existingInteraction = await interaction.find({user_id : req.session.user._id}) ; 
-            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : -1}) ;
+            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : 1}) ;
 
             res.render("dash" , {user : req.session.user , interaction : existingInteraction , recentInteractions : recentInteraction} ) ; 
 
@@ -346,7 +339,7 @@ app.post('/api/analytics/log-visit', async (req, res) => {
           drop_off_page,
           $inc: { time_spent_sec: time_spent_sec } 
         },
-        { sort: { createdAt: -1 } } // Get their most recent session
+        { sort: { createdAt: 1 } } // Get their most recent session
       );
       return res.status(200).json({ success: true });
     }
@@ -389,7 +382,21 @@ app.post('/api/analytics/log-visit', async (req, res) => {
 });
 
 
+app.get("/auth/logout" , function(req,res) 
 
+{
+   req.session.destroy(function (err) {
+
+        if (err) {
+            console.log(err);
+            return res.send("Error logging out");
+        }
+
+        res.redirect("/login");
+    });
+
+}
+)
 
 //visitor log end here 
 
@@ -400,70 +407,6 @@ app.get("/forgot/password" , async function(req , res)
 res.render("forgot" , {message : null , color : null}) ; 
 }
 )
-
-// app.post("/api/auth/forgot-password" , async function (req , res)
-// {
-//   const userEmail = req.body.email ; 
-//   const existingUser =await user.findOne({userEmail}) ; 
-
-//   if(!existingUser)
-//   {
-//     res.render("forgot",{message : "Please enter a valid mail ID", color : "red"}) ;
-//   }
-
-//   else 
-//   {
-// console.log("--yes user exist, so I am sending--") ;
-
-// const nodemailer = require('nodemailer');
-// const SENDER_EMAIL = 'boardalgofounder@gmail.com'; 
-// const APP_PASSWORD = process.env.app_password ; // Store in .env
-
-// const createTransporter = () => {
-//   return nodemailer.createTransport({
-//     service: 'gmail',
-//     auth: {
-//       user: SENDER_EMAIL,
-//       pass: APP_PASSWORD 
-//     }
-//   });
-// };
-
-// const sendPasswordResetEmail = async (userEmail, resetLink) => {
-//   try {
-//     const transporter = createTransporter();
-    
-//     const mailOptions = {
-//       from: SENDER_EMAIL,
-//       to: userEmail,
-//       subject: 'Password Reset Request',
-//       text: `Click to reset your password: ${resetLink}`,
-//       html: `<p>Click to reset your password: <a href="${resetLink}">${resetLink}</a></p>`
-//     };
-
-//     const result = await transporter.sendMail(mailOptions);
-//     console.log('Email sent:', result.messageId);
-//     console.log("result : ",result) ; 
-//   } 
-  
-//   catch (error) {
-//     console.error('Email error:', error);
-//   }
-
-// const resetLink1 = `http://localhost:3000/reset-password?email=${userEmail}`;
-// await sendPasswordResetEmail(userEmail, resetLink1);
-
-
-//   console.log("sendPasswordResetEmail :",sendPasswordResetEmail) ; 
-//   return res.render("mailconfirmation.ejs") ;
-// };
-
-
-//   }
-
-// }
-// )
-
 
 
 const nodemailer = require('nodemailer'); // Move this to the top of your file
@@ -650,7 +593,7 @@ app.post("/loginsubmit" , async(req,res)=>
             req.session.user = existingUser ; 
             
             const existingInteraction = await interaction.find({user_id : req.session.user._id}) ; 
-            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : -1}) ;
+            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : 1}) ;
 
 
             res.render("dash" , {user : req.session.user , interaction : existingInteraction , recentInteractions : recentInteraction} ) ; 
@@ -661,7 +604,7 @@ app.post("/loginsubmit" , async(req,res)=>
 app.get("/dashboard" ,isLoggedIn  , async function(req,res)
 {            
             const existingInteraction = await interaction.find({user_id : req.session.user._id}) ; 
-            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : -1}) ;
+            const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : 1}) ;
             res.render("dash" , {user : req.session.user , interaction : existingInteraction , recentInteractions : recentInteraction} ) ; 
 }
 )
@@ -678,10 +621,37 @@ const data = await interaction.findOne(
   {
     return res.send("Not Found!!, please don't try to change the URL") ; 
   }
-
+  console.log(data) ;
   res.render("solutionfinder" , {savedSolution : data}) ;
 }
 )
+
+
+app.get("/mne/history/:id" , async function(req , res)
+{
+const data = await interaction.findOne(
+  {
+    _id : req.params.id , 
+    user_id : req.session.user._id 
+  })
+
+  if(!data)
+  {
+    return res.send("Not Found!!, please don't try to change the URL") ; 
+  }
+  // console.log(data) ;
+
+    const payload = {
+      ...data.initial_ai_response,
+      original_query: data.user_query_text,
+      generation_mode: data.generation_mode,
+      deep_scan_enabled: data.deep_scan_enabled
+  };
+
+
+  res.render("mnemonic" , {savedSolution : payload}) ;
+
+})
 
 app.get("/mnemonic" ,isLoggedIn, async function(req,res)
 {
@@ -862,7 +832,6 @@ const result = await model.generateContent(
 
     }) ;
 
-
     const textResponse = result.response.text() ; 
 
 
@@ -915,7 +884,7 @@ catch (error)
 
 app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
 {
-    res.render("solutionfinder") ; 
+    res.render("solutionfinder", {savedSolution : null}) ; 
 }
 )
 
