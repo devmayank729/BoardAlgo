@@ -447,7 +447,7 @@ app.post("/api/auth/forgot-password", async function (req, res) {
   try {
     const userEmail = req.body.email; 
     console.log("Email : ",userEmail);
-    console.log("app_password : ",process.env.app_password) ;
+    // console.log("app_password : ",process.env.app_password) ;
     // FIX 1: Use findOne to search, not findOneAndDelete. 
     // Assuming your schema uses 'email' as the field name. If it's 'userEmail', change it to { userEmail: userEmail }
     const existingUser = await user.findOne({ email: userEmail }); 
@@ -470,13 +470,31 @@ app.post("/api/auth/forgot-password", async function (req, res) {
     const APP_PASSWORD = process.env.app_password; 
 
     // FIX 3: Simplified the transporter setup to run directly in the route
-      const transporter = nodemailer.createTransport({
-        service: 'gmail',
-        auth: {
-          user: SENDER_EMAIL,
-          pass: APP_PASSWORD 
-        }
-      });
+      // const transporter = nodemailer.createTransport({
+      //   service: 'gmail',
+      //   auth: {
+      //     user: SENDER_EMAIL,
+      //     pass: APP_PASSWORD 
+      //   }
+      // });
+      //////////////////////////////////
+
+    const transporter = nodemailer.createTransport(
+    {
+    host: "smtp.gmail.com",
+    port: 465,
+    secure: true, // true for 465, false for other ports
+    auth: {
+      user: SENDER_EMAIL,
+      pass: APP_PASSWORD 
+    },
+    // CRITICAL FIX: This forces Node.js to resolve the IPv4 address instead of IPv6
+    tls: {
+      rejectUnauthorized: false
+    }
+    });
+
+      ///////////////////////////
 
       const resetLink = `${baseUrl}/reset-password/mail?ID=${reset_token}`;
       console.log(resetLink) ; 
