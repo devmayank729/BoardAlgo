@@ -382,7 +382,7 @@ app.post('/api/analytics/log-visit', async (req, res) => {
 });
 
 
-app.get("/auth/logout" , function(req,res) 
+app.get("/auth/logout", isLoggedIn , function(req,res) 
 
 {
    req.session.destroy(function (err) {
@@ -395,6 +395,38 @@ app.get("/auth/logout" , function(req,res)
         res.redirect("/login");
     });
 
+}
+)
+
+app.post("/user/update-profile" ,isLoggedIn, async function(req,res)
+{
+  try
+  {
+  const username = req.body.username ; 
+  const email = req.body.email ; 
+  const phone_number = req.body.phone_number ; 
+  const parent_phone_number = req.body.parent_phone_number ; 
+  const current_class = req.body.current_class ; 
+
+  const updatedUser = await user.findByIdAndUpdate(req.session.user._id , 
+    {
+      username : username , 
+      email : email , 
+      phone_number : phone_number , 
+      parent_phone_number :  parent_phone_number , 
+      Class : current_class 
+    } ,
+    { new: true }
+  )
+ 
+    req.session.user = updatedUser ; 
+    res.redirect("/dashboard") ;
+  }
+  catch (err)
+  {
+    console.log(err);
+    res.redirect("/dashboard") ; 
+  }
 }
 )
 
@@ -609,7 +641,7 @@ app.get("/dashboard" ,isLoggedIn  , async function(req,res)
 }
 )
 
-app.get("/history/:id" , async function(req,res) 
+      app.get("/history/:id" , async function(req,res) 
 {
 const data = await interaction.findOne(
   {
