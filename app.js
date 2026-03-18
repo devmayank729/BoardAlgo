@@ -8,6 +8,7 @@ const crypto = require("crypto") ;
 require("dotenv").config(); 
 const session = require("express-session") ; 
 const googleAuth = require('google-auth-library');
+const nodemailer = require('nodemailer'); // Move this to the top of your file
 const OAuth2Client = googleAuth.OAuth2Client ; 
 // const client = new OAuth2Client('142684388060-j6ttjg7iru88tq3nalg7lc0uo0j0e323.apps.googleusercontent.com');
 const client = new OAuth2Client('703698570872-7f1r9chavrmun09rto85hce27ce129ho.apps.googleusercontent.com') ;
@@ -436,19 +437,17 @@ app.post("/user/update-profile" ,isLoggedIn, async function(req,res)
 
 app.get("/forgot/password" , async function(req , res)
 {
+  console.log("redirected to the forgot page") ; 
 res.render("forgot" , {message : null , color : null}) ; 
 }
 )
-
-
-const nodemailer = require('nodemailer'); // Move this to the top of your file
 
 app.post("/api/auth/forgot-password", async function (req, res) {
   console.log("line 473") ; 
   try {
     const userEmail = req.body.email; 
     console.log("Email : ",userEmail);
-    
+    console.log("app_password : ",process.env.app_password) ;
     // FIX 1: Use findOne to search, not findOneAndDelete. 
     // Assuming your schema uses 'email' as the field name. If it's 'userEmail', change it to { userEmail: userEmail }
     const existingUser = await user.findOne({ email: userEmail }); 
@@ -510,6 +509,7 @@ await PasswordReset.create(
   } 
   
   catch (error) {
+
     console.error('Error processing password reset:', error);
     return res.status(500).send("An error occurred while processing your request.");
   }
@@ -520,6 +520,7 @@ await PasswordReset.create(
 
 app.get("/reset-password/mail" , async function(req,res)
 {
+  console.log("/reset-pasword/mail")
   let PasswordResetUser ; 
   try 
   {
