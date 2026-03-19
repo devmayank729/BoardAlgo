@@ -9,6 +9,7 @@ require("dotenv").config();
 const session = require("express-session") ; 
 const googleAuth = require('google-auth-library');
 const nodemailer = require('nodemailer'); // Move this to the top of your file
+const { BrevoClient } = require("@getbrevo/brevo");
 const OAuth2Client = googleAuth.OAuth2Client ; 
 // const client = new OAuth2Client('142684388060-j6ttjg7iru88tq3nalg7lc0uo0j0e323.apps.googleusercontent.com');
 const client = new OAuth2Client('703698570872-7f1r9chavrmun09rto85hce27ce129ho.apps.googleusercontent.com') ;
@@ -463,61 +464,143 @@ app.post("/api/auth/forgot-password", async function (req, res) {
     const protocol = req.protocol;           // http or https
     const host = req.get("host");            // localhost:3000
     const baseUrl = protocol + "://" + host;
+    const resetLink = `${baseUrl}/reset-password/mail?ID=${reset_token}`;
+    console.log(resetLink) ; 
+    var messageId = "null" ;
 
-    // console.log("--yes user exist, so I am sending--");
-
-    const SENDER_EMAIL = 'boardalgofounder@gmail.com'; 
-    const APP_PASSWORD = process.env.app_password; 
-
-    // FIX 3: Simplified the transporter setup to run directly in the route
-      // const transporter = nodemailer.createTransport({
-      //   service: 'gmail',
-      //   auth: {
-      //     user: SENDER_EMAIL,
-      //     pass: APP_PASSWORD 
-      //   }
-      // });
-      //////////////////////////////////
-
-    const transporter = nodemailer.createTransport(
-    {
-    host: "smtp.gmail.com",
-    port: 465,
-    secure: true, // true for 465, false for other ports
-    auth: {
-      user: SENDER_EMAIL,
-      pass: APP_PASSWORD 
-    },
-    // CRITICAL FIX: This forces Node.js to resolve the IPv4 address instead of IPv6
-    tls: {
-      rejectUnauthorized: false
-    }
-    });
-
-      ///////////////////////////
-
-      const resetLink = `${baseUrl}/reset-password/mail?ID=${reset_token}`;
-      console.log(resetLink) ; 
-      const mailOptions = {
-        from: SENDER_EMAIL,
-        to: userEmail,
-        subject: 'Password Reset Request',
-        text: `Click to reset your password: ${resetLink}`,
-        html: `<p>Click to reset your password: <a href="${resetLink}">Tap Here</a></p>`
-      };
-
-    // Send the email and return the confirmation page
-    const result = await transporter.sendMail(mailOptions);
-    console.log('Email sent:', result.messageId);
     
+async function sendOTPEmail(recipientEmail, resetUrl) {
+    const client = new BrevoClient({
+
+        apiKey: process.env.brevo_api_key,
+    });
+    
+    try {
+        const response = await client.transactionalEmails.sendTransacEmail( {
+            sender: {
+                name: "BoardAlgo",
+                email: "boardalgofounder@gmail.com" // Must be a verified sender
+            },
+            to: [{
+                email: recipientEmail,
+                name: "User"
+            }],
+          
+    subject: "Reset Your BoardAlgo Password",
+    htmlContent: `
+        <!DOCTYPE html>
+        <html lang="en">
+        <head>
+            <meta charset="UTF-8">
+            <meta name="viewport" content="width=device-width, initial-scale=1.0">
+            <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700&display=swap" rel="stylesheet">
+            <style>
+                /* Client-specific resets */
+                body, table, td, a { -webkit-text-size-adjust: 100%; -ms-text-size-adjust: 100%; }
+                table, td { mso-table-lspace: 0pt; mso-table-rspace: 0pt; }
+                img { -ms-interpolation-mode: bicubic; }
+                
+                /* Hover effects for clients that support it */
+                .btn:hover {
+                    opacity: 0.9 !important;
+                    transform: translateY(-2px) !important;
+                }
+                .footer-link:hover {
+                    color: #6C2BD9 !important;
+                }
+            </style>
+        </head>
+        <body style="margin: 0; padding: 0; background-color: #020617; font-family: 'Inter', Arial, sans-serif; color: #f8fafc; -webkit-font-smoothing: antialiased;">
+            
+            <table border="0" cellpadding="0" cellspacing="0" width="100%" style="background-color: #020617; background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(108,43,217,0.15), transparent); padding: 40px 20px;">
+                <tr>
+                    <td align="center">
+                        
+                        <table border="0" cellpadding="0" cellspacing="0" width="100%" style="max-width: 520px; background-color: #0f172a; border: 1px solid #1e293b; border-radius: 16px; overflow: hidden; box-shadow: 0 20px 40px rgba(0,0,0,0.5);">
+                            
+                            <tr>
+                                <td align="center" style="padding: 40px 40px 20px 40px;">
+                                    <table border="0" cellpadding="0" cellspacing="0">
+                                        <tr>
+                                            <td style="width: 40px; height: 40px; background-color: #6C2BD9; background-image: linear-gradient(135deg, #6C2BD9, #a855f7); border-radius: 10px; text-align: center; vertical-align: middle; box-shadow: 0 4px 14px rgba(108,43,217,0.4);">
+                                                <span style="color: #ffffff; font-family: 'Poppins', Arial, sans-serif; font-size: 20px; font-weight: 700;">B</span>
+                                            </td>
+                                            <td style="padding-left: 12px;">
+                                                <span style="font-family: 'Poppins', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #ffffff; letter-spacing: -0.5px;">BOARD <span style="color: #6C2BD9;">Algo</span></span>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+
+                            <tr>
+                                <td style="padding: 20px 40px 40px 40px; text-align: center;">
+                                    <h2 style="margin: 0 0 16px 0; font-family: 'Poppins', Arial, sans-serif; font-size: 24px; font-weight: 600; color: #ffffff;">Password Reset Request</h2>
+                                    
+                                    <p style="margin: 0 0 24px 0; font-size: 15px; line-height: 1.6; color: #94a3b8;">
+                                        We received a request to reset the password for your BoardAlgo account. Click the button below to establish a new password and regain access to your command center.
+                                    </p>
+
+                                    <table border="0" cellpadding="0" cellspacing="0" width="100%">
+                                        <tr>
+                                            <td align="center" style="padding: 10px 0 30px 0;">
+                                                <a href="${resetUrl}" class="btn" style="display: inline-block; padding: 14px 32px; background-color: #6C2BD9; background-image: linear-gradient(135deg, #6C2BD9, #7c3aed); color: #ffffff; font-family: 'Inter', Arial, sans-serif; font-size: 15px; font-weight: 600; text-decoration: none; border-radius: 12px; transition: all 0.3s ease; box-shadow: 0 8px 20px rgba(108,43,217,0.35);">
+                                                    Reset Password
+                                                </a>
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <div style="background-color: rgba(239, 68, 68, 0.05); border: 1px solid rgba(239, 68, 68, 0.2); border-radius: 12px; padding: 16px; text-align: left;">
+                                        <p style="margin: 0 0 8px 0; font-size: 13px; font-weight: 600; color: #f87171; text-transform: uppercase; letter-spacing: 0.5px;">Security Notice</p>
+                                        <p style="margin: 0; font-size: 13px; line-height: 1.5; color: #94a3b8;">
+                                            This link will expire in 15 minutes. If you did not request this password reset, please ignore this email or report it to us immediately at <a href="mailto:boardalgofounder@gmail.com" style="color: #a78bfa; text-decoration: none; font-weight: 500;">boardalgofounder@gmail.com</a>.
+                                        </p>
+                                    </div>
+                                </td>
+                            </tr>
+                            
+                            <tr>
+                                <td style="padding: 24px 40px; background-color: rgba(0,0,0,0.2); border-top: 1px solid #1e293b; text-align: center;">
+                                    <p style="margin: 0; font-size: 12px; color: #64748b;">
+                                        &copy; ${new Date().getFullYear()} BoardAlgo. All rights reserved.<br>
+                                        The ultimate AI-powered study companion.
+                                    </p>
+                                </td>
+                            </tr>
+
+                        </table>
+                    </td>
+                </tr>
+            </table>
+        </body>
+        </html>
+    `,
+    textContent: `Password Reset Request\n\nWe received a request to reset the password for your BoardAlgo account. \n\nPlease click the following link to reset your password: ${resetUrl}\n\nThis link will expire in 15 minutes. If you did not request this, please ignore this email or let us know at boardalgofounder@gmail.com.\n\n© ${new Date().getFullYear()} BoardAlgo.`,
+    tags: ["password-reset"]
+      });
+        messageId = response.messageId ;
+        console.log('OTP email sent successfully. Message ID:', response.messageId);
+        return { success: true, messageId: response.messageId };
+        
+    } catch (error) {
+        console.error('Failed to send OTP email:', error);
+        return { success: false, error: error.message };
+    }
+}
+
+// Usage
+sendOTPEmail(userEmail, resetLink);
+
+    //   ///////////////////////////
+
 await PasswordReset.create(
   {
     email : userEmail , 
-    senderEmail : SENDER_EMAIL , 
-    content : mailOptions , 
+    senderEmail : "boardalgofounder@gmail.com" , 
     token : reset_token , 
     resetStatus : "false" , 
-    messageId : result.messageId ,
+    messageId : messageId ,
     expiryAt : new Date(Date.now() + 30*60*1000) ,
     url : resetLink 
   }) ;
@@ -533,8 +616,12 @@ await PasswordReset.create(
   }
 });
 
-// forgot password ends here
 
+
+
+
+
+//email api ended here 
 
 app.get("/reset-password/mail" , async function(req,res)
 {

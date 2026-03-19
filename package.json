@@ -11,6 +11,7 @@
   "license": "ISC",
   "description": "Bangalore-based Web Dev & Automation",
   "dependencies": {
+    "@getbrevo/brevo": "^5.0.1",
     "@google/generative-ai": "^0.24.1",
     "axios": "^1.13.6",
     "bcrypt": "^6.0.0",
