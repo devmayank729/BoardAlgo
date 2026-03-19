@@ -13,6 +13,14 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <script>
+
+window.addEventListener('DOMContentLoaded', () => {
+    <% if(typeof error !== 'undefined' && error) { %>
+        openModal();
+        switchTab('info');
+    <% } %>
+});
+
         tailwind.config = {
             darkMode: 'class',
             theme: {
@@ -478,6 +486,31 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-8 sm:space-y-10">
 
         <!-- Greeting -->
+        
+                        <div class="px-1">
+            <% if(typeof error !== 'undefined' && error) { %>
+                <div class="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3 animate-bounce">
+                    <i data-lucide="alert-circle" class="w-4 h-4 text-red-500"></i>
+                    <p class="text-xs font-bold text-red-600"><%= error %></p>
+                </div>
+            <% } %>
+
+            <% if(!user.phone_number) { %>
+                <div class="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 flex items-center gap-3">
+                    <i data-lucide="phone-off" class="w-4 h-4 text-red-500"></i>
+                    <p class="text-xs font-medium text-red-600">Phone number missing. Update now to secure your account.</p>
+                </div>
+            <% } %>
+
+            <% if(!user.Class) { %>
+                <div class="mb-4 p-3 rounded-xl bg-amber-50 border border-amber-200 flex items-center gap-3">
+                    <i data-lucide="graduation-cap" class="w-4 h-4 text-amber-500"></i>
+                    <p class="text-xs font-medium text-amber-600">Please select your class to get relevant AI solutions.</p>
+                </div>
+            <% } %>
+        </div>
+
+        
         <div class="gsap-entry space-y-2">
             <p class="text-sm font-medium text-slate-500 dark:text-gray-400">
                 <%= new Date().toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'}) %>
@@ -543,6 +576,8 @@
         <div class="gsap-entry upgrade-banner rounded-2xl p-5 sm:p-6">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 relative z-10">
                 <div class="flex items-center gap-4">
+
+
                     <div class="w-11 h-11 rounded-xl flex items-center justify-center flex-shrink-0" style="background:linear-gradient(135deg,#6C2BD9,#a855f7);box-shadow:0 4px 14px rgba(108,43,217,0.4);">
                         <i data-lucide="crown" class="w-5 h-5 text-white"></i>
                     </div>

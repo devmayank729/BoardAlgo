@@ -247,10 +247,17 @@ app.post("/api/auth/google/submit-details", async function(req, res) {
       } // ADDED: Closing brace
       return res.redirect("/dashboard"); // CHANGED: Swapped res.render("dash") for res.redirect to prevent "Confirm Form Resubmission" browser warnings on refresh
     });
-  } catch (error) { // ADDED: Catch block for the DB operations
-    console.log("Error saving details:", error); // ADDED: Error logging
-    return res.status(500).send("Database error occurred"); // ADDED: Error response sent to client
-  } // ADDED: Closing brace for catch
+  } catch (err) { // ADDED: Catch block for the DB operations
+    console.log("Error saving details:", err); // ADDED: Error logging
+    if(err.code == 11000)
+    {
+      const field = Object.keys(err.keyPattern)[0];
+      const value = err.keyValue[field]
+      return res.render("login" , {message : `${field} "${value}" already exists` , color : "red"}) ;
+    }
+    else
+    return res.render("login" , {message : "Error occured, please try again"}) ;
+  } 
 });
 
 app.get("/signup" , function(req, res)
@@ -282,7 +289,8 @@ if(existingUser)
 
 const password_hash = await bcrypt.hash(password , 10) ; 
  
-
+try 
+{
 const newuser = new user 
 (
     {
@@ -307,8 +315,20 @@ await newuser.save() ;
             const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : 1}) ;
 
             res.render("dash" , {user : req.session.user , interaction : existingInteraction , recentInteractions : recentInteraction} ) ; 
+}
 
-// res.render("dash" , {user : req.session.user , recentInteractions : null , interaction : null}) ; 
+catch (err) { // ADDED: Catch block for the DB operations
+    console.log("Error saving details:", err); // ADDED: Error logging
+    if(err.code == 11000)
+    {
+      const field = Object.keys(err.keyPattern)[0];
+      const value = err.keyValue[field]
+      return res.render("login" , {message : `${field} "${value}" already exists` , color : "red"}) ;
+    }
+    else
+    return res.render("login" , {message : "Error occured, please try again"}) ;
+  } 
+
 })
 
 
@@ -426,8 +446,33 @@ app.post("/user/update-profile" ,isLoggedIn, async function(req,res)
   }
   catch (err)
   {
-    console.log(err);
-    res.redirect("/dashboard") ; 
+    ///
+    console.log("Error saving details:", err); // ADDED: Error logging
+    // const existingInteraction = await interaction.find({user_id : req.session.user._id}) ; 
+    const recentInteraction = await interaction.find({user_id : req.session.user._id}).sort({timestamp : 1}) ;
+    if(err.code == 11000)
+    {
+      const field = Object.keys(err.keyPattern)[0];
+      const value = err.keyValue[field]
+      // return res.render("login" , {message : `${field} "${value}" already exists` , color : "red"}) ;
+      return res.render('dash', { 
+        user: req.session.user, 
+        error: `${field} "${value}" already exists`,
+        recentInteractions: recentInteraction // pass other required data
+    });
+    }
+    else
+    return res.render('dash', 
+  {
+    user: req.session.user, 
+    error : `Error occured while updating your profile` , 
+    recentInteraction:recentInteraction 
+  }) ;
+  
+
+
+    ///
+  
   }
 }
 )
@@ -448,12 +493,8 @@ app.post("/api/auth/forgot-password", async function (req, res) {
   try {
     const userEmail = req.body.email; 
     console.log("Email : ",userEmail);
-    // console.log("app_password : ",process.env.app_password) ;
-    // FIX 1: Use findOne to search, not findOneAndDelete. 
-    // Assuming your schema uses 'email' as the field name. If it's 'userEmail', change it to { userEmail: userEmail }
     const existingUser = await user.findOne({ email: userEmail }); 
 
-    // FIX 2: Flipped logic. If the user DOES NOT exist, show the error.
     if (!existingUser) 
     {
       console.log("--No user exist---") ; 
