@@ -1621,7 +1621,7 @@ console.log("parsedAiText : ",parsedAiText) ;
 await interaction.findByIdAndUpdate(newLI._id, {
   initial_ai_response: parsedAiText, 
   time_taken_ms: timeTaken,
-  image_urls: cloudinary_result.map(res => res.secure_url) 
+  answer_images: cloudinary_result.map(res => res.secure_url) 
 });
 
 parsedAiText.imageUrls = cloudinary_result.map(res => res.secure_url) ; 
@@ -1629,8 +1629,6 @@ parsedAiText.imageUrls = cloudinary_result.map(res => res.secure_url) ;
 console.log("parsedAiText.imageUrls",parsedAiText.imageUrls);
 
 return res.status(200).json(parsedAiText);
-
-
 
 
   } //try ended here 

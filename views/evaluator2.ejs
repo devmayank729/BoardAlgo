@@ -1,0 +1,2123 @@
+  <!DOCTYPE html>
+  <html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <title>BoardAlgo | Strict Board Evaluator</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Poppins:wght@500;600;700;800&family=Kalam:wght@400;700&display=swap" rel="stylesheet">
+
+    <!-- CDN: Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+
+    <!-- CDN: Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.js"></script>
+
+    <!-- CDN: GSAP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
+    <!-- CDN: Three.js (particle bg) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- CDN: Konva.js (image annotation canvas) -->
+    <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
+
+    <!-- CDN: KaTeX (math rendering) -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            colors: {
+              brand: {
+                black:   '#020617',
+                surface: '#0f172a',
+                border:  '#1e293b',
+                primary: '#6C2BD9',
+                accent:  '#16A34A',
+                red:     '#EF4444',
+              }
+            },
+            fontFamily: {
+              sans:    ['Inter', 'sans-serif'],
+              display: ['Poppins', 'sans-serif'],
+              hand:    ['Kalam', 'cursive'],
+            }
+          }
+        }
+      }
+    </script>
+
+    <style>
+      /* ─── CSS Variables ─────────────────────────────── */
+      :root {
+        --c-primary: #6C2BD9;
+        --c-accent:  #16A34A;
+        --c-red:     #EF4444;
+        --c-surface: #0f172a;
+        --c-bg:      #020617;
+      }
+
+      /* ─── Base ──────────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+      html { scroll-behavior: smooth; }
+      body {
+        background-color: #f8fafc;
+        color: #0f172a;
+        transition: background-color 0.3s, color 0.3s;
+        font-family: 'Inter', sans-serif;
+        -webkit-font-smoothing: antialiased;
+      }
+      .dark body { background-color: #020617; color: #f8fafc; }
+
+      /* ─── Scrollbar ─────────────────────────────────── */
+      ::-webkit-scrollbar { width: 5px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: rgba(108,43,217,0.3); border-radius: 3px; }
+
+      /* ─── Glass ─────────────────────────────────────── */
+      .glass {
+        background: rgba(255,255,255,0.75);
+        backdrop-filter: blur(16px);
+        -webkit-backdrop-filter: blur(16px);
+        border: 1px solid rgba(0,0,0,0.07);
+      }
+      .dark .glass {
+        background: rgba(15,23,42,0.65);
+        border: 1px solid rgba(255,255,255,0.08);
+      }
+
+      /* ─── Logout btn (match dashboard) ─────────────── */
+      .logout-btn {
+        display: flex; align-items: center; gap: 6px;
+        padding: 7px 13px; border-radius: 9px;
+        border: 1px solid rgba(239,68,68,0.28);
+        background: rgba(239,68,68,0.07);
+        color: #f87171; font-size: 0.8rem; font-weight: 500;
+        text-decoration: none; transition: all 0.2s;
+      }
+      .logout-btn:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.5); }
+
+      /* ─── Avatar ring ───────────────────────────────── */
+      .avatar-ring {
+        background: conic-gradient(#6C2BD9 0%, #a78bfa 45%, #16A34A 70%, #6C2BD9 100%);
+        border-radius: 50%; padding: 2px; display: inline-flex;
+      }
+      .avatar-inner {
+        border-radius: 50%; overflow: hidden;
+        display: flex; align-items: center; justify-content: center;
+        font-family: 'Poppins', sans-serif; font-weight: 700;
+      }
+
+      /* ─── Footer link ───────────────────────────────── */
+      .footer-link { color: #94a3b8; font-size: 0.875rem; text-decoration: none; transition: color 0.2s; }
+      .footer-link:hover { color: var(--c-primary); }
+
+      /* ═══════════════════════════════════════════════════
+        STATE A — UPLOAD
+      ══════════════════════════════════════════════════════ */
+
+      /* Drop zone */
+      #drop-zone {
+        border: 2px dashed rgba(108,43,217,0.35);
+        border-radius: 22px;
+        transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
+        cursor: pointer; position: relative; overflow: hidden;
+      }
+      #drop-zone::before {
+        content: '';
+        position: absolute; inset: 0;
+        background: radial-gradient(ellipse at 50% -10%, rgba(108,43,217,0.07), transparent 65%);
+        pointer-events: none; transition: opacity 0.3s;
+      }
+      #drop-zone.drag-over {
+        border-color: var(--c-primary);
+        box-shadow: 0 0 0 4px rgba(108,43,217,0.18), 0 24px 48px rgba(108,43,217,0.15);
+        transform: scale(1.012);
+      }
+      #drop-zone.drag-over::before { opacity: 2; }
+      #drop-zone:hover:not(.drag-over) {
+        border-color: rgba(108,43,217,0.6);
+        box-shadow: 0 8px 32px rgba(108,43,217,0.1);
+      }
+
+      /* Upload icon bounce */
+      .upload-icon-wrap {
+        width: 84px; height: 84px; border-radius: 24px;
+        margin: 0 auto 22px;
+        background: linear-gradient(135deg, rgba(108,43,217,0.13), rgba(99,102,241,0.1));
+        border: 1px solid rgba(108,43,217,0.22);
+        display: flex; align-items: center; justify-content: center;
+        transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+      }
+      #drop-zone:hover .upload-icon-wrap { transform: translateY(-6px) scale(1.07); }
+
+      /* File chip */
+      .file-chip {
+        display: flex; align-items: center; gap: 7px;
+        padding: 5px 10px 5px 8px; border-radius: 10px;
+        background: rgba(108,43,217,0.1); border: 1px solid rgba(108,43,217,0.22);
+        font-size: 0.75rem; font-weight: 500; color: #a78bfa;
+        animation: chipIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
+        max-width: 190px;
+      }
+      .dark .file-chip { background: rgba(108,43,217,0.16); }
+      @keyframes chipIn {
+        from { opacity:0; transform: scale(0.85) translateY(6px); }
+        to   { opacity:1; transform: none; }
+      }
+      .file-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex:1; }
+      .chip-remove { cursor: pointer; opacity: 0.6; flex-shrink:0; transition: opacity 0.15s, transform 0.15s; }
+      .chip-remove:hover { opacity:1; transform: scale(1.2); }
+
+      /* Format badge */
+      .fmt-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 5px 12px; border-radius: 10px;
+        font-size: 0.75rem; font-weight: 600;
+        border: 1px solid rgba(0,0,0,0.07);
+        background: rgba(0,0,0,0.03);
+        color: #475569; transition: all 0.2s;
+      }
+      .dark .fmt-badge {
+        border-color: rgba(255,255,255,0.07);
+        background: rgba(255,255,255,0.04);
+        color: #94a3b8;
+      }
+      .fmt-badge:hover { border-color: rgba(108,43,217,0.3); background: rgba(108,43,217,0.06); color: #a78bfa; }
+
+      /* Submit btn */
+      .btn-submit {
+        width: 100%; padding: 15px 24px; border-radius: 15px;
+        background: linear-gradient(135deg, #6C2BD9 0%, #7c3aed 45%, #b91c1c 100%);
+        color: #fff; font-family: 'Poppins', sans-serif; font-weight: 700;
+        font-size: 1.0rem; letter-spacing: 0.01em; border: none; cursor: pointer;
+        box-shadow: 0 6px 28px rgba(108,43,217,0.45), inset 0 1px 0 rgba(255,255,255,0.15);
+        transition: all 0.25s ease; position: relative; overflow: hidden;
+      }
+      .btn-submit::after {
+        content: ''; position: absolute; inset: 0;
+        background: linear-gradient(135deg, rgba(255,255,255,0.14), transparent 60%);
+        pointer-events: none;
+      }
+      .btn-submit:hover:not(:disabled) {
+        transform: translateY(-2px);
+        box-shadow: 0 12px 36px rgba(108,43,217,0.55), inset 0 1px 0 rgba(255,255,255,0.15);
+      }
+      .btn-submit:active:not(:disabled) { transform: translateY(0); }
+      .btn-submit:disabled { opacity: 0.45; cursor: not-allowed; }
+
+      /* ═══════════════════════════════════════════════════
+        LOADING STATE
+      ══════════════════════════════════════════════════════ */
+      .scanner-line {
+        position: absolute; left: 0; right: 0; height: 2px;
+        background: linear-gradient(90deg, transparent, #6C2BD9, #EF4444, transparent);
+        animation: scan 2s linear infinite;
+      }
+      @keyframes scan {
+        0%  { top: 0; opacity: 1; }
+        95% { top: 100%; opacity: 0.6; }
+        100%{ top: 0; opacity: 0; }
+      }
+      @keyframes thinking-pulse {
+        0%,100% { opacity:1; transform: scale(1); }
+        50% { opacity:0.3; transform: scale(0.75); }
+      }
+      .t-dot { animation: thinking-pulse 1.5s ease-in-out infinite; }
+      .t-dot:nth-child(2) { animation-delay: 0.25s; }
+      .t-dot:nth-child(3) { animation-delay: 0.5s; }
+
+      /* ═══════════════════════════════════════════════════
+        STATE B — RESULT
+      ══════════════════════════════════════════════════════ */
+
+      /* Scorecard */
+      .scorecard {
+        background: linear-gradient(135deg, rgba(239,68,68,0.07) 0%, rgba(108,43,217,0.06) 50%, rgba(22,163,74,0.04) 100%);
+        border: 1px solid rgba(239,68,68,0.22);
+      }
+      .dark .scorecard { background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(108,43,217,0.08), rgba(22,163,74,0.05)); }
+
+      /* Score ring */
+      .score-ring-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
+      .score-ring-wrap svg { transform: rotate(-90deg); }
+      .ring-track { fill: none; stroke: rgba(108,43,217,0.13); }
+      .ring-fill  { fill: none; stroke: url(#rGrad); stroke-linecap: round;
+                    transition: stroke-dashoffset 1.4s cubic-bezier(0.34,1.56,0.64,1); }
+      .ring-text  { position: absolute; text-align: center; font-family: 'Poppins', sans-serif; }
+
+      /* Strict badge */
+      .strict-badge {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 3px 10px; border-radius: 99px;
+        background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
+        color: #f87171; font-size: 0.68rem; font-weight: 800;
+        letter-spacing: 0.06em; text-transform: uppercase;
+      }
+
+      /* Difficulty pill */
+      .diff-pill {
+        padding: 2px 9px; border-radius: 99px;
+        font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+      }
+      .diff-easy   { background:rgba(22,163,74,0.12);  color:#4ade80; border:1px solid rgba(22,163,74,0.25); }
+      .diff-medium { background:rgba(245,158,11,0.12); color:#fbbf24; border:1px solid rgba(245,158,11,0.25); }
+      .diff-hard   { background:rgba(239,68,68,0.12);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
+
+      /* ─── AR Canvas wrapper ─────────────────────────── */
+      #canvas-wrapper {
+        position: relative;
+        display: inline-block;
+        width: 100%;
+        line-height: 0;
+        border-radius: 12px;
+        overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+      }
+      #student-img {
+        width: 100%;
+        height: auto;
+        display: block;
+        border-radius: 12px;
+      }
+      #konva-container {
+        position: absolute;
+        top: 0; left: 0;
+        width: 100%; height: 100%;
+        pointer-events: none;
+        border-radius: 12px;
+        overflow: hidden;
+      }
+
+      /* annotation tooltip */
+      .anno-tooltip {
+        position: absolute;
+        background: rgba(15,23,42,0.92);
+        backdrop-filter: blur(8px);
+        border: 1px solid rgba(239,68,68,0.35);
+        color: #fca5a5;
+        padding: 5px 10px; border-radius: 8px;
+        font-size: 0.75rem; font-weight: 600;
+        pointer-events: none; z-index: 20;
+        transform: translateX(-50%);
+        white-space: nowrap;
+        box-shadow: 0 4px 16px rgba(0,0,0,0.4);
+        opacity: 0; transition: opacity 0.15s;
+      }
+      .anno-tooltip.show { opacity: 1; }
+
+      /* ─── Topper's Notebook ─────────────────────────── */
+      .toppers-notebook {
+        background: #ffffff;
+        border-left: 4px solid var(--c-primary);
+        border-radius: 0 14px 14px 0;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(108,43,217,0.1);
+      }
+      .dark .toppers-notebook {
+        background: rgba(15,23,42,0.85);
+        border-left-color: #a78bfa;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+      }
+      .step-card {
+        border-bottom: 1px solid rgba(108,43,217,0.08);
+        transition: background 0.2s;
+      }
+      .dark .step-card { border-bottom-color: rgba(255,255,255,0.05); }
+      .step-card:last-child { border-bottom: none; }
+      .step-card:hover { background: rgba(108,43,217,0.03); }
+      .dark .step-card:hover { background: rgba(108,43,217,0.07); }
+      .step-num {
+        width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
+        background: linear-gradient(135deg, #6C2BD9, #a855f7);
+        display: flex; align-items: center; justify-content: center;
+        color: #fff; font-size: 0.75rem; font-weight: 700;
+        font-family: 'Poppins', sans-serif;
+        box-shadow: 0 3px 10px rgba(108,43,217,0.4);
+      }
+      .katex-block {
+        overflow-x: auto; padding: 10px 16px; border-radius: 10px;
+        background: rgba(108,43,217,0.05); border: 1px solid rgba(108,43,217,0.1);
+        margin-top: 10px;
+      }
+      .dark .katex-block { background: rgba(108,43,217,0.09); border-color: rgba(108,43,217,0.18); }
+      .katex-block .katex { font-size: 1.1em; }
+
+      /* ─── Rubric bar ────────────────────────────────── */
+      .rbar-track { background: rgba(0,0,0,0.06); height: 7px; border-radius: 99px; overflow: hidden; }
+      .dark .rbar-track { background: rgba(255,255,255,0.07); }
+      .rbar-fill { height: 100%; border-radius: 99px; transition: width 1.1s cubic-bezier(0.34,1.56,0.64,1); }
+
+      /* ─── Glow card ─────────────────────────────────── */
+      .glow-card { transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; }
+      .glow-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 16px 40px rgba(108,43,217,0.14);
+        border-color: rgba(108,43,217,0.25) !important;
+      }
+
+      /* ─── Metadata chip ─────────────────────────────── */
+      .meta-chip {
+        display: inline-flex; align-items: center; gap: 5px;
+        padding: 4px 10px; border-radius: 8px;
+        font-size: 0.72rem; font-weight: 600;
+        background: rgba(108,43,217,0.08); border: 1px solid rgba(108,43,217,0.18);
+        color: #a78bfa;
+      }
+      .dark .meta-chip { background: rgba(108,43,217,0.13); }
+
+      /* ─── Glow dot ──────────────────────────────────── */
+      .glow-dot {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: #16A34A; box-shadow: 0 0 6px #16A34A;
+        display: inline-block; animation: dotpulse 2s ease-in-out infinite;
+      }
+      @keyframes dotpulse {
+        0%,100% { opacity:1; transform:scale(1); }
+        50% { opacity:0.5; transform:scale(0.8); }
+      }
+
+      /* ─── Diagram placeholder ───────────────────────── */
+      .diagram-ph {
+        border: 2px dashed rgba(108,43,217,0.22);
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(108,43,217,0.04), rgba(99,102,241,0.03));
+        transition: border-color 0.3s, background 0.3s;
+      }
+      .diagram-ph:hover { border-color: rgba(108,43,217,0.42); }
+
+      /* ─── Section header rule ───────────────────────── */
+      .section-rule {
+        display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
+      }
+      .section-rule h3 { font-family: 'Poppins', sans-serif; font-weight: 700; }
+      .section-rule::after {
+        content: ''; flex: 1; height: 1px;
+        background: linear-gradient(90deg, rgba(108,43,217,0.2), transparent);
+      }
+
+      /* ─── Glass input ───────────────────────────────── */
+      .gl-input {
+        width: 100%;
+        background: rgba(255,255,255,0.55);
+        border: 1px solid rgba(0,0,0,0.08);
+        border-radius: 11px; padding: 9px 13px;
+        font-family: 'Inter', sans-serif; font-size: 0.875rem;
+        color: #0f172a; outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s;
+      }
+      .dark .gl-input {
+        background: rgba(0,0,0,0.28);
+        border-color: rgba(255,255,255,0.09);
+        color: #f1f5f9;
+      }
+      .gl-input:focus {
+        border-color: #6C2BD9;
+        box-shadow: 0 0 0 3px rgba(108,43,217,0.16);
+      }
+      .gl-input option { background: #0f172a; color: #f1f5f9; }
+      select.gl-input { cursor: pointer; }
+
+      /* ─── Responsive ────────────────────────────────── */
+      @media (max-width: 640px) {
+        .notebook-paper { padding: 28px 14px 36px 60px !important; }
+      }
+
+      /* ─── Print / PDF ───────────────────────────────── */
+      @media print {
+        #bg-canvas, nav, footer, #upload-section, #loading-section { display: none !important; }
+        body { background: white !important; }
+        .glass { background: white !important; box-shadow: none !important; }
+      }
+    </style>
+  </head>
+
+  <body class="antialiased min-h-screen flex flex-col relative overflow-x-hidden">
+
+  <!-- EJS: Backend injects evaluation data and image URL -->
+
+  <script>
+    window.injectedEvaluationData = <%- JSON.stringify(evaluationData || null) %>;
+  </script>
+
+  <!-- Particle canvas -->
+  <canvas id="bg-canvas" class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none" style="opacity:0.3;"></canvas>
+  <div class="fixed inset-0 -z-10 pointer-events-none"
+      style="background:radial-gradient(ellipse 70% 45% at 50% -10%, rgba(239,68,68,0.07), transparent);"></div>
+
+  <!-- ═══════════════════════════════ NAV ═══════════════════════════════ -->
+  <nav class="fixed top-0 w-full z-50 glass" style="border-bottom:1px solid rgba(0,0,0,0.05);">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6">
+      <div class="flex items-center justify-between h-16 gap-2">
+
+        <!-- Logo + breadcrumb -->
+        <div class="flex items-center gap-3 min-w-0">
+          <a href="/" class="flex items-center gap-2 flex-shrink-0">
+            <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-base"
+                style="background:linear-gradient(135deg,#6C2BD9,#a855f7);box-shadow:0 3px 10px rgba(108,43,217,0.4);">B</div>
+            <span class="text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white hidden sm:block">
+              BOARD <span style="color:#6C2BD9;">Algo</span>
+            </span>
+          </a>
+          <span class="hidden sm:flex items-center gap-1.5 text-sm text-slate-400 dark:text-gray-500">
+            <i data-lucide="chevron-right" class="w-3.5 h-3.5"></i>
+            <span class="font-bold" style="color:#EF4444;">Strict Examiner</span>
+          </span>
+        </div>
+
+        <!-- Right cluster -->
+        <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+
+          <!-- Theme toggle -->
+          <button id="theme-toggle"
+                  class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 transition-colors"
+                  aria-label="Toggle theme">
+            <i data-lucide="sun"  class="hidden dark:block w-4 h-4 sm:w-5 sm:h-5"></i>
+            <i data-lucide="moon" class="block dark:hidden w-4 h-4 sm:w-5 sm:h-5"></i>
+          </button>
+
+          <!-- Back to dashboard -->
+          <a href="/dashboard"
+            class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+                    text-slate-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
+            <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Dashboard
+          </a>
+
+          <a href="/auth/logout" class="logout-btn hidden sm:flex">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i><span>Logout</span>
+          </a>
+
+          <!-- Avatar chip -->
+          <div class="flex items-center gap-2 pl-2 sm:pl-3 border-l border-gray-200 dark:border-gray-800">
+            <div class="text-right hidden sm:block">
+              <p class="text-sm font-semibold text-slate-900 dark:text-white leading-tight"><%= user.username %></p>
+              <%
+                let navLabel = 'Free Trial';
+                if(user.subscription_status === 'ACTIVE') navLabel = 'Pro Member';
+                else if(user.subscription_status === 'EXPIRED' || user.subscription_status === 'CHURNED') navLabel = 'Expired';
+              %>
+              <p class="text-xs font-medium mt-0.5" style="color:#6C2BD9;"><%= navLabel %></p>
+            </div>
+            <% if(user.photoURL) { %>
+            <div class="avatar-ring flex-shrink-0" style="width:36px;height:36px;">
+              <div class="avatar-inner w-full h-full">
+                <img src="<%= user.photoURL %>" style="width:100%;height:100%;object-fit:cover;" alt="avatar">
+              </div>
+            </div>
+            <% } else { %>
+            <div class="h-9 w-9 rounded-full flex-shrink-0 flex items-center justify-center
+                        text-white font-bold text-base font-display"
+                style="background:linear-gradient(135deg,rgba(108,43,217,0.8),rgba(168,85,247,0.7));
+                        border:2px solid rgba(108,43,217,0.4);">
+              <%= user.username.charAt(0).toUpperCase() %>
+            </div>
+            <% } %>
+          </div>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ═══════════════════════════════ MAIN ═══════════════════════════════ -->
+  <main class="flex-grow pt-20 sm:pt-24 pb-16">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 space-y-7 sm:space-y-10">
+
+      <!-- ── Page Hero ── -->
+      <div class="gsap-entry text-center space-y-3 pt-2">
+        <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
+            style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);">
+          <i data-lucide="gavel" class="w-3.5 h-3.5" style="color:#f87171;"></i>
+          <span class="text-xs font-bold uppercase tracking-widest" style="color:#f87171;">AI-Powered · CBSE Grading</span>
+        </div>
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 dark:text-white tracking-tight leading-tight">
+          Strict Board
+          <span class="text-transparent bg-clip-text" style="background-image:linear-gradient(135deg,#EF4444 10%,#6C2BD9 90%);">
+            Evaluator
+          </span>
+        </h1>
+        <p class="text-base sm:text-lg text-slate-500 dark:text-gray-400 max-w-2xl mx-auto">
+          Upload your handwritten answer. AI grades it with surgical precision — visual annotations, marks breakdown, and a topper-quality model answer.
+        </p>
+      </div>
+
+      <!-- ── Feature tiles ── -->
+      <div class="gsap-entry grid grid-cols-2 sm:grid-cols-4 gap-3">
+        <div class="glass glow-card rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/5 text-center">
+          <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background:rgba(239,68,68,0.1);">
+            <i data-lucide="shield-check" class="w-4 h-4" style="color:#f87171;"></i>
+          </div>
+          <p class="text-xs font-bold text-slate-700 dark:text-gray-200 font-display">CBSE Marking</p>
+          <p class="text-xs text-slate-400 mt-0.5 hidden sm:block">Official scheme</p>
+        </div>
+        <div class="glass glow-card rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/5 text-center">
+          <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background:rgba(108,43,217,0.1);">
+            <i data-lucide="scan" class="w-4 h-4" style="color:#a78bfa;"></i>
+          </div>
+          <p class="text-xs font-bold text-slate-700 dark:text-gray-200 font-display">AR Annotations</p>
+          <p class="text-xs text-slate-400 mt-0.5 hidden sm:block">Visual marks</p>
+        </div>
+        <div class="glass glow-card rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/5 text-center">
+          <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background:rgba(22,163,74,0.1);">
+            <i data-lucide="sigma" class="w-4 h-4" style="color:#4ade80;"></i>
+          </div>
+          <p class="text-xs font-bold text-slate-700 dark:text-gray-200 font-display">KaTeX Math</p>
+          <p class="text-xs text-slate-400 mt-0.5 hidden sm:block">Perfect rendering</p>
+        </div>
+        <div class="glass glow-card rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/5 text-center">
+          <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background:rgba(245,158,11,0.1);">
+            <i data-lucide="zap" class="w-4 h-4" style="color:#fbbf24;"></i>
+          </div>
+          <p class="text-xs font-bold text-slate-700 dark:text-gray-200 font-display">Instant Results</p>
+          <p class="text-xs text-slate-400 mt-0.5 hidden sm:block">Under 30 sec</p>
+        </div>
+      </div>
+
+      <!-- ════════════ STATE A: UPLOAD FORM ════════════ -->
+      <div id="upload-section" class="gsap-entry">
+        <form id="evaluator-form" method="POST" action="/examiner/evaluate" enctype="multipart/form-data"
+              novalidate>
+
+          <!-- Hidden metadata fields (populated by JS before submit) -->
+          <input type="hidden" name="screen_width"        id="f-sw">
+          <input type="hidden" name="screen_height"       id="f-sh">
+          <input type="hidden" name="device_pixel_ratio"  id="f-dpr">
+          <input type="hidden" name="device_type"         id="f-dtype">
+          <input type="hidden" name="viewport_width"      id="f-vw">
+          <input type="hidden" name="viewport_height"     id="f-vh">
+          <input type="hidden" name="user_agent"          id="f-ua">
+          <input type="hidden" name="image_metadata_json" id="f-imgmeta">
+          <input type="hidden" name="timestamp_submit"    id="f-ts">
+
+          <!-- Subject / Marks / Class / Exam Year row -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Subject *</label>
+              <select name="subject" class="gl-input" required>
+                <option value="">Select…</option>
+                <option>Physics</option>
+                <option>Chemistry</option>
+                <option>Mathematics</option>
+                <option>Biology</option>
+                <option>English</option>
+                <option>History</option>
+                <option>Geography</option>
+                <option>Economics</option>
+                <option>Computer Science</option>
+                <option>Accountancy</option>
+                <option>Business Studies</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Max Marks *</label>
+              <input type="number" name="total_marks" min="1" max="100" placeholder="e.g. 5"
+                    class="gl-input" required>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Class *</label>
+              <select name="class" class="gl-input" required>
+                <option value="">Select…</option>
+                <% ['9','10','11','12'].forEach(function(c){ %>
+                <option value="<%= c %>" <%= (user.Class === c) ? 'selected' : '' %>>Class <%= c %></option>
+                <% }); %>
+              </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Exam Year</label>
+              <select name="exam_year" class="gl-input">
+                <option value="">Any</option>
+                <% for(let y=2025;y>=2015;y--){ %>
+                <option value="<%= y %>"><%= y %></option>
+                <% } %>
+              </select>
+            </div>
+          </div>
+
+          <!-- Question text -->
+          <div class="mb-4">
+            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+              Question / Topic
+              <span class="normal-case font-normal text-slate-400 ml-1">(improves accuracy significantly)</span>
+            </label>
+            <textarea name="question_text" rows="2"
+                      placeholder="e.g. Find the derivative of f(x) = x² · sin(x) using the product rule…"
+                      class="gl-input" style="resize:vertical;"></textarea>
+          </div>
+
+          <!-- ── Drag & Drop zone ── -->
+          <div id="drop-zone"
+              class="glass rounded-2xl p-8 sm:p-14 text-center mb-5"
+              role="button" tabindex="0" aria-label="Upload answer sheets">
+            <div class="upload-icon-wrap">
+              <i data-lucide="upload-cloud" class="w-10 h-10" style="color:#6C2BD9;"></i>
+            </div>
+            <h3 class="text-lg sm:text-xl font-bold font-display text-slate-900 dark:text-white mb-2">
+              Drop your answer sheets here
+            </h3>
+            <p class="text-sm text-slate-400 dark:text-gray-500 mb-7">
+              or <span class="font-semibold" style="color:#6C2BD9;">browse to upload</span>
+            </p>
+            <!-- Format badges -->
+            <div class="flex flex-wrap justify-center gap-2 mb-7">
+              <span class="fmt-badge"><i data-lucide="camera" class="w-3 h-3" style="color:#6C2BD9;"></i> Camera</span>
+              <span class="fmt-badge"><i data-lucide="image"  class="w-3 h-3" style="color:#818cf8;"></i> JPG / PNG / WEBP</span>
+              <span class="fmt-badge"><i data-lucide="file-text" class="w-3 h-3" style="color:#f472b6;"></i> PDF</span>
+              <span class="fmt-badge"><i data-lucide="layers" class="w-3 h-3" style="color:#fbbf24;"></i> Multiple Pages</span>
+            </div>
+            <!-- File chip list -->
+            <div id="file-preview-list" class="flex flex-wrap justify-center gap-2"></div>
+            <p id="drop-hint" class="text-xs text-slate-400 dark:text-gray-600 mt-5">Max 10 files · 20 MB each</p>
+          </div>
+          <input type="file" id="file-input" name="answer_images"
+                multiple accept="image/*" capture="environment" class="hidden">
+
+          <!-- Submit -->
+          <button type="submit" id="submit-btn" class="btn-submit" disabled>
+            <span id="submit-label" class="flex items-center justify-center gap-2.5">
+              <i data-lucide="gavel" class="w-5 h-5"></i>
+              Submit to Strict Examiner
+            </span>
+          </button>
+          <p class="text-center text-xs text-slate-400 dark:text-gray-600 mt-3">
+            Your screen & image metadata are sent alongside your answer to improve evaluation accuracy.
+          </p>
+        </form>
+      </div><!-- /upload-section -->
+
+      <!-- ════════════ LOADING STATE ════════════ -->
+      <div id="loading-section" class="hidden">
+        <div class="glass rounded-2xl border border-gray-200 dark:border-white/6 overflow-hidden" style="position:relative;">
+          <!-- Scanner animation bar -->
+          <div class="scanner-line"></div>
+          <div class="p-10 sm:p-16 text-center">
+            <div class="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center"
+                style="background:linear-gradient(135deg,#EF4444,#6C2BD9);box-shadow:0 8px 30px rgba(239,68,68,0.45);">
+              <i data-lucide="scan-line" class="w-9 h-9 text-white"></i>
+            </div>
+            <h3 class="text-xl font-bold font-display text-slate-900 dark:text-white mb-2">Examiner Analysing…</h3>
+            <p id="loading-status" class="text-sm text-slate-400 dark:text-gray-500 mb-8 transition-all duration-500">
+              Reading your handwriting…
+            </p>
+            <div class="flex justify-center gap-2.5">
+              <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#EF4444;"></span>
+              <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#6C2BD9;"></span>
+              <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#16A34A;"></span>
+            </div>
+            <!-- Progress steps -->
+            <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto text-left">
+              <div id="step-read"  class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500">
+                <div class="w-5 h-5 rounded-full border-2 border-purple-500 flex items-center justify-center animate-spin" id="spin-read">
+                  <i data-lucide="loader-2" class="w-3 h-3 text-purple-500"></i>
+                </div> Reading answer
+              </div>
+              <div id="step-eval"  class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500 opacity-40">
+                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center" id="spin-eval">
+                  <i data-lucide="loader-2" class="w-3 h-3 text-gray-400"></i>
+                </div> Applying marking
+              </div>
+              <div id="step-done"  class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500 opacity-40">
+                <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center" id="spin-done">
+                  <i data-lucide="loader-2" class="w-3 h-3 text-gray-400"></i>
+                </div> Generating answer
+              </div>
+            </div>
+          </div>
+        </div>
+      </div><!-- /loading -->
+
+      <!-- ════════════ STATE B: RESULT ════════════ -->
+      <div id="result-section" style="display:none;">
+      <div id="page-nav" class="hidden flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg p-1">
+              <button onclick="prevPage()" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-gray-300">
+                <i data-lucide="chevron-left" class="w-4 h-4"></i>
+              </button>
+              <span id="page-indicator" class="text-xs font-bold px-2">Page 1 / 1</span>
+              <button onclick="nextPage()" class="p-1 rounded hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-gray-300">
+                <i data-lucide="chevron-right" class="w-4 h-4"></i>
+              </button>
+            </div>
+
+        <!-- ─── 1. Scorecard ─── -->
+        <div class="gsap-r scorecard glass rounded-2xl p-5 sm:p-7 mb-6 border">
+          <div class="flex flex-col lg:flex-row items-start lg:items-center gap-6">
+
+            <!-- Score ring -->
+            <div class="score-ring-wrap flex-shrink-0 mx-auto lg:mx-0">
+              <svg width="130" height="130" viewBox="0 0 130 130">
+                <defs>
+                  <linearGradient id="rGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                    <stop offset="0%"   stop-color="#EF4444"/>
+                    <stop offset="100%" stop-color="#6C2BD9"/>
+                  </linearGradient>
+                </defs>
+                <circle class="ring-track" cx="65" cy="65" r="56" stroke-width="9"/>
+                <circle id="ring-fill-el" class="ring-fill" cx="65" cy="65" r="56"
+                        stroke-width="9" stroke-dasharray="351.9" stroke-dashoffset="351.9"/>
+              </svg>
+              <div class="ring-text">
+                <p id="score-main" class="text-2xl font-bold dark:text-white text-slate-900 leading-none">—</p>
+                <p class="text-xs text-slate-400 mt-0.5">marks</p>
+              </div>
+            </div>
+
+            <!-- Details -->
+            <div class="flex-1 w-full">
+              <div class="flex flex-wrap items-center gap-2 mb-3">
+                <h2 class="text-xl font-bold font-display text-slate-900 dark:text-white">Evaluation Complete</h2>
+                <span class="strict-badge"><i data-lucide="shield-alert" class="w-3 h-3"></i> Strict Mode</span>
+                <span id="diff-badge" class="diff-pill">—</span>
+              </div>
+
+              <!-- Meta chips -->
+              <div class="flex flex-wrap gap-2 mb-4" id="meta-chips"></div>
+
+              <!-- Problem statement -->
+              <div id="ps-wrapper" style="display:none;" class="mb-3">
+                <div class="flex items-start gap-2 p-3 rounded-xl"
+                    style="background:rgba(108,43,217,0.06);border:1px solid rgba(108,43,217,0.16);">
+                  <i data-lucide="help-circle" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style="color:#a78bfa;"></i>
+                  <div>
+                    <p class="text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">Question</p>
+                    <p id="problem-statement-banner" class="text-sm font-medium text-slate-800 dark:text-gray-100 leading-snug"></p>
+                  </div>
+                </div>
+              </div>
+
+              <!-- Summary -->
+              <div class="p-3 sm:p-4 rounded-xl mb-4"
+                  style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);">
+                <p class="text-sm font-semibold text-red-500 dark:text-red-400 mb-1 flex items-center gap-1.5">
+                  <i data-lucide="message-square-warning" class="w-3.5 h-3.5"></i>
+                  Examiner's Summary
+                </p>
+                <p id="eval-summary" class="text-sm text-slate-600 dark:text-gray-300 leading-relaxed"></p>
+              </div>
+
+              <!-- Rubric bars -->
+              <div id="rubric-bars" class="space-y-2.5 mb-4"></div>
+
+              <!-- Actions -->
+              <div class="flex flex-wrap gap-2">
+                <button onclick="resetEvaluator()"
+                        class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold
+                              border transition-all hover:opacity-80"
+                        style="border-color:rgba(108,43,217,0.3);background:rgba(108,43,217,0.08);color:#a78bfa;">
+                  <i data-lucide="refresh-ccw" class="w-3.5 h-3.5"></i> New Evaluation
+                </button>
+                <button id="btn-download"
+                        class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold
+                              border transition-all hover:opacity-80"
+                        style="border-color:rgba(22,163,74,0.3);background:rgba(22,163,74,0.08);color:#4ade80;">
+                  <i data-lucide="download" class="w-3.5 h-3.5"></i> Download PDF
+                </button>
+                <button id="btn-share"
+                        class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold
+                              border transition-all hover:opacity-80"
+                        style="border-color:rgba(108,43,217,0.3);background:rgba(108,43,217,0.08);color:#a78bfa;">
+                  <i data-lucide="share-2" class="w-3.5 h-3.5"></i> Share
+                </button>
+              </div>
+            </div>
+          </div>
+        </div><!-- /scorecard -->
+
+        <!-- ─── 2. AR Canvas ─── -->
+        <div class="gsap-r mb-8">
+          <div class="section-rule">
+            <h3 class="text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="scan" class="w-4 h-4" style="color:#6C2BD9;"></i>
+              Augmented Annotation View
+            </h3>
+          </div>
+
+          <!-- Toolbar -->
+          <div class="flex flex-wrap items-center gap-2 mb-3">
+            <button id="btn-toggle-annot" onclick="toggleAnnotations()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          border transition-all"
+                    style="border-color:rgba(108,43,217,0.3);background:rgba(108,43,217,0.08);color:#a78bfa;">
+              <i data-lucide="eye" class="w-3.5 h-3.5"></i> All: ON
+            </button>
+            <button id="btn-toggle-errors" onclick="toggleErrors()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          border transition-all"
+                    style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.07);color:#f87171;">
+              <i data-lucide="x-circle" class="w-3.5 h-3.5" style="color:#f87171;"></i> Errors: ON
+            </button>
+            <button id="btn-toggle-marks" onclick="toggleMarks()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          border transition-all"
+                    style="border-color:rgba(22,163,74,0.3);background:rgba(22,163,74,0.07);color:#4ade80;">
+              <i data-lucide="check-circle" class="w-3.5 h-3.5" style="color:#4ade80;"></i> Marks: ON
+            </button>
+            <button onclick="zoomImage(1.2)"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          border border-gray-200 dark:border-white/8 text-slate-600 dark:text-gray-300 transition-all hover:border-purple-400">
+              <i data-lucide="zoom-in" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="zoomImage(0.83)"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          border border-gray-200 dark:border-white/8 text-slate-600 dark:text-gray-300 transition-all hover:border-purple-400">
+              <i data-lucide="zoom-out" class="w-3.5 h-3.5"></i>
+            </button>
+            <button onclick="resetZoom()"
+                    class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold
+                          border border-gray-200 dark:border-white/8 text-slate-600 dark:text-gray-300 transition-all hover:border-purple-400">
+              <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i> Reset
+            </button>
+            <!-- Legend -->
+            <div class="flex items-center gap-3 ml-auto text-xs">
+              <span class="flex items-center gap-1.5 text-slate-500 dark:text-gray-400">
+                <span class="inline-block w-3 h-3 rounded-full" style="background:rgba(239,68,68,0.7);"></span> Error
+              </span>
+              <span class="flex items-center gap-1.5 text-slate-500 dark:text-gray-400">
+                <span class="inline-block w-3 h-3 rounded-full" style="background:rgba(22,163,74,0.8);"></span> Mark
+              </span>
+            </div>
+          </div>
+
+          <!-- Image + Konva wrapper -->
+          <div id="canvas-wrapper">
+            <img id="student-img" src="" alt="Student answer sheet" loading="lazy">
+            <div id="konva-container"></div>
+            <!-- Tooltip div -->
+            <div id="anno-tooltip" class="anno-tooltip"></div>
+          </div>
+
+          <!-- Image info bar -->
+          <div id="img-info-bar"
+              class="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400 dark:text-gray-500">
+          </div>
+        </div><!-- /AR canvas -->
+
+        <!-- ─── 3. Topper's Notebook ─── -->
+        <div class="gsap-r mb-8">
+          <div class="section-rule">
+            <h3 class="text-base text-slate-900 dark:text-white flex items-center gap-2">
+              <i data-lucide="book-open-check" class="w-4 h-4" style="color:#16A34A;"></i>
+              Topper's Perfect Answer
+            </h3>
+          </div>
+
+          <div class="toppers-notebook rounded-r-2xl overflow-hidden">
+            <!-- Header strip -->
+            <div class="px-5 sm:px-7 py-4 border-b border-gray-100 dark:border-white/5 flex items-center justify-between"
+                style="background:linear-gradient(90deg,rgba(108,43,217,0.06),transparent);">
+              <div class="flex items-center gap-2">
+                <i data-lucide="award" class="w-4 h-4" style="color:#16A34A;"></i>
+                <span class="text-sm font-bold text-slate-900 dark:text-white">Board-Standard Model Answer</span>
+              </div>
+              <span class="flex items-center gap-1.5 text-xs font-semibold px-3 py-1 rounded-full"
+                    style="background:rgba(22,163,74,0.1);color:#4ade80;border:1px solid rgba(22,163,74,0.25);">
+                <span class="glow-dot" style="width:5px;height:5px;"></span> 100% correct
+              </span>
+            </div>
+            <!-- Steps container -->
+            <div id="steps-container" class="p-5 sm:p-7"></div>
+          </div>
+        </div>
+
+        <!-- ─── 4. Diagram Placeholder ─── -->
+        <div class="gsap-r diagram-ph p-8 sm:p-10 text-center mb-6">
+          <div class="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center"
+              style="background:rgba(108,43,217,0.1);border:1px solid rgba(108,43,217,0.15);">
+            <i data-lucide="pen-tool" class="w-5 h-5" style="color:#a78bfa;"></i>
+          </div>
+          <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3"
+                style="background:rgba(108,43,217,0.12);border:1px solid rgba(108,43,217,0.22);color:#a78bfa;">
+            Coming Soon
+          </span>
+          <h4 class="text-base font-bold font-display text-slate-800 dark:text-gray-100 mb-2">
+            Diagramming Engine <span style="color:#6C2BD9;">v2.0</span>
+          </h4>
+          <p class="text-sm text-slate-500 dark:text-gray-400 max-w-sm mx-auto leading-relaxed">
+            CBSE-standard auto-generated diagrams — ray optics, circuit layouts, force vectors — rendered pixel-perfect for board exams.
+          </p>
+          <div class="flex flex-wrap justify-center gap-2 mt-4">
+            <span class="text-xs px-2.5 py-1 rounded-full border border-gray-200 dark:border-white/10 text-slate-400">Ray Diagrams</span>
+            <span class="text-xs px-2.5 py-1 rounded-full border border-gray-200 dark:border-white/10 text-slate-400">Circuit Diagrams</span>
+            <span class="text-xs px-2.5 py-1 rounded-full border border-gray-200 dark:border-white/10 text-slate-400">Force Vectors</span>
+            <span class="text-xs px-2.5 py-1 rounded-full border border-gray-200 dark:border-white/10 text-slate-400">Graphs</span>
+          </div>
+        </div>
+
+      </div><!-- /result-section -->
+
+    </div><!-- /max-w -->
+  </main>
+
+  <!-- ═══════════════════════════════ FOOTER ═══════════════════════════════ -->
+  <footer class="glass mt-auto relative z-10" style="border-top:1px solid rgba(0,0,0,0.05);">
+    <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-10">
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-7">
+        <div class="col-span-2 sm:col-span-1">
+          <div class="flex items-center gap-2 mb-3">
+            <div class="w-7 h-7 rounded-md flex items-center justify-center text-white font-bold text-sm"
+                style="background:linear-gradient(135deg,#6C2BD9,#a855f7);">B</div>
+            <span class="text-lg font-bold font-display text-slate-900 dark:text-white">BOARD <span style="color:#6C2BD9;">Algo</span></span>
+          </div>
+          <p class="text-slate-400 text-xs leading-relaxed">AI-powered CBSE exam preparation at topper-level quality.</p>
+        </div>
+        <div>
+          <h4 class="text-slate-700 dark:text-white font-semibold mb-3 text-xs uppercase tracking-wide">Platform</h4>
+          <ul class="space-y-1.5">
+            <li><a href="/features" class="footer-link text-xs">Features</a></li>
+            <li><a href="/pricing"  class="footer-link text-xs">Pricing</a></li>
+            <li><a href="/about"    class="footer-link text-xs">About Us</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-slate-700 dark:text-white font-semibold mb-3 text-xs uppercase tracking-wide">Resources</h4>
+          <ul class="space-y-1.5">
+            <li><a href="/blog"     class="footer-link text-xs">Study Tips</a></li>
+            <li><a href="/syllabus" class="footer-link text-xs">Syllabus</a></li>
+            <li><a href="/faq"      class="footer-link text-xs">FAQ</a></li>
+          </ul>
+        </div>
+        <div>
+          <h4 class="text-slate-700 dark:text-white font-semibold mb-3 text-xs uppercase tracking-wide">Legal</h4>
+          <ul class="space-y-1.5">
+            <li><a href="/privacy" class="footer-link text-xs">Privacy Policy</a></li>
+            <li><a href="/terms"   class="footer-link text-xs">Terms</a></li>
+          </ul>
+          <div class="mt-3">
+            <a href="/auth/logout" class="footer-link text-xs flex items-center gap-1.5 hover:text-red-400">
+              <i data-lucide="log-out" class="w-3 h-3"></i> Logout
+            </a>
+          </div>
+        </div>
+      </div>
+      <div class="border-t border-gray-200 dark:border-gray-800 pt-5 flex flex-col sm:flex-row justify-between items-center gap-3">
+        <p class="text-slate-400 text-xs">© 2025 BoardAlgo. All rights reserved.</p>
+        <div class="flex gap-4">
+          <a href="#" class="text-slate-400 hover:text-brand-primary transition-colors"><i data-lucide="twitter"  class="w-4 h-4"></i></a>
+          <a href="#" class="text-slate-400 hover:text-brand-primary transition-colors"><i data-lucide="instagram" class="w-4 h-4"></i></a>
+          <a href="#" class="text-slate-400 hover:text-brand-primary transition-colors"><i data-lucide="linkedin"  class="w-4 h-4"></i></a>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+  <script>
+  let currentImageIndex = 0;
+  let globalImageUrls = [];
+  let globalAnnotations = []; // Holds ALL annotations for all pages
+  let currentPageAnnotations = []; // Holds annotations just for the current page
+
+
+  /* ══════════════════════════════════════════════════════════════════════
+    BOARDALGO — STRICT BOARD EVALUATOR
+    Full state machine: Upload → Loading → Result with KonvaJS annotations
+    ══════════════════════════════════════════════════════════════════════ */
+
+  /* ── Demo / Fallback data (used when backend doesn't inject) ─────────── */
+  if (!window.injectedEvaluationData) {
+    window.injectedEvaluationData = {
+      meta: {
+        problem_statement: "Find the derivative of f(x) = x² · sin(x)",
+        total_marks_awarded: 3.5,
+        max_marks: 5,
+        evaluation_summary: "Good application of the product rule, but you made a sign error in the final simplification step. Marks deducted for missing the intermediate differentiation step.",
+        difficulty: "Medium",
+        subject: "Mathematics"
+      },
+      rubric: [
+        { label: "Concept Identification",  scored: 1,   total: 1,   color: "#4ade80" },
+        { label: "Product Rule Application",scored: 1.5, total: 2,   color: "#a78bfa" },
+        { label: "Simplification",          scored: 0.5, total: 1,   color: "#f87171" },
+        { label: "Final Answer",            scored: 0.5, total: 1,   color: "#fbbf24" },
+      ],
+      visual_annotations: [
+        // TICK — green checkmark on the correct product rule setup (Step 1)
+        { annotation_type: "tick",      color: "green", box_2d: [170, 60,  220, 110],  comment: "Correct formula applied" },
+        // TICK — green checkmark on the correctly differentiated terms (Step 2)
+        { annotation_type: "tick",      color: "green", box_2d: [300, 60,  350, 110],  comment: "Differentiation correct" },
+        // STEP_MARK — +2 awarded in right margin for Step 1 & 2
+        { annotation_type: "step_mark", color: "green", box_2d: [170, 840, 230, 960],  comment: "+2" },
+        // CIRCLE — red dashed ellipse around sign error
+        { annotation_type: "circle",    color: "red",   box_2d: [430, 180, 510, 420],  comment: "Sign error here" },
+        // TEXT — margin annotation explaining the sign error
+        { annotation_type: "text",      color: "red",   box_2d: [360,  60, 420, 200],  comment: "Sign Error! −0.5" },
+        // STEP_MARK — deduction for sign error (red)
+        { annotation_type: "step_mark", color: "red",   box_2d: [430, 840, 490, 960],  comment: "-½" },
+        // CROSS — red X over incomplete simplification in Step 3
+        { annotation_type: "cross",     color: "red",   box_2d: [565, 70,  615, 120],  comment: "Incomplete step" },
+        // CIRCLE — red circle around missing unit / incomplete region
+        { annotation_type: "circle",    color: "red",   box_2d: [555, 200, 625, 500],  comment: "Step not shown" },
+        // STEP_MARK — +1 for correct final answer expression
+        { annotation_type: "step_mark", color: "green", box_2d: [650, 840, 710, 960],  comment: "+1" },
+      ],
+      perfect_marker_answer: [
+        {
+          step: 1,
+          text: "Identify the structure: f(x) = x² · sin(x) is a product of two functions u(x) = x² and v(x) = sin(x). Apply the Product Rule.",
+          latex: "(uv)' = u'v + uv'"
+        },
+        {
+          step: 2,
+          text: "Differentiate each part individually:",
+          latex: "\\frac{d}{dx}(x^2) = 2x \\qquad \\text{and} \\qquad \\frac{d}{dx}(\\sin x) = \\cos x"
+        },
+        {
+          step: 3,
+          text: "Substitute back into the product rule formula:",
+          latex: "f'(x) = (2x)(\\sin x) + (x^2)(\\cos x)"
+        },
+        {
+          step: 4,
+          text: "Simplify to the final answer:",
+          latex: "\\boxed{f'(x) = 2x\\sin(x) + x^2\\cos(x)}"
+        }
+      ]
+    };
+    window.injectedImageUrls = '';
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+    1. BOOTSTRAP
+    ══════════════════════════════════════════════════════════════════════ */
+  lucide.createIcons();
+
+  const html = document.documentElement;
+  (function applyTheme() {
+    const saved = localStorage.theme;
+    if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+      html.classList.add('dark');
+    } else {
+      html.classList.remove('dark');
+    }
+  })();
+  document.getElementById('theme-toggle').addEventListener('click', () => {
+    html.classList.toggle('dark');
+    localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+  });
+
+  // GSAP entrance
+  gsap.from('.gsap-entry', { y: 24, opacity: 0, stagger: 0.08, duration: 0.7, ease: 'power2.out' });
+
+  /* ══════════════════════════════════════════════════════════════════════
+    2. DEVICE / SCREEN METADATA CAPTURE
+    ══════════════════════════════════════════════════════════════════════ */
+  function captureDeviceMetadata() {
+    const ua = navigator.userAgent;
+    let dtype = 'desktop';
+    if (/Mobi|Android|iPhone|iPad|iPod/i.test(ua)) dtype = 'mobile';
+    else if (/Tablet|iPad/i.test(ua)) dtype = 'tablet';
+
+    document.getElementById('f-sw').value    = screen.width;
+    document.getElementById('f-sh').value    = screen.height;
+    document.getElementById('f-dpr').value   = window.devicePixelRatio || 1;
+    document.getElementById('f-dtype').value = dtype;
+    document.getElementById('f-vw').value    = window.innerWidth;
+    document.getElementById('f-vh').value    = window.innerHeight;
+    document.getElementById('f-ua').value    = ua;
+    document.getElementById('f-ts').value    = new Date().toISOString();
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+    3. FILE MANAGEMENT
+    ══════════════════════════════════════════════════════════════════════ */
+  const dropZone    = document.getElementById('drop-zone');
+  const fileInput   = document.getElementById('file-input');
+  const previewList = document.getElementById('file-preview-list');
+  const submitBtn   = document.getElementById('submit-btn');
+  let   fileDT      = new DataTransfer(); // tracks selected files
+
+  function refreshSubmit() {
+    submitBtn.disabled = fileDT.files.length === 0;
+  }
+
+  function formatBytes(b) {
+    if (b < 1024) return b + ' B';
+    if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+    return (b / (1024 * 1024)).toFixed(2) + ' MB';
+  }
+
+  function buildImageMeta() {
+    const arr = Array.from(fileDT.files).map(f => ({
+      name: f.name, size: f.size, sizeHuman: formatBytes(f.size),
+      type: f.type, lastModified: f.lastModified
+    }));
+    document.getElementById('f-imgmeta').value = JSON.stringify(arr);
+  }
+
+  function addFiles(files) {
+    Array.from(files).forEach(f => {
+      if (fileDT.files.length >= 10) return;
+      if (f.size > 20 * 1024 * 1024) { alert(`"${f.name}" exceeds 20 MB limit.`); return; }
+      const dup = Array.from(fileDT.files).some(x => x.name === f.name && x.size === f.size);
+      if (dup) return;
+      fileDT.items.add(f);
+      renderChip(f);
+    });
+    fileInput.files = fileDT.files;
+    buildImageMeta();
+    refreshSubmit();
+  }
+
+  function renderChip(file) {
+    const chip = document.createElement('div');
+    chip.className = 'file-chip';
+    const isPdf = file.type === 'application/pdf';
+    chip.innerHTML = `
+      <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+        ${isPdf
+          ? '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'
+          : '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'}
+      </svg>
+      <span class="file-chip-name">${file.name}</span>
+      <span class="text-[10px] text-purple-300/70">${formatBytes(file.size)}</span>
+      <span class="chip-remove" title="Remove">✕</span>`;
+    chip.querySelector('.chip-remove').addEventListener('click', e => {
+      e.stopPropagation();
+      const newDT = new DataTransfer();
+      Array.from(fileDT.files).forEach(x => {
+        if (!(x.name === file.name && x.size === file.size)) newDT.items.add(x);
+      });
+      fileDT = newDT;
+      fileInput.files = fileDT.files;
+      buildImageMeta();
+      chip.remove();
+      refreshSubmit();
+    });
+    previewList.appendChild(chip);
+  }
+
+  // Click → open picker
+  dropZone.addEventListener('click', e => {
+    if (e.target.closest('.chip-remove') || e.target.closest('.file-chip')) return;
+    fileInput.click();
+  });
+  dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+  fileInput.addEventListener('change', () => addFiles(fileInput.files));
+
+  // Drag & Drop
+  ['dragenter','dragover'].forEach(ev =>
+    dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
+  ['dragleave','dragend','drop'].forEach(ev =>
+    dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-over')));
+  dropZone.addEventListener('drop', e => { e.preventDefault(); addFiles(e.dataTransfer.files); });
+
+  /* ══════════════════════════════════════════════════════════════════════
+    4. FORM SUBMIT — ASYNC FETCH WITH RETRY + TIMEOUT
+    ══════════════════════════════════════════════════════════════════════ */
+
+  const SUBMIT_TIMEOUT_MS  = 90_000;  // 90s hard limit (Gemini can be slow)
+  const SUBMIT_MAX_RETRIES = 2;       // retry twice on network failure
+  const RETRY_DELAY_MS     = 3_000;
+
+  const loadingMessages = [
+    'Reading your handwriting…',
+    'Parsing mathematical expressions…',
+    'Applying CBSE marking scheme…',
+    'Cross-referencing model answers…',
+    'Calculating marks breakdown…',
+    'Generating examiner annotations…',
+    'Composing perfect answer…',
+  ];
+  let loadingMsgIdx  = 0;
+  let loadingInterval = null;
+  let submitAbortCtrl = null;   // AbortController for the in-flight request
+
+  function startLoadingMessages() {
+    const el = document.getElementById('loading-status');
+    loadingMsgIdx = 0;
+    el.textContent = loadingMessages[0];
+    loadingInterval = setInterval(() => {
+      loadingMsgIdx = (loadingMsgIdx + 1) % loadingMessages.length;
+      el.style.opacity = '0';
+      setTimeout(() => { el.textContent = loadingMessages[loadingMsgIdx]; el.style.opacity = '1'; }, 250);
+      if (loadingMsgIdx >= 2) {
+        document.getElementById('step-eval').classList.remove('opacity-40');
+        document.getElementById('spin-eval').innerHTML =
+          '<i data-lucide="loader-2" class="w-3 h-3 text-purple-500 animate-spin"></i>';
+        lucide.createIcons();
+      }
+      if (loadingMsgIdx >= 6) {
+        document.getElementById('step-done').classList.remove('opacity-40');
+        document.getElementById('spin-done').innerHTML =
+          '<i data-lucide="loader-2" class="w-3 h-3 text-purple-500 animate-spin"></i>';
+        lucide.createIcons();
+      }
+    }, 1800);
+  }
+
+  /** showErrorState — renders a non-blocking error banner inside the loading card */
+  function showErrorState(title, detail, canRetry) {
+    clearInterval(loadingInterval);
+    const loadEl = document.getElementById('loading-section');
+    loadEl.innerHTML = `
+      <div class="glass rounded-2xl border border-red-500/20 overflow-hidden">
+        <div class="p-10 sm:p-14 text-center">
+          <div class="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center"
+              style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);">
+            <i data-lucide="alert-triangle" class="w-8 h-8" style="color:#f87171;"></i>
+          </div>
+          <h3 class="text-lg font-bold font-display text-slate-900 dark:text-white mb-2">${title}</h3>
+          <p class="text-sm text-slate-400 dark:text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">${detail}</p>
+          <div class="flex flex-wrap justify-center gap-3">
+            ${canRetry ? `<button onclick="retrySubmit()"
+              class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
+              style="background:linear-gradient(135deg,#6C2BD9,#7c3aed);box-shadow:0 4px 14px rgba(108,43,217,0.4);">
+              <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Retry
+            </button>` : ''}
+            <button onclick="resetEvaluator()"
+              class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all hover:opacity-80"
+              style="border-color:rgba(108,43,217,0.3);background:rgba(108,43,217,0.08);color:#a78bfa;">
+              <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload Again
+            </button>
+          </div>
+        </div>
+      </div>`;
+    lucide.createIcons();
+  }
+
+  /** submitWithRetry — wraps fetch in retry logic with timeout */
+  async function submitWithRetry(formData, attempt = 1) {
+    submitAbortCtrl = new AbortController();
+    const timeoutId = setTimeout(() => submitAbortCtrl.abort('timeout'), SUBMIT_TIMEOUT_MS);
+
+    try {
+      const response = await fetch('/examiner/evaluate', {
+        method: 'POST',
+        body:   formData,
+        signal: submitAbortCtrl.signal,
+      });
+      clearTimeout(timeoutId);
+
+      // ── HTTP-level errors ──────────────────────────────────────────────
+      if (!response.ok) {
+        if (response.status === 429) {
+          showErrorState(
+            'Rate limit reached',
+            'You\'ve used too many evaluations recently. Please wait a minute and try again.',
+            true
+          );
+          return;
+        }
+        if (response.status >= 500) {
+          throw new Error(`Server error ${response.status}`);
+        }
+        showErrorState(
+          `Request failed (${response.status})`,
+          'The server rejected the request. Please check your inputs and try again.',
+          false
+        );
+        return;
+      }
+
+      // ── Parse JSON ─────────────────────────────────────────────────────
+      let json;
+      try {
+        json = await response.json();
+      } catch (_) {
+        throw new Error('Invalid JSON from server');
+      }
+
+      // ── Success path ───────────────────────────────────────────────────
+      if (json && json.meta) {
+        renderResult(json, json.imageUrls || '');
+      } else {
+        showErrorState(
+          'Unexpected response format',
+          'The server returned data in an unrecognised format. Please try again.',
+          true
+        );
+      }
+
+    } catch (err) {
+      clearTimeout(timeoutId);
+
+      // Retry on network/timeout (not on explicit abort by user)
+      if (err.name !== 'AbortError' && err.message !== 'cancelled' && attempt <= SUBMIT_MAX_RETRIES) {
+        document.getElementById('loading-status').textContent =
+          `Network hiccup — retrying (attempt ${attempt + 1} of ${SUBMIT_MAX_RETRIES + 1})…`;
+        await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+        return submitWithRetry(formData, attempt + 1);
+      }
+
+      // Final failure
+      if (err.name === 'AbortError' || String(err.message).includes('timeout')) {
+        showErrorState(
+          'Request timed out',
+          `Gemini took longer than ${SUBMIT_TIMEOUT_MS / 1000}s. This sometimes happens with complex answers. Please try again.`,
+          true
+        );
+      } else {
+        showErrorState(
+          'Network error',
+          `Could not reach the server: ${err.message}. Check your connection and try again.`,
+          true
+        );
+      }
+    }
+  }
+
+  // Cached FormData for retry without re-reading files
+  let lastFormData = null;
+
+  function retrySubmit() {
+    if (!lastFormData) { resetEvaluator(); return; }
+    document.getElementById('loading-section').innerHTML = /* restore spinner HTML */ `
+      <div class="glass rounded-2xl border border-gray-200 dark:border-white/6 overflow-hidden" style="position:relative;">
+        <div class="scanner-line"></div>
+        <div class="p-10 sm:p-16 text-center">
+          <div class="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center"
+              style="background:linear-gradient(135deg,#EF4444,#6C2BD9);box-shadow:0 8px 30px rgba(239,68,68,0.45);">
+            <i data-lucide="scan-line" class="w-9 h-9 text-white"></i>
+          </div>
+          <h3 class="text-xl font-bold font-display text-slate-900 dark:text-white mb-2">Examiner Analysing…</h3>
+          <p id="loading-status" class="text-sm text-slate-400 dark:text-gray-500 mb-8 transition-all duration-500">Retrying…</p>
+          <div class="flex justify-center gap-2.5">
+            <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#EF4444;"></span>
+            <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#6C2BD9;"></span>
+            <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#16A34A;"></span>
+          </div>
+          <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto text-left">
+            <div id="step-read" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500">
+              <div class="w-5 h-5 rounded-full border-2 border-purple-500 flex items-center justify-center animate-spin" id="spin-read">
+                <i data-lucide="loader-2" class="w-3 h-3 text-purple-500"></i>
+              </div> Reading answer
+            </div>
+            <div id="step-eval" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500 opacity-40">
+              <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center" id="spin-eval">
+                <i data-lucide="loader-2" class="w-3 h-3 text-gray-400"></i>
+              </div> Applying marking
+            </div>
+            <div id="step-done" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500 opacity-40">
+              <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center" id="spin-done">
+                <i data-lucide="loader-2" class="w-3 h-3 text-gray-400"></i>
+              </div> Generating answer
+            </div>
+          </div>
+        </div>
+      </div>`;
+    lucide.createIcons();
+    startLoadingMessages();
+    submitWithRetry(lastFormData);
+  }
+
+  document.getElementById('evaluator-form').addEventListener('submit', function(e) {
+    e.preventDefault();   // always prevent default — we use fetch
+    if (fileDT.files.length === 0) return;
+
+    // Capture device metadata into hidden fields
+    captureDeviceMetadata();
+    buildImageMeta();
+
+    // Build FormData from the real form (includes all inputs + files)
+    lastFormData = new FormData(this);
+
+    // Switch to loading UI
+    document.getElementById('upload-section').style.cssText = 'opacity:0.4;pointer-events:none;';
+    document.getElementById('loading-section').classList.remove('hidden');
+    submitBtn.disabled = true;
+    document.getElementById('submit-label').innerHTML = `
+      <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"></circle>
+        <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+      </svg>
+      Grading in progress…`;
+    startLoadingMessages();
+
+    /*
+    * ── DEMO MODE ────────────────────────────────────────────────────────
+    * Remove the line below in production; submitWithRetry will call
+    * /examiner/evaluate and renderResult() from the real JSON response.
+    * ─────────────────────────────────────────────────────────────────────
+    */
+    submitWithRetry(lastFormData);
+    // PRODUCTION: submitWithRetry(lastFormData);
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+    5. RESULT RENDERER
+    ══════════════════════════════════════════════════════════════════════ */
+  function renderResult(data) {
+    clearInterval(loadingInterval);
+    document.getElementById('loading-section').classList.add('hidden');
+    document.getElementById('upload-section').style.display = 'none';
+
+    const rs = document.getElementById('result-section');
+    rs.style.display = 'block';
+
+    const { meta, rubric, visual_annotations, perfect_marker_answer } = data;
+
+    /* ── Scorecard ── */
+    const scored = meta.total_marks_awarded;
+    const maxMk  = meta.max_marks;
+    document.getElementById('score-main').textContent = `${scored}/${maxMk}`;
+
+    const dashArray = 351.9;
+    requestAnimationFrame(() => {
+      document.getElementById('ring-fill-el').style.strokeDashoffset =
+        dashArray * (1 - scored / maxMk);
+    });
+
+    // Difficulty badge
+    const diffEl = document.getElementById('diff-badge');
+    const d = (meta.difficulty || 'Medium').toLowerCase();
+    diffEl.textContent = meta.difficulty || 'Medium';
+    diffEl.className = 'diff-pill ' + (d === 'easy' ? 'diff-easy' : d === 'hard' ? 'diff-hard' : 'diff-medium');
+
+    // Meta chips — subject, score, screen info, confidence (if provided)
+    const chips = document.getElementById('meta-chips');
+    const confScore = (data.meta && typeof data.meta.confidence === 'number')
+      ? data.meta.confidence : null;
+
+    const chipDefs = [
+      [`<i data-lucide="book" class="w-3 h-3"></i>`, meta.subject],
+      [`<i data-lucide="target" class="w-3 h-3"></i>`, `${scored}/${maxMk} marks`],
+
+    ];
+    if (confScore !== null) {
+      const confPct  = Math.round(confScore * 100);
+      const confColor = confPct >= 80 ? '#4ade80' : confPct >= 55 ? '#fbbf24' : '#f87171';
+      chipDefs.push([
+        `<i data-lucide="activity" class="w-3 h-3" style="color:${confColor};"></i>`,
+        `AI Confidence: ${confPct}%`
+      ]);
+    }
+    chipDefs.forEach(([ic, txt]) => {
+      const c = document.createElement('span');
+      c.className = 'meta-chip';
+      c.innerHTML = `${ic} ${txt}`;
+      chips.appendChild(c);
+    });
+    lucide.createIcons();
+
+    // Problem statement banner
+    if (meta.problem_statement) {
+      const psWrap = document.getElementById('ps-wrapper');
+      const psEl   = document.getElementById('problem-statement-banner');
+      if (psWrap && psEl) { psEl.textContent = meta.problem_statement; psWrap.style.display = ''; }
+    }
+
+    // Summary
+    document.getElementById('eval-summary').textContent = meta.evaluation_summary;
+
+    // Rubric bars
+    const rubricData = rubric || [
+      { label: 'Conceptual Accuracy', scored: scored * 0.6, total: maxMk * 0.6, color: '#a78bfa' },
+      { label: 'Step Completeness',   scored: scored * 0.4, total: maxMk * 0.4, color: '#fbbf24' },
+    ];
+    const rbContainer = document.getElementById('rubric-bars');
+    rbContainer.innerHTML = '';
+    rubricData.forEach(r => {
+      const pct = Math.round((r.scored / r.total) * 100);
+      const row = document.createElement('div');
+      row.innerHTML = `
+        <div class="flex items-center justify-between mb-1">
+          <span class="text-xs font-medium text-slate-600 dark:text-gray-300">${r.label}</span>
+          <span class="text-xs font-bold" style="color:${r.color};">${r.scored}/${r.total}</span>
+        </div>
+        <div class="rbar-track">
+          <div class="rbar-fill" data-w="${pct}%" style="width:0%;background:${r.color};"></div>
+        </div>`;
+      rbContainer.appendChild(row);
+    });
+    setTimeout(() => {
+      rbContainer.querySelectorAll('.rbar-fill').forEach(b => { b.style.width = b.dataset.w; });
+    }, 120);
+
+    /* ── Image + Konva ── */
+    setupAugmentedCanvas(data.imageUrls, visual_annotations);
+
+    /* ── Topper's Notebook ── */
+    renderSteps(perfect_marker_answer);
+
+    /* ── GSAP entrance ── */
+    gsap.from('.gsap-r', { y: 28, opacity: 0, stagger: 0.12, duration: 0.7, ease: 'power2.out' });
+    lucide.createIcons();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+    6. SCHEMA VALIDATION + NORMALISATION LAYER
+    ══════════════════════════════════════════════════════════════════════ */
+
+  const SCHEMA_CURRENT_VERSION = '1.0';
+  const VALID_ANNOTATION_TYPES = new Set(['tick','cross','circle','text','step_mark']);
+  const CONFIDENCE_THRESHOLD   = 0.40; // drop annotations below 40% confidence
+
+  /**
+  * normalisePayload — handles two shapes from Gemini:
+  *   Shape A (versioned):  { "version": "1.0", "annotations": [...] }
+  *   Shape B (legacy flat): the raw visual_annotations array directly
+  * Always returns: { version, annotations[] }
+  */
+  function normalisePayload(raw) {
+    if (!raw) return { version: SCHEMA_CURRENT_VERSION, annotations: [] };
+    // Already the new versioned envelope
+    if (!Array.isArray(raw) && Array.isArray(raw.annotations))
+      return { version: raw.version || SCHEMA_CURRENT_VERSION, annotations: raw.annotations };
+    // Legacy: flat array
+    if (Array.isArray(raw))
+      return { version: SCHEMA_CURRENT_VERSION, annotations: raw };
+    // Fallback for data object with visual_annotations key (our own schema)
+    if (Array.isArray(raw.visual_annotations))
+      return { version: raw.version || SCHEMA_CURRENT_VERSION, annotations: raw.visual_annotations };
+    return { version: SCHEMA_CURRENT_VERSION, annotations: [] };
+  }
+
+  /**
+  * validateAnnotations — enforces the contract BEFORE drawing anything.
+  * • Rejects malformed entries (missing box_2d, unknown type)
+  * • Clamps all coords to [0, 1000]
+  * • Fixes inverted bounding boxes (ymin > ymax etc.)
+  * • Filters low-confidence annotations (< CONFIDENCE_THRESHOLD)
+  */
+  function validateAnnotations(annotations) {
+    const valid = [];
+    const skipped = [];
+
+    (annotations || []).forEach((a, idx) => {
+      // ① Must have a known annotation_type
+      if (!VALID_ANNOTATION_TYPES.has(a.annotation_type)) {
+        skipped.push({ idx, reason: `unknown type "${a.annotation_type}"` });
+        return;
+      }
+      // ② Must have a box_2d with exactly 4 numeric elements
+      if (!Array.isArray(a.box_2d) || a.box_2d.length !== 4 ||
+          a.box_2d.some(v => typeof v !== 'number' && isNaN(Number(v)))) {
+        skipped.push({ idx, reason: 'invalid box_2d' });
+        return;
+      }
+      // ③ Confidence filter — only if the field is present
+      if (typeof a.confidence === 'number' && a.confidence < CONFIDENCE_THRESHOLD) {
+        skipped.push({ idx, reason: `confidence ${a.confidence} below threshold` });
+        return;
+      }
+
+      // Clamp each coord to [0, 1000] and cast to Number
+      let [y0, x0, y1, x1] = a.box_2d.map(v => Math.max(0, Math.min(1000, Number(v))));
+
+      // Fix inverted boxes (Gemini sometimes returns them swapped)
+      if (y0 > y1) [y0, y1] = [y1, y0];
+      if (x0 > x1) [x0, x1] = [x1, x0];
+
+      // Enforce minimum 10px region to avoid zero-size shapes
+      if ((y1 - y0) < 10) y1 = y0 + 10;
+      if ((x1 - x0) < 10) x1 = x0 + 10;
+
+      a.box_2d = [y0, x0, y1, x1];
+      valid.push(a);
+    });
+
+    if (skipped.length > 0)
+      console.warn(`[BoardAlgo Validator] Skipped ${skipped.length} annotation(s):`, skipped);
+
+    return valid;
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+    7. KONVA ANNOTATION ENGINE
+    ══════════════════════════════════════════════════════════════════════ */
+  let konvaStage = null;
+  let konvaLayer = null;
+  let errorGroup  = null;   // layer group: red/error annotations
+  let markGroup   = null;   // layer group: green/mark annotations
+  let errorsVisible = true;
+  let marksVisible  = true;
+  let annotationsVisible = true;
+  let currentZoom = 1;
+  let currentAnnotations = [];
+
+  // Use a placeholder image for the demo when no real image is available
+  const DEMO_IMAGE_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png';
+
+
+  function setupAugmentedCanvas(imageUrls, rawAnnotations) {
+    // 1. Save data globally
+    globalImageUrls = imageUrls || [];
+    const payload = normalisePayload(rawAnnotations);
+    globalAnnotations = validateAnnotations(payload.annotations);
+    
+    currentImageIndex = 0;
+
+    // 2. Show/Hide Pagination UI
+    const pageNav = document.getElementById('page-nav');
+    if (globalImageUrls.length > 1) {
+      pageNav.classList.remove('hidden');
+      pageNav.classList.add('flex');
+    } else {
+      pageNav.classList.add('hidden');
+      pageNav.classList.remove('flex');
+    }
+
+    // 3. Render the first page
+    renderCurrentPage();
+  }
+
+  function renderCurrentPage() {
+    const img = document.getElementById('student-img');
+    const wrapper = document.getElementById('canvas-wrapper');
+
+    // Update page text (e.g., "Page 1 / 3")
+    document.getElementById('page-indicator').textContent = `Page ${currentImageIndex + 1} / ${globalImageUrls.length}`;
+
+    // Filter annotations for ONLY this page. 
+    // (Assuming Gemini uses 1-based indexing for page_number)
+    currentAnnotations = globalAnnotations.filter(a => a.page_number === (currentImageIndex + 1));
+
+    // Load the specific image
+    img.crossOrigin = 'anonymous';
+    img.src = globalImageUrls[currentImageIndex] || DEMO_IMAGE_URL;
+
+    img.onload = () => {
+      // Rebuild the Konva canvas specifically for this newly loaded image
+      buildKonva(); 
+    };
+  }
+
+  // 4. Navigation Functions
+  function prevPage() {
+    if (currentImageIndex > 0) {
+      currentImageIndex--;
+      renderCurrentPage();
+    }
+  }
+
+  function nextPage() {
+    if (currentImageIndex < globalImageUrls.length - 1) {
+      currentImageIndex++;
+      renderCurrentPage();
+    }
+  }
+
+  function buildKonva() {
+    const img      = document.getElementById('student-img');
+    const wrapper  = document.getElementById('canvas-wrapper');
+    const konvaDiv = document.getElementById('konva-container');
+
+    const rw = img.offsetWidth  || wrapper.offsetWidth  || 600;
+    const rh = img.offsetHeight || Math.round(rw * 1.4);
+
+    // Destroy old stage cleanly
+    if (konvaStage) { konvaStage.destroy(); konvaStage = null; }
+    errorGroup = null;
+    markGroup  = null;
+
+    konvaDiv.style.width  = rw + 'px';
+    konvaDiv.style.height = rh + 'px';
+
+    konvaStage = new Konva.Stage({ container: 'konva-container', width: rw, height: rh });
+    konvaLayer = new Konva.Layer();
+
+    // Two groups — independent visibility, better perf than one flat list
+    errorGroup = new Konva.Group({ name: 'errors' });  // red: cross, circle, text, red step_mark
+    markGroup  = new Konva.Group({ name: 'marks'  });  // green: tick, green step_mark
+
+    konvaLayer.add(errorGroup, markGroup);
+    konvaStage.add(konvaLayer);
+
+    if (annotationsVisible) drawAnnotations(rw, rh);
+  }
+
+  function drawAnnotations(rw, rh) {
+    // Clear both groups — not the layer (keeps groups alive)
+    if (errorGroup) errorGroup.destroyChildren();
+    if (markGroup)  markGroup.destroyChildren();
+
+    /* ── Scale helpers ───────────────────────────────────────────────────── */
+    const sw = (n) => Math.max(1.5, rw * n);
+    const fs = (n) => Math.max(10, Math.min(20, rw * n));
+
+    currentAnnotations.forEach(anno => {
+      // Coordinate contract: [ymin, xmin, ymax, xmax] on 0-1000 grid
+      const [yn, xn, ym, xm] = anno.box_2d;
+      const px = (xn / 1000) * rw;
+      const py = (yn / 1000) * rh;
+      const pw = ((xm - xn) / 1000) * rw;
+      const ph = ((ym - yn) / 1000) * rh;
+      const cx = px + pw / 2;
+      const cy = py + ph / 2;
+
+      const isRed   = anno.color === 'red';
+      const isGreen = anno.color === 'green';
+      const strokeC = isRed   ? 'rgba(239,68,68,0.88)'  :
+                      isGreen ? 'rgba(22,163,74,0.92)'   : 'rgba(108,43,217,0.88)';
+      const fillC   = isRed   ? 'rgba(239,68,68,0.09)'  :
+                      isGreen ? 'rgba(22,163,74,0.10)'   : 'rgba(108,43,217,0.09)';
+      const glowC   = isRed   ? '#EF4444'  :
+                      isGreen ? '#16A34A'  : '#6C2BD9';
+
+      // ── Route: errors (red) → errorGroup, marks (green) → markGroup ──
+      const target = isGreen ? markGroup : errorGroup;
+
+      /* ── TICK  ✓ ────────────────────────────────────────────────────── */
+      if (anno.annotation_type === 'tick') {
+        const r    = Math.max(14, Math.min(28, Math.min(pw, ph) / 2));
+        const halo = new Konva.Circle({ x: cx, y: cy, radius: r + 4,
+          fill: 'rgba(22,163,74,0.12)', stroke: 'rgba(22,163,74,0.35)', strokeWidth: 1 });
+        const bg   = new Konva.Circle({ x: cx, y: cy, radius: r,
+          fill: 'rgba(22,163,74,0.82)',
+          shadowColor: '#16A34A', shadowBlur: 10, shadowOpacity: 0.5 });
+        const ts   = r * 0.55;
+        const tick = new Konva.Line({
+          points: [cx - ts * 0.6, cy, cx - ts * 0.1, cy + ts * 0.6, cx + ts * 0.7, cy - ts * 0.55],
+          stroke: '#ffffff', strokeWidth: sw(0.008) + 1.5,
+          lineCap: 'round', lineJoin: 'round',
+        });
+        target.add(halo, bg, tick);
+        if (anno.comment) addTooltipBehaviour(bg, anno.comment, cx, py);
+
+      /* ── CROSS  ✗ ───────────────────────────────────────────────────── */
+      } else if (anno.annotation_type === 'cross') {
+        const r    = Math.max(14, Math.min(28, Math.min(pw, ph) / 2));
+        const halo = new Konva.Circle({ x: cx, y: cy, radius: r + 4,
+          fill: 'rgba(239,68,68,0.1)', stroke: 'rgba(239,68,68,0.3)', strokeWidth: 1 });
+        const bg   = new Konva.Circle({ x: cx, y: cy, radius: r,
+          fill: 'rgba(239,68,68,0.8)',
+          shadowColor: '#EF4444', shadowBlur: 10, shadowOpacity: 0.5 });
+        const arm  = r * 0.52;
+        const l1   = new Konva.Line({ points: [cx - arm, cy - arm, cx + arm, cy + arm],
+          stroke: '#ffffff', strokeWidth: sw(0.007) + 1.5, lineCap: 'round' });
+        const l2   = new Konva.Line({ points: [cx + arm, cy - arm, cx - arm, cy + arm],
+          stroke: '#ffffff', strokeWidth: sw(0.007) + 1.5, lineCap: 'round' });
+        target.add(halo, bg, l1, l2);
+        if (anno.comment) addTooltipBehaviour(bg, anno.comment, cx, py);
+
+      /* ── CIRCLE  (dashed ellipse) ───────────────────────────────────── */
+      } else if (anno.annotation_type === 'circle') {
+        const ellipse = new Konva.Ellipse({
+          x: cx, y: cy,
+          radiusX: Math.max(8, pw / 2), radiusY: Math.max(8, ph / 2),
+          stroke: strokeC, strokeWidth: sw(0.005), dash: [7, 4],
+          fill: fillC,
+          shadowColor: glowC, shadowBlur: 10, shadowOpacity: 0.3,
+        });
+        target.add(ellipse);
+        addTooltipBehaviour(ellipse, anno.comment, cx, py);
+
+      /* ── TEXT  (bubble + arrow) ─────────────────────────────────────── */
+      } else if (anno.annotation_type === 'text' && anno.comment) {
+        const label = new Konva.Label({ x: px, y: py });
+        label.add(new Konva.Tag({
+          fill: isRed ? 'rgba(239,68,68,0.92)' : 'rgba(22,163,74,0.92)',
+          cornerRadius: 7,
+          shadowColor: glowC, shadowBlur: 9, shadowOpacity: 0.45,
+        }));
+        label.add(new Konva.Text({
+          text: anno.comment, fontSize: fs(0.022),
+          fontFamily: 'Poppins, sans-serif', fontStyle: 'bold',
+          fill: '#ffffff', padding: 6,
+        }));
+        target.add(label);
+        if (ph > 4) {
+          const ay1 = py + fs(0.022) + 18, ay2 = py + ph * 0.85;
+          if (ay2 > ay1) {
+            target.add(new Konva.Arrow({
+              points: [px + 10, ay1, px + 10, ay2],
+              stroke: strokeC, fill: strokeC,
+              strokeWidth: 1.5, pointerLength: 7, pointerWidth: 6, dash: [4, 3],
+            }));
+          }
+        }
+
+      /* ── STEP_MARK  (margin score circle) ──────────────────────────── */
+      } else if (anno.annotation_type === 'step_mark' && anno.comment) {
+        const isDed = isRed || String(anno.comment).startsWith('-');
+        const bgF   = isDed ? 'rgba(239,68,68,0.88)' : 'rgba(22,163,74,0.88)';
+        const shd   = isDed ? '#EF4444' : '#16A34A';
+        const fontSize = fs(0.030);
+        const radius   = Math.max(18, Math.min(36, Math.min(pw, ph) / 2));
+
+        const circle = new Konva.Circle({
+          x: cx, y: cy, radius: radius, fill: bgF,
+          shadowColor: shd, shadowBlur: 14, shadowOpacity: 0.55,
+          stroke: isDed ? 'rgba(239,68,68,0.4)' : 'rgba(22,163,74,0.4)', strokeWidth: 1.5,
+        });
+        const label = new Konva.Text({
+          text: anno.comment, fontSize: fontSize,
+          fontFamily: 'Poppins, sans-serif', fontStyle: 'bold', fill: '#ffffff',
+          align: 'center', verticalAlign: 'middle',
+          width: radius * 2, height: radius * 2, x: cx - radius, y: cy - radius,
+        });
+        const rule = new Konva.Line({
+          points: [cx - radius - 6, cy, cx - radius - 30, cy],
+          stroke: isDed ? 'rgba(239,68,68,0.35)' : 'rgba(22,163,74,0.35)',
+          strokeWidth: 1.2, dash: [3, 3],
+        });
+        target.add(rule, circle, label);
+      }
+    });
+
+    // Apply group visibility state (persists across redraws)
+    if (errorGroup) errorGroup.visible(errorsVisible);
+    if (markGroup)  markGroup.visible(marksVisible);
+    konvaLayer.draw();
+  }
+
+  // Tooltip behaviour on Konva shapes
+  function addTooltipBehaviour(shape, comment, x, y) {
+    if (!comment) return;
+    const tooltip = document.getElementById('anno-tooltip');
+    shape.on('mouseenter touchstart', () => {
+      tooltip.textContent = comment;
+      tooltip.style.left  = x + 'px';
+      tooltip.style.top   = (y - 32) + 'px';
+      tooltip.classList.add('show');
+    });
+    shape.on('mouseleave touchend', () => {
+      tooltip.classList.remove('show');
+    });
+  }
+
+  // Toggle ALL annotations
+  function toggleAnnotations() {
+    annotationsVisible = !annotationsVisible;
+    const btn = document.getElementById('btn-toggle-annot');
+    if (annotationsVisible) {
+      drawAnnotations(konvaStage.width(), konvaStage.height());
+      btn.innerHTML = '<i data-lucide="eye" class="w-3.5 h-3.5"></i> All: ON';
+    } else {
+      if (errorGroup) errorGroup.visible(false);
+      if (markGroup)  markGroup.visible(false);
+      konvaLayer.draw();
+      btn.innerHTML = '<i data-lucide="eye-off" class="w-3.5 h-3.5"></i> All: OFF';
+    }
+    lucide.createIcons();
+  }
+
+  // Toggle only error (red) group
+  function toggleErrors() {
+    if (!errorGroup || !konvaStage) return;
+    errorsVisible = !errorsVisible;
+    errorGroup.visible(errorsVisible);
+    konvaLayer.draw();
+    const btn = document.getElementById('btn-toggle-errors');
+    btn.innerHTML = `<i data-lucide="${errorsVisible ? 'x-circle' : 'x-circle'}" class="w-3.5 h-3.5" style="color:#f87171;"></i> Errors: ${errorsVisible ? 'ON' : 'OFF'}`;
+    btn.style.opacity = errorsVisible ? '1' : '0.5';
+    lucide.createIcons();
+  }
+
+  // Toggle only marks (green) group
+  function toggleMarks() {
+    if (!markGroup || !konvaStage) return;
+    marksVisible = !marksVisible;
+    markGroup.visible(marksVisible);
+    konvaLayer.draw();
+    const btn = document.getElementById('btn-toggle-marks');
+    btn.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5" style="color:#4ade80;"></i> Marks: ${marksVisible ? 'ON' : 'OFF'}`;
+    btn.style.opacity = marksVisible ? '1' : '0.5';
+    lucide.createIcons();
+  }
+
+  // Zoom
+  function zoomImage(factor) {
+    currentZoom = Math.min(4, Math.max(0.5, currentZoom * factor));
+    const img = document.getElementById('student-img');
+    img.style.transformOrigin = 'top left';
+    img.style.transform = `scale(${currentZoom})`;
+    document.getElementById('canvas-wrapper').style.overflow = currentZoom > 1 ? 'auto' : 'hidden';
+  }
+  function resetZoom() {
+    currentZoom = 1;
+    document.getElementById('student-img').style.transform = '';
+    document.getElementById('canvas-wrapper').style.overflow = 'hidden';
+  }
+
+  // Responsive resize: rebuild Konva when wrapper size changes
+  const resizeObserver = new ResizeObserver(() => {
+    if (konvaStage && document.getElementById('result-section').style.display !== 'none') {
+      requestAnimationFrame(buildKonva);
+    }
+  });
+  resizeObserver.observe(document.getElementById('canvas-wrapper'));
+
+  // Also listen to orientation change
+  window.addEventListener('orientationchange', () => {
+    setTimeout(() => {
+      if (konvaStage) buildKonva();
+    }, 350);
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+    7. KATEX STEP RENDERER — Topper's Notebook
+    ══════════════════════════════════════════════════════════════════════ */
+  function renderSteps(steps) {
+    const container = document.getElementById('steps-container');
+    container.innerHTML = '';
+
+    (steps || []).forEach((s, i) => {
+      const card = document.createElement('div');
+      card.className = 'step-card py-5 px-1';
+
+      const header = document.createElement('div');
+      header.className = 'flex items-start gap-3 sm:gap-4';
+
+      const numEl = document.createElement('div');
+      numEl.className = 'step-num mt-0.5 flex-shrink-0';
+      numEl.textContent = s.step || (i + 1);
+
+      const body = document.createElement('div');
+      body.className = 'flex-1 min-w-0';
+
+      const textEl = document.createElement('p');
+      textEl.className = 'text-sm sm:text-base text-slate-700 dark:text-gray-200 leading-relaxed font-medium';
+      textEl.textContent = s.text;
+      body.appendChild(textEl);
+
+      if (s.latex) {
+        const mathBlock = document.createElement('div');
+        mathBlock.className = 'katex-block';
+        try {
+          katex.render(s.latex, mathBlock, {
+            displayMode: true,
+            throwOnError: false,
+            trust: true,
+          });
+        } catch(err) {
+          mathBlock.textContent = s.latex;
+          mathBlock.style.fontFamily = 'monospace';
+          mathBlock.style.color = '#6C2BD9';
+        }
+        body.appendChild(mathBlock);
+      }
+
+      header.appendChild(numEl);
+      header.appendChild(body);
+      card.appendChild(header);
+      container.appendChild(card);
+    });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+    8. RESET
+    ══════════════════════════════════════════════════════════════════════ */
+  function resetEvaluator() {
+    clearInterval(loadingInterval);
+
+    // Cancel any in-flight fetch
+    if (submitAbortCtrl) { try { submitAbortCtrl.abort('cancelled'); } catch(_){} submitAbortCtrl = null; }
+    lastFormData = null;
+
+    // Reset file state
+    fileDT = new DataTransfer();
+    fileInput.files = fileDT.files;
+    document.getElementById('file-preview-list').innerHTML = '';
+
+    // Reset Konva
+    if (konvaStage) { konvaStage.destroy(); konvaStage = null; }
+    errorGroup = null; markGroup = null;
+    errorsVisible = true; marksVisible = true; annotationsVisible = true;
+
+    // Reset img + DOM
+    document.getElementById('student-img').src = '';
+    document.getElementById('img-info-bar').innerHTML = '';
+    document.getElementById('meta-chips').innerHTML = '';
+    document.getElementById('rubric-bars').innerHTML = '';
+    document.getElementById('steps-container').innerHTML = '';
+    document.getElementById('ring-fill-el').style.strokeDashoffset = '351.9';
+    document.getElementById('score-main').textContent = '—';
+    const psWrap = document.getElementById('ps-wrapper');
+    if (psWrap) psWrap.style.display = 'none';
+
+    // Show upload, hide result + loading
+    const up = document.getElementById('upload-section');
+    up.style.display = ''; up.style.opacity = '1'; up.style.pointerEvents = '';
+    document.getElementById('loading-section').classList.add('hidden');
+    document.getElementById('result-section').style.display = 'none';
+
+    submitBtn.disabled = true;
+    document.getElementById('submit-label').innerHTML =
+      `<i data-lucide="gavel" class="w-5 h-5"></i> Submit to Strict Examiner`;
+
+    currentZoom = 1; currentAnnotations = [];
+    lucide.createIcons();
+    gsap.from('.gsap-entry', { y: 20, opacity: 0, stagger: 0.07, duration: 0.55, ease: 'power2.out' });
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+    9. DEMO SIMULATION (remove in production — backend renders directly)
+    ══════════════════════════════════════════════════════════════════════ */
+  function simulateDemoResult() {
+    const data = window.injectedEvaluationData;
+    renderResult(data); // Only pass data!
+  }
+
+  /* ══════════════════════════════════════════════════════════════════════
+    10. AUTO-TRIGGER: If data already injected by EJS on page load
+    ══════════════════════════════════════════════════════════════════════ */
+  window.addEventListener('DOMContentLoaded', () => {
+    if (window.injectedEvaluationData) {
+      // Data came from the DB — skip upload, render result immediately
+      document.getElementById('upload-section').style.display = 'none';
+      renderResult(window.injectedEvaluationData); // Only pass data!
+    }
+  });
+
+  /* ══════════════════════════════════════════════════════════════════════
+    11. THREE.JS PARTICLE BACKGROUND
+    ══════════════════════════════════════════════════════════════════════ */
+  (function initThree() {
+    const canvas   = document.getElementById('bg-canvas');
+    const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
+    const scene    = new THREE.Scene();
+    const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+    renderer.setSize(innerWidth, innerHeight);
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+
+    const count = window.innerWidth < 640 ? 700 : 1400;
+    const pos   = new Float32Array(count * 3);
+    for (let i = 0; i < count * 3; i++) pos[i] = (Math.random() - 0.5) * 22;
+
+    const geo = new THREE.BufferGeometry();
+    geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+    const mat  = new THREE.PointsMaterial({ size: 0.018, color: 0xEF4444, transparent: true, opacity: 0.45 });
+    const mesh = new THREE.Points(geo, mat);
+    scene.add(mesh);
+    camera.position.z = 4;
+
+    let mx = 0, my = 0;
+    document.addEventListener('mousemove', e => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; });
+    document.addEventListener('touchmove', e => {
+      if (e.touches[0]) { mx = e.touches[0].clientX / innerWidth - 0.5; my = e.touches[0].clientY / innerHeight - 0.5; }
+    }, { passive: true });
+
+    (function animate() {
+      requestAnimationFrame(animate);
+      mesh.rotation.y += 0.0003 + mx * 0.0014;
+      mesh.rotation.x += 0.0002 + my * 0.0008;
+      renderer.render(scene, camera);
+    })();
+
+    window.addEventListener('resize', () => {
+      camera.aspect = innerWidth / innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(innerWidth, innerHeight);
+    });
+  })();
+
+  /* ══════════════════════════════════════════════════════════════════════
+    12. MISC: Share + Download stubs
+    ══════════════════════════════════════════════════════════════════════ */
+  document.getElementById('btn-download').addEventListener('click', () => {
+    window.print();
+  });
+  document.getElementById('btn-share').addEventListener('click', async () => {
+    if (navigator.share) {
+      try {
+        await navigator.share({ title: 'My BoardAlgo Result', url: window.location.href });
+      } catch(_) {}
+    } else {
+      await navigator.clipboard.writeText(window.location.href);
+      const btn = document.getElementById('btn-share');
+      btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i> Copied!';
+      lucide.createIcons();
+      setTimeout(() => {
+        btn.innerHTML = '<i data-lucide="share-2" class="w-3.5 h-3.5"></i> Share';
+        lucide.createIcons();
+      }, 2000);
+    }
+  });
+  </script>
+
+  </body>
+  </html>
