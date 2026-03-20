@@ -5,6 +5,9 @@ const mongoose = require("mongoose") ;
 const bcrypt = require("bcrypt") ;
 const axios = require("axios") ; 
 const crypto = require("crypto") ;
+const multer = require("multer") 
+const cloudinaryModule = require('cloudinary') ; 
+const cloudinary = cloudinaryModule.v2 ; 
 require("dotenv").config(); 
 const session = require("express-session") ; 
 const googleAuth = require('google-auth-library');
@@ -15,11 +18,51 @@ const OAuth2Client = googleAuth.OAuth2Client ;
 const client = new OAuth2Client('703698570872-7f1r9chavrmun09rto85hce27ce129ho.apps.googleusercontent.com') ;
 // Create express app
 const app = express();
-
-
+app.set('trust proxy', 1); // to turn on the IP tracking
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 // Set Port
+cloudinary.config(
+  {
+    cloud_name : process.env.CLOUDINARY_CLOUD_NAME , 
+    api_key: process.env.CLOUDINARY_API_KEY , 
+    api_secret : process.env.CLOUDINARY_API_SECRET 
+  })
+
+  // if only one file is there we will uses this, but now we will use buffers
+  const upload = multer(
+    {
+      storage: multer.memoryStorage() ,
+      limits : {fileSize: 15*1024*1024} 
+    })
+
+
+async function uploadToCloudinary(buffer) {
+  const result = await new Promise( function(resolve, reject) 
+  {
+    const stream = cloudinary.uploader.upload_stream(
+      { folder: "boardalgo_evaluations" } , function(error, result) {
+                                            if (error) 
+                                              {
+                                              reject(error);
+                                              } 
+                                            else 
+                                              {
+                                              resolve(result);
+                                              }
+                                          }
+    );
+
+    stream.end(buffer);
+
+  });
+
+  return result;
+}
+
+
+
+
 const PORT = 3000;
 
 
@@ -57,32 +100,6 @@ function isLoggedIn (req,res,next)
     }
 }
 
-
-// app.get("/forgot/password" , async function(req , res)
-// {
-// res.render("forgot" , {message : null , color : null}) ; 
-// }
-// )
-
-// app.post("/api/auth/forgot-password" , async function (req , res)
-// {
-//   console.log(req.body) ;
-//   const email = req.body.email ; 
-//   const existingUser = user.findOne({email}) ; 
-//   if(!existingUser)
-//   {
-//     res.render("forgot",{message : "Please enter a valid mail ID", color : red}) ;
-//   }
-
-//   else 
-//   {
-//     res.render("mailconfirmation.ejs") ;
-//   }
-
-// }
-// )
-
-
 // Parse JSON data (for APIs)
 app.use(express.json());
 
@@ -103,8 +120,7 @@ app.set("views", path.join(__dirname, "views"));
 
 //==================
 // MONGODB 
-// mongodb+srv://boardAlgo:<db_password>@cluster0.s8j6pk7.mongodb.net/?appName=Cluster0
-// mongoose.connect(`mongodb+srv://boardAlgo:${process.env.db_password}@cluster0.s8j6pk7.mongodb.net/?appName=Cluster0`)
+
 mongoose.connect(`mongodb+srv://boardAlgo:${process.env.db_password}@cluster0.s8j6pk7.mongodb.net/?appName=Cluster0`) 
 .then(() => console.log("Database Connected ✅"))
 .catch(err => console.log(err));
@@ -339,9 +355,12 @@ catch (err) { // ADDED: Catch block for the DB operations
 
 const geoip = require('geoip-lite');
 const VisitorLog = require('./models/VisitorLog'); // Adjust path to your schema
+const LearningInteraction = require("./models/LearningInteraction");
 
 app.post('/api/analytics/log-visit', async (req, res) => {
   try {
+    // console.log("INCOMING TRACKING DATA:", req.body);
+    
     const { 
       session_cookie_id, 
       utm_source, 
@@ -1252,11 +1271,11 @@ app.get("/tools/question-bank" , function(req,res)
   res.render("commingsoon") ; 
 })
 
-app.get("/examiner" , function(req,res)
-{
-  res.render("commingsoon") ; 
-}
-)
+// app.get("/examiner" , function(req,res)
+// {
+//   res.render("commingsoon") ; 
+// }
+// )
 
 app.get("/reports" , function(req,res)
 {
@@ -1393,6 +1412,235 @@ catch (error)
 }
 
   })
+
+
+  app.get("/examiner" ,isLoggedIn, function(req,res)
+{
+  console.log("page loaded sucessfully") ; 
+  res.render("evaluator", {user : req.session.user , evaluationData  : null , imageUrl  : null}) ;
+
+})
+
+
+//taing the file from the evaluator and upload the file to cloudinary 
+
+app.post("/examiner/evaluate" ,isLoggedIn ,  upload.array('answer_images',10) , async function(req,res)
+{
+  console.log("1427 post request") ; 
+  if(!req.files || req.files.length==0)
+  {
+    console.log("no file uploaded") ;
+    return res.redirect("/dashboard") ; //if no file uplaoded redirect the user to the dashboard  
+  }
+  console.log("1434") ; 
+  try 
+  {
+    console.log("try block, 1437") ;
+     const {subject ,
+       total_marks , 
+       question_text , 
+       screen_width , screen_height , 
+       device_pixel_ratio ,
+       device_type ,
+       viewport_width,
+        viewport_height,
+        user_agent,
+        image_metadata_json, 
+        timestamp_submit } = req.body ; 
+
+        console.log("1450") ; 
+
+        const newLI = await LearningInteraction.create(
+          {
+            user_id : req.session.user._id , 
+            feature_type : 'BOARD_EVALUATOR' , 
+            user_query_text : question_text ,
+            subject : subject , 
+            total_marks : total_marks , 
+            student_class : req.session.user.Class ,
+            answer_images : "To be uplaoded soon" ,
+            screen_width : screen_width , 
+            screen_height : screen_height , 
+            device_pixel_ratio : device_pixel_ratio , 
+            device_type : device_type ,
+            viewport_width : viewport_width ,
+            viewport_height : viewport_height , 
+            user_agent : user_agent , 
+            image_metadata_json : image_metadata_json ,
+            timestamp_submit : timestamp_submit
+          })  
+        console.log("\n newLI :",newLI); 
+
+        //preparing image for gemini
+    const geminiImageHandling = req.files.map( file => ( 
+      {
+        inlineData :
+        {
+          data : file.buffer.toString('base64') ,
+          mimeType : file.mimetype , 
+        }
+      })) ; 
+      console.log("inlineData : ") ; 
+        // uploading to cloudinary 
+    const cloudinaryUploadPromise = req.files.map(file => 
+        uploadToCloudinary(file.buffer) 
+      )
+      console.log("cloudinaryUploadPromise passed") ; 
+      
+      
+const systemprompt = `You are an absolute authority and elite CBSE Senior Board Examiner specializing in ${subject}. 
+
+Your mandate is to evaluate the provided image of a student's handwritten answer against strict board-level marking schemes with uncompromising, surgical precision. 
+
+The maximum marks for this specific question are ${total_marks}. 
+
+Target Question / Topic: "${question_text}"
+
+System Modifiers:
+Deep Scan Active: True (If true, apply hyper-granular scrutiny to handwriting clarity, stray margin notes, and the most minor calculation anomalies. Penalize sloppiness if it obscures the core logic).
+
+You are not merely a text evaluator; you are an Augmented Reality (AR) Visual Examiner. You will physically "mark" the paper by providing precise 2D coordinates for ticks, crosses, circles, and marginal notes.
+
+THE CBSE EVALUATION DIRECTIVES (STRICTLY ENFORCED)
+
+1. Value Point Recognition: The marking scheme carries suggested value points. Students can have their own expression. If the expression is different but the core competency is correct, you MUST award the due marks.
+2. Ruthless Step-Marking: If a question has parts or steps, award marks for each correct step (e.g., +1/2 for formula, +1/2 for substitution, +1 for final calculation) up to the exact maximum of ${total_marks} marks.
+3. Unit Penalties: Strictly deduct 1/2 mark for missing or incorrect SI units at the final answer stage.
+4. No Cumulative Penalties: Do not deduct marks for cumulative errors. Penalize only the exact step where the error occurred; carry forward the logic for subsequent steps.
+5. Zero Tolerance for Bluffs: If the answer is totally incorrect, irrelevant, or a bluff, mark it with a CROSS and award exactly 0 marks for that segment.
+
+THE AR VISUAL ANNOTATION SYSTEM
+
+Use a Normalized 1000x1000 grid.
+[0, 0] = absolute top-left corner
+[1000, 1000] = absolute bottom-right corner
+
+Coordinates format: [ymin, xmin, ymax, xmax]
+
+Allowed Annotation Types:
+"tick" (green): Place over correct steps and valid formulas.
+"cross" (red): Place over wrong answers or blunders.
+"circle" (red): Encircle missing units, specific sign errors, or calculation mistakes.
+"text" (red): Write short, punchy margin notes (e.g., "Missing Unit", "Formula Error").
+"step_mark" (green/red): Write the exact partial marks awarded or deducted (e.g., "+1/2", "-1").
+
+THE PERFECT MARKER ANSWER (TOPPER'S SHEET)
+
+Generate a 100% perfect, board-standard model answer broken down into logical steps.
+Use standard text for explanations.
+Use precise LaTeX ONLY for mathematical equations and chemical formulas (e.g., \\\\int x^2 dx, CH_3COOH). Do NOT wrap LaTeX in $$ or $. Provide the raw LaTeX string.
+
+JSON OUTPUT RULES
+
+You must output ONLY a valid, minified JSON object.
+Do NOT wrap the output in markdown blocks.
+Do NOT include triple backticks (e.g., no \`\`\`json).
+Do NOT add any conversational text before or after the JSON.
+
+{
+  "meta": {
+    "problem_statement": "${question_text}",
+    "total_marks_awarded": Number,
+    "max_marks": ${total_marks},
+    "evaluation_summary": "Strict, objective 2-sentence feedback pointing out the exact reason for any lost marks.",
+    "difficulty": "Easy | Medium | Hard",
+    "subject": "${subject}"
+  },
+  "rubric": [
+    {
+      "label": "String (e.g., 'Formula / Concept')",
+      "scored": Number,
+      "total": Number,
+      "color": "#hex"
+    }
+  ],
+"visual_annotations": [
+    {
+      "page_number": "Number (1 for the first image, 2 for the second, etc.)",
+      "annotation_type": "tick | cross | circle | text | step_mark",
+      "color": "green | red",
+      "box_2d": [Number, Number, Number, Number],
+      "comment": "String or null"
+    }
+  ],
+  ],
+  "perfect_marker_answer": [
+    {
+      "step": Number,
+      "text": "String explanation of the step",
+      "latex": "LaTeX string or null"
+    }
+  ]
+}`;
+
+/// calling gemini ////////////////////////////////////////////////////////////////
+
+
+const startTime = Date.now() ; 
+const model = genAI.getGenerativeModel({ 
+  model: "gemini-3.1-pro-preview", 
+  systemInstruction : systemprompt , 
+});
+
+const [cloudinary_result , geminiResponse] = await Promise.all(
+  [
+    Promise.all(cloudinaryUploadPromise) , 
+
+    model.generateContent(
+    {
+        contents : [
+            {
+            role : "user" , 
+            parts : [ 
+                {text : `Question : ${question_text}`} ,
+                ...geminiImageHandling 
+                    ]
+            }
+        ], 
+
+        generationConfig : {
+            temperature : 0.4 , 
+            responseMimeType : "application/json"
+        }
+
+    }) 
+
+  ])
+  const endTime = Date.now() ; 
+  const timeTaken = endTime - startTime ; 
+
+
+
+
+
+  const rawAiText = geminiResponse.response.text();
+  const parsedAiText = JSON.parse(rawAiText) ; 
+
+console.log("parsedAiText : ",parsedAiText) ; 
+
+await interaction.findByIdAndUpdate(newLI._id, {
+  initial_ai_response: parsedAiText, 
+  time_taken_ms: timeTaken,
+  image_urls: cloudinary_result.map(res => res.secure_url) 
+});
+
+parsedAiText.imageUrls = cloudinary_result.map(res => res.secure_url) ; 
+
+console.log("parsedAiText.imageUrls",parsedAiText.imageUrls);
+
+return res.status(200).json(parsedAiText);
+
+
+
+
+  } //try ended here 
+
+  catch(err)
+  {
+    console.log("big error : ",err)  ;
+    res.redirect("/examiner") ; 
+  }
+})
 
 
 

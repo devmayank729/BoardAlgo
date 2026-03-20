@@ -35,7 +35,47 @@ const LearningInteractionSchema = new Schema({
   time_taken_ms: { type: Number }, // ADDED: Response generation time
   
   is_bookmarked: { type: Boolean, default: false },
-  dmp: { type: Date, default: Date.now, index: true } // Indexed for timeline views
+  dmp: { type: Date, default: Date.now, index: true }, // Indexed for timeline views
+
+  // ════════════ NEWLY INTEGRATED FIELDS ════════════
+  
+  subject: {
+    type: String,
+    enum: [
+      'Physics', 'Chemistry', 'Mathematics', 'Biology', 
+      'English', 'History', 'Geography', 'Economics', 
+      'Computer Science', 'Accountancy', 'Business Studies'
+    ]
+  },
+  total_marks: {
+    type: Number,
+    min: 1,
+    max: 100
+  },
+  student_class: { 
+    type: String,
+    enum: ['9', '10', '11', '12']
+  },
+  exam_year: {
+    type: Number,
+    min: 2015,
+    max: 2025
+  },
+  answer_images: [{
+    type: String // To support multiple file uploads alongside user_upload_url
+  }],
+
+  // Metadata 
+  screen_width: { type: Number },
+  screen_height: { type: Number },
+  device_pixel_ratio: { type: Number },
+  device_type: { type: String, trim: true },
+  viewport_width: { type: Number },
+  viewport_height: { type: Number },
+  user_agent: { type: String, trim: true },
+  image_metadata_json: { type: Schema.Types.Mixed },
+  timestamp_submit: { type: Date }
+
 } , { timestamps: true } );
 
 module.exports = mongoose.model('LearningInteraction', LearningInteractionSchema);
