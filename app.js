@@ -1255,280 +1255,1047 @@ res.render("mnemonic", {user : req.session.user}) ;
 // )
 
 
+// // ─────────────────────────────────────────────────────────────────────────────
+// // BoardAlgo — /api/generate-mnemonic
+// // Drop this entire file in. No fragments, no "replace this section".
+// // ─────────────────────────────────────────────────────────────────────────────
 
 
+// // ══════════════════════════════════════════════════════════════════════════════
+// // HELPER: safeExtractText
+// // Never throws. Logs finish reason so you always know WHY a response is empty.
+// // ══════════════════════════════════════════════════════════════════════════════
+// function safeExtractText(response) {
+//   try {
+//     const candidate    = response?.candidates?.[0];
+//     const finishReason = candidate?.finishReason;
 
-app.post("/api/generate-mnemonic", isLoggedIn, async function(req, res) {
+//     if (finishReason && finishReason !== 'STOP') {
+//       console.warn(`[safeExtractText] Non-STOP finish: ${finishReason}`);
+//       const ratings = candidate?.safetyRatings;
+//       if (ratings) console.warn('[safeExtractText] Safety ratings:', JSON.stringify(ratings));
+//     }
 
-  // ── 1. Extract & sanitize inputs ────────────────────────────
+//     const blockReason = response?.promptFeedback?.blockReason;
+//     if (blockReason) {
+//       console.error(`[safeExtractText] Prompt blocked: ${blockReason}`);
+//       return '';
+//     }
+
+//     const parts = candidate?.content?.parts;
+//     if (!parts || parts.length === 0) {
+//       console.warn('[safeExtractText] No parts in response');
+//       return '';
+//     }
+
+//     return parts.filter(p => typeof p.text === 'string').map(p => p.text).join('').trim();
+
+//   } catch (err) {
+//     console.error('[safeExtractText] threw:', err.message);
+//     return '';
+//   }
+// }
+
+
+// // ══════════════════════════════════════════════════════════════════════════════
+// // HELPER: robustJSONParse
+// // 4-layer extraction. Handles complete JSON, backtick-wrapped, truncated arrays.
+// // recoverTruncatedArray is the key fix for MAX_TOKENS cutoffs.
+// // ══════════════════════════════════════════════════════════════════════════════
+// function robustJSONParse(raw) {
+//   if (!raw || typeof raw !== 'string') throw new Error('Empty response from model');
+
+//   const cleaned = raw.trim()
+//     .replace(/^```json\s*/im, '')
+//     .replace(/^```\s*/im, '')
+//     .replace(/```\s*$/im, '')
+//     .trim();
+
+//   // Attempt 1: direct parse (works when responseMimeType did its job cleanly)
+//   try {
+//     const p = JSON.parse(cleaned);
+//     return Array.isArray(p) ? p : [p];
+//   } catch (_) {}
+
+//   // Attempt 2: recover complete objects from a truncated response
+//   // This is the primary fix for MAX_TOKENS — extracts every fully-closed { }
+//   // block, ignores the trailing incomplete fragment
+//   const recovered = recoverTruncatedArray(cleaned);
+//   if (recovered.length > 0) {
+//     console.log(`[robustJSONParse] Recovered ${recovered.length} object(s) from truncated response`);
+//     return recovered;
+//   }
+
+//   // Attempt 3: pull first [...] block (handles minor prose wrapping)
+//   const arrMatch = cleaned.match(/(\[[\s\S]*\])/);
+//   if (arrMatch) {
+//     try {
+//       const p = JSON.parse(arrMatch[1]);
+//       return Array.isArray(p) ? p : [p];
+//     } catch (_) {}
+//   }
+
+//   // Attempt 4: pull first complete { } block
+//   const objStr = extractFirstCompleteObject(cleaned);
+//   if (objStr) {
+//     try { return [JSON.parse(objStr)]; } catch (_) {}
+//   }
+
+//   throw new Error(`No parseable JSON. Response starts with: "${raw.slice(0, 120)}"`);
+// }
+
+// function recoverTruncatedArray(str) {
+//   const results = [];
+//   let depth = 0, start = -1, inString = false, escape = false;
+//   for (let i = 0; i < str.length; i++) {
+//     const ch = str[i];
+//     if (escape)                    { escape = false; continue; }
+//     if (ch === '\\' && inString)   { escape = true;  continue; }
+//     if (ch === '"')                { inString = !inString; continue; }
+//     if (inString)                  continue;
+//     if (ch === '{') { if (depth === 0) start = i; depth++; }
+//     else if (ch === '}') {
+//       depth--;
+//       if (depth === 0 && start !== -1) {
+//         try { results.push(JSON.parse(str.slice(start, i + 1))); } catch (_) {}
+//         start = -1;
+//       }
+//     }
+//   }
+//   return results;
+// }
+
+// function extractFirstCompleteObject(str) {
+//   let depth = 0, start = -1, inString = false, escape = false;
+//   for (let i = 0; i < str.length; i++) {
+//     const ch = str[i];
+//     if (escape)                    { escape = false; continue; }
+//     if (ch === '\\' && inString)   { escape = true;  continue; }
+//     if (ch === '"')                { inString = !inString; continue; }
+//     if (inString)                  continue;
+//     if (ch === '{') { if (depth === 0) start = i; depth++; }
+//     else if (ch === '}') {
+//       depth--;
+//       if (depth === 0 && start !== -1) return str.slice(start, i + 1);
+//     }
+//   }
+//   return null;
+// }
+
+
+// // ══════════════════════════════════════════════════════════════════════════════
+// // ROUTE
+// // ══════════════════════════════════════════════════════════════════════════════
+// app.post('/api/generate-mnemonic', isLoggedIn, async function (req, res) {
+
+//   // ── 1. Inputs ─────────────────────────────────────────────────────────────
+//   const question = (req.body.question || '').trim();
+//   const mode     = req.body.mode     || 'lore';
+//   const language = req.body.language || 'hinglish';
+//   const deepScan = req.body.deepScan === true || req.body.deepScan === 'true';
+
+//   if (!question || question.length < 3) {
+//     return res.status(400).json({ error: 'Please enter a valid question.' });
+//   }
+
+//   try {
+
+//     // ── 2. User + behaviour profile ────────────────────────────────────────
+//     const user      = req.session.user;
+//     const behaviour = await UserBehaviour.findOne({ user: user._id, status: 'Active' });
+
+//     const b = behaviour || {
+//       class_level:       'class_12',
+//       dopamine_schema:   'curiosity_driven',
+//       cortisol_response: 'moderate',
+//       von_restorff:      'grounded',
+//       memory_decay:      'slow_decay',
+//       social_ego:        'self_improver',
+//     };
+
+//     // ── 3. System prompt ───────────────────────────────────────────────────
+//     const systemPromptText = `
+// You are BoardAlgo AI Synapse — a memory encoding engine built exclusively for Indian CBSE board students.
+// You are NOT an AI assistant. You are NOT a chatbot.
+// Your only job: take any academic concept and produce one unforgettable memory trick.
+
+// NEVER refer to yourself as an AI or chatbot. You are "BoardAlgo AI Synapse".
+// NEVER write greetings, explanations, or commentary outside the JSON.
+// NEVER break from the JSON schema. Ever.
+
+// ────────────────────────────────────────
+// STUDENT PROFILE
+// ────────────────────────────────────────
+// username          : ${user.username}
+// class             : ${user.Class}
+// generation_mode   : ${mode}
+// deepscan_enabled  : ${deepScan}
+// CLASS_LEVEL       : ${b.class_level}
+// DOPAMINE_SCHEMA   : ${b.dopamine_schema}
+// CORTISOL_RESPONSE : ${b.cortisol_response}
+// VON_RESTORFF_STYLE: ${b.von_restorff}
+// MEMORY_DECAY_TYPE : ${b.memory_decay}
+// SOCIAL_EGO        : ${b.social_ego}
+// Language          : ${language}
+// ────────────────────────────────────────
+
+// ════════════════════════════════════════
+// THE ONE RULE THAT OVERRIDES EVERYTHING ELSE
+// ════════════════════════════════════════
+
+// A mnemonic that is hard to remember is WORSE than no mnemonic at all.
+
+// Every word you put in the mnemonic sentence must already live in the student's
+// head — something they say out loud to friends, at home, on the cricket field.
+// If they have to pause and think "what does that word mean?" — the mnemonic failed.
+
+// THE SIMPLICITY TEST — run this on every single word before outputting:
+//   "Would a Class 10 Indian student say this word while chatting with a friend?"
+//   YES → keep it.
+//   NO  → replace it with something from the PASS list below.
+
+// WORDS THAT ALWAYS PASS (use freely, mix Hindi + English naturally):
+//   Family  : Bhaiya, Didi, Maa, Papa, Nani, Chacha, Dost, Yaar
+//   School  : Class, Exam, Teacher, Bell, Copy, Homework, Period, Result
+//   Food    : Chai, Roti, Daal, Maggi, Bread, Biscuit, Samosa, Chips, Mango, Aam
+//   Cricket : Run, Wicket, Boundary, Six, Out, Match, Captain, Over
+//   Actions : Bhaga, Khaya, Soya, Roya, Laya, Gaya, Aaya, Maara, Gira, Uthha
+//   Common  : Ghar, School, Dukaan, Sadak, Paani, Kitab, Kalam, Cycle, Phone
+
+// WORDS THAT ALWAYS FAIL — never use these in a mnemonic sentence:
+//   ✗ Foreign foods nobody knows: Sriracha, Quinoa, Brie, Croissant, Hummus
+//   ✗ Fancy English: Serendipity, Ephemeral, Labyrinthine, Mellifluous
+//   ✗ Textbook Hindi: Vishambhar, Pracheen, Swar, Vyanjan (too formal)
+//   ✗ The concept words themselves used as the mnemonic (totally defeats the purpose)
+//   ✗ Any word that itself needs a dictionary
+
+// PROVEN EXAMPLE — Group 2 elements (Be, Mg, Ca, Sr, Ba, Ra):
+
+//   ✗ BAD:  "BEta MAnGe CAndy SRiracha BAdushaahi RAita"
+//      WHY: Sriracha is unknown. Badushaahi needs spelling. The student now
+//           needs to memorize the mnemonic ITSELF — double the work, zero gain.
+
+//   ✓ GOOD: "B·eta M·aange C·ar, S·cooter B·aad R·akh"
+//      WHY: Beta = son (everyone knows). Maange = demands (instant). Car, Scooter
+//           = universal. Baad rakh = keep it for later. Pure instant recall.
+
+//   ✓ ALSO GOOD: "B·haiya M·ango khaake C·ycle pe S·o gaya, B·aad mein R·oya"
+//      WHY: A bizarre, funny scene — but EVERY word is already in the student's head.
+
+// ════════════════════════════════════════
+
+// ════════════════════════════════════════
+// OUTPUT FORMAT RULES — NON-NEGOTIABLE
+// ════════════════════════════════════════
+
+// RULE 1 — PURE JSON, NO MARKDOWN ANYWHERE
+// Your entire response = one valid JSON array. Nothing before [. Nothing after ].
+// Inside every string value: NO asterisks, NO #headers, NO backticks, NO bold syntax.
+// A single ** reaching the student means the tool looks broken.
+
+// RULE 2 — hook_text AND hook_context ARE DIFFERENT THINGS
+//   hook_text    = THE MNEMONIC SENTENCE ONLY. The actual trick. Max 20 words.
+//   hook_context = ONE motivating line. Why this trick is powerful. Max 10 words.
+//   They must never contain each other's content.
+
+//   ✗ WRONG: hook_text = "Most students fail this. You won't. Remember: B·eta M·aange..."
+//   ✓ RIGHT: hook_context = "Most students fail this. You won't."
+//   ✓ RIGHT: hook_text    = "B·eta M·aange C·ar, S·cooter B·aad R·akh"
+
+// RULE 3 — DOT FORMAT FOR ACRONYM MNEMONICS
+//   B·eta  M·aange  C·ar     ← correct
+//   **B**eta  [B]eta         ← forbidden
+
+// RULE 4 — maps_to IS MANDATORY. EVERY CHIP. NO EXCEPTIONS.
+//   Every word_chip object must have a maps_to that directly answers:
+//   "What does this letter stand for in the subject?"
+//   Max 5 words. Written like a friend texting you the answer.
+
+//   ✗ FORBIDDEN maps_to values:
+//     ""              ← empty — instant failure
+//     "Element"       ← useless
+//     "See textbook"  ← useless
+
+//   ✓ CORRECT maps_to values:
+//     "Beryllium — Be, Period 2"
+//     "Magnesium — Mg, Period 3"
+//     "Sine = Opposite / Hypotenuse"
+//     "Quadrant 1: all positive"
+//     "Newton's First Law"
+
+// ════════════════════════════════════════
+
+// ────────────────────────────────────────
+// PSYCHOGRAPHIC RULES
+// ────────────────────────────────────────
+
+// CLASS_LEVEL:
+//   "class_10" → Hinglish mix preferred. Home and school examples. No JEE/NEET terms anywhere.
+//                Short sentences. One idea at a time. Very visual.
+//   "class_12" → Slightly more technical is fine in definition only.
+//                Mnemonic words themselves must still be simple daily-life words.
+//                JEE/NEET framing only in hook_context.
+
+// DOPAMINE_SCHEMA — controls hook_context energy:
+//   "thrill_seeker"    → "Toppers use this and clear the question in 3 seconds."
+//   "reward_oriented"  → "Learn this once. Never re-learn it again."
+//   "curiosity_driven" → "Most students mix these up. You won't after this."
+//   "social_proof"     → "Every 95-percenter has this memorized cold."
+
+// CORTISOL_RESPONSE — controls length:
+//   "high_stress"  → hook_context max 6 words. hook_text max 12 words. Nothing extra.
+//   "moderate"     → Normal length. Friendly energy.
+//   "low_stress"   → Playful. Can tell a small story.
+
+// VON_RESTORFF_STYLE — controls the type of mnemonic scene:
+//   "gen_z_meme_heavy" → Bizarre situation but SIMPLE words. Weird scene = memorable.
+//                        "Papa ne Maggi khate khate Car chalai" — bizarre, zero hard words.
+//   "cinematic"        → Dramatic short sentence. Action-movie energy. Simple words.
+//   "grounded"         → Normal life scene. Logical. Satisfying. Easy to picture.
+//   "desi_drama"       → Full desi flavor. Family drama. Chai, shouting, cricket.
+//                        Natural Hinglish. Every word instant-recall for Indian students.
+
+// MEMORY_DECAY_TYPE:
+//   "fast_decay" → Last line of hook_subtext must be a vivid image anchor.
+//                  "Picture your bhaiya actually doing this right now."
+//   "slow_decay" → No image anchor needed. Clean and direct.
+
+// SOCIAL_EGO:
+//   "competitive"   → hook_context: "Most students blank here. You won't."
+//   "collaborative" → hook_context: "Share this with your study group tonight."
+//   "self_improver" → hook_context: "One minute to learn. Yours forever."
+
+// ────────────────────────────────────────
+// LANGUAGE
+// ────────────────────────────────────────
+// Language: ${language}
+
+// "english"  → Simple English throughout. Mnemonic words = common everyday English.
+//              No obscure words. Think: words a student uses in WhatsApp messages.
+
+// "hinglish" → Mnemonic sentence in natural Hinglish. Definition in simple English.
+//              hook_context and hook_subtext in Hinglish.
+//              Sound like a smart friend explaining in the school canteen.
+
+// "hindi"    → Mnemonic and all text fields in Hindi.
+//              Definition in simple Hindi.
+//              Everything except latex_formula in Hindi.
+
+// ────────────────────────────────────────
+// GENERATION MODE
+// ────────────────────────────────────────
+
+// ${mode === 'lore'
+//   ? `LORE ENGINE — write a short vivid story (40-60 words).
+// Every character, object, or action must map to a specific part of the concept.
+// The scene must be bizarre or dramatic enough to stick.
+// BUT every single word must be from the PASS list — zero hard words.
+// Bad lore = words students need to Google.
+// Good lore = aam, bhaiya, chai, teacher, ghar — things they can picture in 0.5 seconds.
+// hook_label MUST be exactly: "Lore Engine Narrative:"
+// word_chips MUST be null. acronym_key MUST be null.`
+
+//   : `NEURAL HACK — one mnemonic sentence.
+// Use first-letter acronym format when the concept is a list of items.
+// hook_text MAX 20 words. THE MNEMONIC ONLY — no motivation, no explanation.
+// Use dot format: B·eta M·aange C·ar
+// hook_label MUST be exactly: "Neural Hack Mnemonic:"
+// After writing the sentence, run the SIMPLICITY TEST on every word.
+// If any word fails the test — rewrite that word before outputting.`
+// }
+
+// ────────────────────────────────────────
+// DEEP SCAN
+// ────────────────────────────────────────
+// ${deepScan
+//   ? 'DEEP_SCAN = true: The user message contains verified NCERT references. Copy them exactly into source_matrix. Do not invent chapter numbers.'
+//   : 'DEEP_SCAN = false: Use general NCERT chapter references. Estimate realistic match percentages.'
+// }
+
+// ────────────────────────────────────────
+// 3-PART MANDATORY FRAMEWORK
+// ────────────────────────────────────────
+
+// PART 1 — definition
+//   1-2 sentences. NCERT language. Plain text. No markdown.
+//   Facts only. Clean. This is not the place for tricks or motivation.
+
+// PART 2 — THE HOOK (two separate fields)
+//   hook_context → One motivating line. Max 10 words. Sounds like a friend.
+//                  Set to null for Lore mode.
+//   hook_text    → THE MNEMONIC SENTENCE ONLY. Nothing else.
+//                  Run Simplicity Test on every word. Rewrite any that fail.
+
+// PART 3 — THE DECODE (two separate fields)
+//   word_chips   → Only for first-letter/acronym mnemonics. null for Lore and non-acronym.
+//                  One chip per word of the mnemonic sentence.
+//                  EVERY chip must have a non-empty maps_to. No exceptions.
+//                  maps_to = what this letter stands for. Max 5 words. Plain language.
+
+//   hook_subtext → Full decode written like a friend texting you.
+//                  Walk through what each letter/word represents.
+//                  Max 4 sentences.
+//                  If MEMORY_DECAY_TYPE is "fast_decay": add one vivid image anchor at the end.
+
+// ────────────────────────────────────────
+// SELF-CHECK BEFORE OUTPUTTING
+// ────────────────────────────────────────
+// Before finalizing your JSON, run these checks:
+
+// 1. Every word in hook_text — Class 10 student would say it to a friend?
+//    Any word that fails → rewrite it immediately.
+
+// 2. Every maps_to field — is it filled with something actually useful?
+//    Empty or vague → fill it properly right now.
+
+// 3. hook_context vs hook_text — completely different content?
+//    If hook_text has motivation in it → move that to hook_context, clean up hook_text.
+
+// 4. Does each word's first letter actually map to the correct concept item?
+//    Mismatch anywhere → fix the mnemonic or fix the chip.
+
+// 5. Any markdown symbols anywhere? (**  *  #  \`)
+//    Find them and delete them.
+
+// ────────────────────────────────────────
+// OUTPUT SCHEMA
+// ────────────────────────────────────────
+// Return ONLY a valid JSON array. One object per distinct concept part.
+// Start with [. End with ]. Nothing before or after.
+
+// [
+//   {
+//     "title": "Group 2 Elements — The Alkaline Earth Metals",
+//     "definition": "Group 2 elements are beryllium, magnesium, calcium, strontium, barium, and radium. They have 2 valence electrons and form +2 ions.",
+//     "latex_formula": null,
+//     "hook_label": "Neural Hack Mnemonic:",
+//     "hook_context": "Beta maangta hai sab kuch — just like these elements.",
+//     "hook_text": "B·eta M·aange C·ar, S·cooter B·aad R·akh",
+//     "word_chips": [
+//       { "letter": "B", "rest": "eta",   "maps_to": "Beryllium — Be, Period 2" },
+//       { "letter": "M", "rest": "aange", "maps_to": "Magnesium — Mg, Period 3" },
+//       { "letter": "C", "rest": "ar",    "maps_to": "Calcium — Ca, Period 4"   },
+//       { "letter": "S", "rest": "cooter","maps_to": "Strontium — Sr, Period 5" },
+//       { "letter": "B", "rest": "aad",   "maps_to": "Barium — Ba, Period 6"    },
+//       { "letter": "R", "rest": "akh",   "maps_to": "Radium — Ra, Period 7"    }
+//     ],
+//     "acronym_key": "BMCSBR",
+//     "hook_subtext": "[B]eta = Beryllium. [M]aange = Magnesium. [C]ar = Calcium. [S]cooter = Strontium. [B]aad = Barium. [R]akh = Radium. Ek beta hai jo Car maangta hai, phir Scooter, phir baad mein kuch aur — exactly 6 demands, exactly 6 elements.",
+//     "source_matrix": [
+//       { "title": "NCERT Class 11 Ch.10 — s-Block Elements", "match_percentage": "97% Match", "icon_type": "book" },
+//       { "title": "CBSE Board Exam ~2023", "match_percentage": "88% Match", "icon_type": "file" }
+//     ],
+//     "visual_cortex": { "tooltip_label": "Group 2 Elements" }
+//   }
+// ]
+
+// ════════════════════════════════════════
+// REMEMBER
+// The student is nervous. The exam is tomorrow.
+// They need one thing that works, not a lecture.
+// Simple words. Real decode. Honest mapping.
+// That is the only standard.
+// ════════════════════════════════════════
+// `.trim();
+
+//     // ── 4. Call Gemini ─────────────────────────────────────────────────────
+//     const startTime = Date.now();
+//     let rawText = '';
+
+//     if (deepScan) {
+
+//       // ── PASS A: grounded fact-gathering (Google Search) ──────────────────
+//       const searchModel = genAI.getGenerativeModel({
+//         model: 'gemini-2.5-pro',
+//         tools: [{ googleSearch: {} }],
+//       });
+
+//       const searchResult = await searchModel.generateContent({
+//         systemInstruction: {
+//           parts: [{ text: 'You are a CBSE academic research assistant. List NCERT chapter numbers, section numbers, and CBSE board exam years for the given topic. Plain text bullet points only. No markdown headers. No bold. Be specific.' }]
+//         },
+//         contents: [{
+//           role: 'user',
+//           parts: [{ text: `NCERT chapters, sections, and CBSE exam years for: "${question}"` }]
+//         }]
+//       });
+
+//       const groundedFacts = safeExtractText(searchResult.response);
+//       console.log('\n── DEEP SCAN GROUNDED FACTS ──\n', groundedFacts.slice(0, 500));
+
+//       if (!groundedFacts) {
+//         return res.status(500).json({ error: 'Deep Scan could not fetch references. Please retry.' });
+//       }
+
+//       // ── PASS B: JSON formatting with grounded facts injected ─────────────
+//       // Uses flash — more reliable than pro for responseMimeType + long prompts
+//       const formatModel = genAI.getGenerativeModel({
+//         model: 'gemini-2.5-flash',
+//         generationConfig: {
+//           responseMimeType: 'application/json',
+//           temperature:      0.85,
+//           maxOutputTokens:  8192,
+//         }
+//       });
+
+//       const formatResult = await formatModel.generateContent({
+//         systemInstruction: {
+//           parts: [{ text: systemPromptText }]
+//         },
+//         contents: [{
+//           role: 'user',
+//           parts: [{
+//             text: `Topic: ${question}
+
+// VERIFIED NCERT REFERENCES — copy these exactly into source_matrix:
+// ${groundedFacts}
+
+// SCOPE: If this topic spans multiple groups or chapters, cover the single most
+// exam-important part in one focused, complete JSON object.
+// One complete object beats six truncated ones.
+
+// Return the JSON array now.`
+//           }]
+//         }]
+//       });
+
+//       rawText = safeExtractText(formatResult.response);
+//       console.log('\n── PASS B RAW ──\n', rawText ? rawText.slice(0, 600) : '(empty)');
+
+//       // ── PASS B FALLBACK: if responseMimeType triggered empty response ─────
+//       if (!rawText) {
+//         console.warn('[DeepScan] Pass B empty — running plain-text fallback');
+
+//         const fallbackModel = genAI.getGenerativeModel({
+//           model: 'gemini-2.5-flash',
+//           generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+//           // No responseMimeType — prompt enforces JSON instead
+//         });
+
+//         const fallbackResult = await fallbackModel.generateContent({
+//           systemInstruction: {
+//             parts: [{ text: systemPromptText }]
+//           },
+//           contents: [{
+//             role: 'user',
+//             parts: [{
+//               text: `Topic: ${question}
+
+// VERIFIED NCERT REFERENCES:
+// ${groundedFacts}
+
+// Return ONLY a valid JSON array starting with [ and ending with ].
+// No explanation. No markdown. No backticks.
+// JSON array:`
+//             }]
+//           }]
+//         });
+
+//         rawText = safeExtractText(fallbackResult.response);
+//         console.log('\n── FALLBACK RAW ──\n', rawText ? rawText.slice(0, 600) : '(still empty)');
+//       }
+
+//       if (!rawText) {
+//         console.error('[DeepScan] All passes empty.');
+//         return res.status(500).json({ error: 'AI returned an empty response. Please try again.' });
+//       }
+
+//     } else {
+
+//       // ── SINGLE PASS: normal mode ─────────────────────────────────────────
+//       const model = genAI.getGenerativeModel({
+//         model: mode === 'lore' ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
+//         generationConfig: {
+//           responseMimeType: 'application/json',
+//           temperature:      mode === 'lore' ? 1.0 : 0.75,
+//           maxOutputTokens:  8192,
+//         }
+//       });
+
+//       const result = await model.generateContent({
+//         systemInstruction: {
+//           parts: [{ text: systemPromptText }]
+//         },
+//         contents: [{
+//           role: 'user',
+//           parts: [{ text: question }]
+//         }]
+//       });
+
+//       rawText = safeExtractText(result.response);
+//       console.log('\n── RAW GEMINI RESPONSE ──\n', rawText ? rawText.slice(0, 600) : '(empty)');
+
+//       if (!rawText) {
+//         console.error('[Normal] Empty response:', JSON.stringify(result.response, null, 2).slice(0, 600));
+//         return res.status(500).json({ error: 'AI returned an empty response. Please try again.' });
+//       }
+//     }
+
+//     const timeTaken = Date.now() - startTime;
+
+//     // ── 5. Parse ───────────────────────────────────────────────────────────
+//     let parsedResponse;
+//     try {
+//       parsedResponse = robustJSONParse(rawText);
+//     } catch (parseError) {
+//       console.error('\n── PARSE ERROR ──\n', parseError.message);
+//       console.error('Full raw response:\n', rawText);
+//       return res.status(500).json({ error: 'AI returned an unreadable response. Please try again.' });
+//     }
+
+//     // ── 6. Normalize ────────────────────────────────────────────────────────
+//     const normalized = Array.isArray(parsedResponse) ? parsedResponse : [parsedResponse];
+
+//     // ── 7. Save to DB ──────────────────────────────────────────────────────
+//     const newLI = await interaction.create({
+//       user_id:             user._id,
+//       feature_type:        'MNEMONIC_GENERATOR',
+//       user_query_text:     question,
+//       generation_mode:     mode,
+//       deep_scan_enabled:   deepScan,
+//       initial_ai_response: normalized,
+//       time_taken_ms:       timeTaken,
+//       is_bookmarked:       false,
+//       answer_images:       [],
+//       language:            language,
+//       parent_id:           null,
+//     });
+
+//     // ── 8. Respond ─────────────────────────────────────────────────────────
+//     return res.status(200).json({
+//       _id:                 newLI._id,
+//       initial_ai_response: normalized,
+//       generation_mode:     mode,
+//       deep_scan_enabled:   deepScan,
+//       time_taken_ms:       timeTaken,
+//     });
+
+//   } catch (err) {
+//     console.error('\n── MNEMONIC ROUTE ERROR ──\n', err);
+//     if (res.headersSent) return;
+//     if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
+//       return res.status(429).json({ error: 'Too many requests. Wait a moment and retry.' });
+//     }
+//     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+//   }
+
+// });
+
+// app.post("/mne/onboarding" ,isLoggedIn,  async function(req,res)
+// {
+// await UserBehaviour.findByIdAndDelete(req.session.user._id ,
+//   {
+//     status : "deactivated" ,
+//     deletedAt : 
+//   })
+// }
+// )
+
+// app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
+// {
+//     res.render("solutionfinder", {savedSolution : null}) ; 
+// }
+// )
+
+
+function safeExtractText(response) {
+  try {
+    const candidate    = response?.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    if (finishReason && finishReason !== 'STOP') {
+      console.warn(`[safeExtractText] Non-STOP finish: ${finishReason}`);
+      const ratings = candidate?.safetyRatings;
+      if (ratings) console.warn('[safeExtractText] Safety:', JSON.stringify(ratings));
+    }
+    const blockReason = response?.promptFeedback?.blockReason;
+    if (blockReason) { console.error(`[safeExtractText] Blocked: ${blockReason}`); return ''; }
+    const parts = candidate?.content?.parts;
+    if (!parts || parts.length === 0) { console.warn('[safeExtractText] No parts'); return ''; }
+    return parts.filter(p => typeof p.text === 'string').map(p => p.text).join('').trim();
+  } catch (err) { console.error('[safeExtractText] threw:', err.message); return ''; }
+}
+ 
+function robustJSONParse(raw) {
+  if (!raw || typeof raw !== 'string') throw new Error('Empty response from model');
+  const cleaned = raw.trim()
+    .replace(/^```json\s*/im, '').replace(/^```\s*/im, '').replace(/```\s*$/im, '').trim();
+  try { const p = JSON.parse(cleaned); return Array.isArray(p) ? p : [p]; } catch (_) {}
+  const recovered = recoverTruncatedArray(cleaned);
+  if (recovered.length > 0) {
+    console.log(`[robustJSONParse] Recovered ${recovered.length} object(s)`);
+    return recovered;
+  }
+  const arrMatch = cleaned.match(/(\[[\s\S]*\])/);
+  if (arrMatch) { try { const p = JSON.parse(arrMatch[1]); return Array.isArray(p) ? p : [p]; } catch (_) {} }
+  const objStr = extractFirstCompleteObject(cleaned);
+  if (objStr) { try { return [JSON.parse(objStr)]; } catch (_) {} }
+  throw new Error(`No parseable JSON. Starts with: "${raw.slice(0, 120)}"`);
+}
+ 
+function recoverTruncatedArray(str) {
+  const results = [];
+  let depth = 0, start = -1, inString = false, escape = false;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (escape)                  { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true;  continue; }
+    if (ch === '"')              { inString = !inString; continue; }
+    if (inString)                continue;
+    if (ch === '{') { if (depth === 0) start = i; depth++; }
+    else if (ch === '}') {
+      depth--;
+      if (depth === 0 && start !== -1) {
+        try { results.push(JSON.parse(str.slice(start, i + 1))); } catch (_) {}
+        start = -1;
+      }
+    }
+  }
+  return results;
+}
+ 
+function extractFirstCompleteObject(str) {
+  let depth = 0, start = -1, inString = false, escape = false;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (escape)                  { escape = false; continue; }
+    if (ch === '\\' && inString) { escape = true;  continue; }
+    if (ch === '"')              { inString = !inString; continue; }
+    if (inString)                continue;
+    if (ch === '{') { if (depth === 0) start = i; depth++; }
+    else if (ch === '}') { depth--; if (depth === 0 && start !== -1) return str.slice(start, i + 1); }
+  }
+  return null;
+}
+ 
+// ══════════════════════════════════════════════════════════════════════════════
+app.post('/api/generate-mnemonic', isLoggedIn, async function (req, res) {
+ 
   const question = (req.body.question || '').trim();
-  const mode     = req.body.mode || 'lore';
-  const language = req.body.language || 'Hinglish'; 
-  // req.body booleans arrive as actual booleans when sent via JSON.stringify
-  // but cast defensively in case someone sends a string
+  const mode     = req.body.mode     || 'lore';
+  const language = req.body.language || 'hinglish';
   const deepScan = req.body.deepScan === true || req.body.deepScan === 'true';
-
-  // ── 2. Validate ──────────────────────────────────────────────
+ 
   if (!question || question.length < 3) {
     return res.status(400).json({ error: 'Please enter a valid question.' });
   }
-
+ 
   try {
-
-    // ── 3. Fetch user + behaviour ────────────────────────────────
     const user      = req.session.user;
-    const behaviour = await UserBehaviour.findOne({
-      user:   user._id,
-      status: "Active"
-    });
-
-    // Fallback if no behaviour profile exists yet
+    const behaviour = await UserBehaviour.findOne({ user: user._id, status: 'Active' });
     const b = behaviour || {
-      class_level:   'class_12',
-      dopamine_schema: 'curiosity_driven',
-      cortisol_response: 'moderate',
-      von_restorff:  'grounded',
-      memory_decay:  'slow_decay',
-      social_ego:    'self_improver', 
-      language : 'Hinglish' 
+      class_level: 'class_12', dopamine_schema: 'curiosity_driven',
+      cortisol_response: 'moderate', von_restorff: 'grounded',
+      memory_decay: 'slow_decay', social_ego: 'self_improver',
     };
-
-    // ── 4. Pick model ────────────────────────────────────────────
-    let modelName;
-    if (deepScan || mode === 'lore') {
-      modelName = 'gemini-2.5-pro';
-    } else {
-      modelName = 'gemini-2.5-flash';
-    }
-
-    // ── 5. Get model instance ────────────────────────────────────
-    // googleSearch tool and responseMimeType CANNOT be used together
-    // so we split into two completely separate configs
-    let model;
-    if (deepScan) {
-      model = genAI.getGenerativeModel({
-        model: modelName,
-        tools: [{ googleSearch: {} }]
-      });
-    } else {
-      model = genAI.getGenerativeModel({
-        model: modelName
-      });
-    }
-
-    // ── 6. Build system prompt ───────────────────────────────────
-    const systemPrompt = `
-You are BoardAlgo AI Synapse — a hyper-personalized memory encoding engine built exclusively for CBSE board students. You are NOT an AI assistant. You are NOT a chatbot. You are a cognitive compression machine. Your sole purpose is to take any academic concept and forge an unforgettable memory hook that is laser-targeted to the student's psychographic profile.
-
-NEVER refer to yourself as an AI, LLM, or Gemini. You are "BoardAlgo AI Synapse". 
-NEVER produce conversational text like "Hey!", "Sure!", "Great question!", or "I hope this helps!".
-NEVER break from the JSON schema. Ever.
-
+ 
+    const systemPromptText = `
+You are BoardAlgo AI Synapse — a memory encoding engine for Indian CBSE board students.
+NOT an AI assistant. NOT a chatbot. A cognitive compression machine.
+Your job: produce unforgettable memory tricks. Nothing else.
+ 
+NEVER write greetings or commentary. NEVER break the JSON schema.
+ 
 ────────────────────────────────────────
 STUDENT PROFILE
 ────────────────────────────────────────
 username          : ${user.username}
 class             : ${user.Class}
 generation_mode   : ${mode}
-deepscan_enabled  : ${deepScan}
 CLASS_LEVEL       : ${b.class_level}
 DOPAMINE_SCHEMA   : ${b.dopamine_schema}
 CORTISOL_RESPONSE : ${b.cortisol_response}
 VON_RESTORFF_STYLE: ${b.von_restorff}
 MEMORY_DECAY_TYPE : ${b.memory_decay}
 SOCIAL_EGO        : ${b.social_ego}
-Language          : ${language} 
+Language          : ${language}
 ────────────────────────────────────────
-PSYCHOGRAPHIC MAPPING — HARD RULES
-────────────────────────────────────────
-
-1. CLASS_LEVEL → Vocabulary & Complexity Calibration
-   - "class_10"  → Simple language, relatable school-life references, no jargon beyond NCERT.
-   - "class_12"  → Technical precision, competitive-exam-aware, board + JEE/NEET framing.
-
-2. DOPAMINE_SCHEMA → Hook Energy & Engagement Style
-   - "thrill_seeker"    → Make the hook feel like a cheat code. Use power words: "HACK", "UNLOCK", "EXPLOIT".
-   - "reward_oriented"  → Frame the hook as a reward after mastering the concept.
-   - "curiosity_driven" → Lead with a shocking or counterintuitive "did you know" fact before the mnemonic.
-   - "social_proof"     → Reference toppers, rank holders: "This is the trick every 99-percenter uses."
-
-3. CORTISOL_RESPONSE → Tone Under Pressure
-   - "high_stress"  → SHORT, punchy, zero fluff. Student is in panic mode.
-   - "moderate"     → Balanced. Explain the trick in full but keep it energetic.
-   - "low_stress"   → Can be elaborate, layered, and playful.
-
-4. VON_RESTORFF_STYLE → Absurdity & Contrast Level
-   - "gen_z_meme_heavy" → Unhinged internet slang, brainrot analogies, pop-culture chaos. So weird they CAN'T forget it.
-   - "cinematic"        → Frame as movie scenes or Marvel-style hero arcs.
-   - "grounded"         → Logical real-world analogies. Clean and relatable.
-   - "desi_drama"       → Bollywood logic, chai-sutta stakes, Hindi-English mix.
-
-5. MEMORY_DECAY_TYPE → Depth of Explanation
-   - "fast_decay" → Include a visual image anchor and a recall trigger phrase.
-   - "slow_decay" → Concise mnemonic without heavy subtext.
-
-6. SOCIAL_EGO → Framing & Motivation
-   - "competitive"   → "Beat the 99% who don't know this."
-   - "collaborative" → "This is what toppers share with friends."
-   - "self_improver" → "You'll never forget this. Ever."
-
-────────────────────────────────────────
-GENERATION MODE
-────────────────────────────────────────
-
+ 
+════════════════════════════════════════
+RULE 1 — THE SIMPLICITY TEST (most important rule)
+════════════════════════════════════════
+Every word in hook_text must pass:
+"Would a Class 10 Indian student say this word to a friend right now?"
+YES → keep it.   NO → replace it immediately.
+ 
+WORDS THAT ALWAYS PASS:
+  Family : Bhaiya, Didi, Maa, Papa, Nani, Chacha, Yaar, Dost
+  School : Class, Exam, Teacher, Bell, Copy, Homework, Result
+  Food   : Chai, Roti, Maggi, Bread, Samosa, Chips, Mango, Biscuit
+  Sports : Run, Wicket, Six, Out, Match, Captain, Goal, Catch
+  Actions: Bhaga, Khaya, Soya, Roya, Gaya, Aaya, Maara, Gira, Uthha
+  Common : Ghar, Dukaan, Sadak, Paani, Kitab, Cycle, Phone
+ 
+WORDS THAT ALWAYS FAIL:
+  ✗ Sriracha, Quinoa, Brie, Hummus — foreign, unknown to most students
+  ✗ Serendipity, Ephemeral, Labyrinthine — fancy English
+  ✗ Vishambhar, Pracheen — too formal Hindi
+  ✗ The actual concept words used AS the mnemonic words (defeats the purpose)
+ 
+PROVEN EXAMPLE — Group 2 (Be Mg Ca Sr Ba Ra):
+  ✗ BAD:  "BEta MAnGe CAndy SRiracha BAdushaahi RAita"
+     WHY: Sriracha unknown. Badushaahi hard to spell. Double memorization work.
+  ✓ GOOD: "B·eta M·aange C·ar, S·cooter B·aad R·akh"
+     WHY: Every word instant recall. Pure memory. Zero friction.
+ 
+════════════════════════════════════════
+RULE 2 — NO MARKDOWN IN JSON STRINGS
+════════════════════════════════════════
+FORBIDDEN: **bold** *italic* # headers backticks
+One asterisk on screen = tool looks broken.
+ 
+════════════════════════════════════════
+RULE 3 — FIELD SEPARATION (hook_text vs hook_context)
+════════════════════════════════════════
+hook_text    = MNEMONIC SENTENCE ONLY. Max 20 words. Nothing motivational here.
+hook_context = ONE motivating line. Max 10 words.
+NEVER mix these two fields.
+ 
+════════════════════════════════════════
+RULE 4 — DOT FORMAT
+════════════════════════════════════════
+B·eta  M·aange  C·ar  ← correct
+**B**eta  [B]eta      ← forbidden
+ 
+════════════════════════════════════════
+RULE 5 — maps_to IS MANDATORY. EVERY CHIP. NO EXCEPTIONS.
+════════════════════════════════════════
+Every word_chip.maps_to must answer: "What does this letter mean in the subject?"
+Max 4 words. Written like a friend texting you.
+FORBIDDEN: "" / "Element" / "See chapter"
+CORRECT:   "Beryllium — Be" / "Sine = Opp/Hyp" / "Newton's First Law"
+ 
+════════════════════════════════════════
+RULE 6 — hook_subtext IS MANDATORY. ALWAYS.
+════════════════════════════════════════
+hook_subtext must ALWAYS have content. Never null. Never empty string "".
+Walk through each letter and what it means. Like texting a classmate.
+Max 3 sentences. If MEMORY_DECAY_TYPE is fast_decay, end with a vivid image.
+ 
+════════════════════════════════════════
+RULE 7 — MULTI-PART TOPICS: ONE OBJECT PER PART
+════════════════════════════════════════
+If the topic covers multiple groups, families, laws, or chapters:
+  → Return one JSON object per part
+  → Keep each object COMPACT so all fit in the response:
+      definition  : 1 sentence only
+      hook_subtext: 2 sentences only
+      maps_to     : max 3 words per chip
+ 
+REQUIRED topic coverage:
+  "p-block elements"  → 6 objects: Group 13, 14, 15, 16, 17, 18
+  "s-block elements"  → 2 objects: Group 1, Group 2
+  "Newton's laws"     → 3 objects: First, Second, Third
+  "d-block elements"  → 1 object covering the key pattern
+ 
+Do NOT return fewer objects than the topic requires.
+Do NOT skip any group or part.
+Each part gets its own mnemonic, its own chips, its own decode.
+ 
+════════════════════════════════════════
+PSYCHOGRAPHIC RULES
+════════════════════════════════════════
+ 
+CLASS_LEVEL:
+  class_10 → Hinglish mix, home/school examples, no JEE terms anywhere
+  class_12 → Slightly technical in definition only; mnemonic words still simple
+ 
+DOPAMINE_SCHEMA (controls hook_context energy):
+  thrill_seeker    → "Toppers clear this in 3 seconds. Now you too."
+  reward_oriented  → "Learn once. Never re-learn."
+  curiosity_driven → "Most students mix this. You won't after this."
+  social_proof     → "Every 95-percenter has this memorized."
+ 
+CORTISOL_RESPONSE:
+  high_stress → hook_context max 6 words, hook_text max 12 words
+  moderate    → normal length, friendly
+  low_stress  → playful, can tell a small story
+ 
+VON_RESTORFF_STYLE:
+  gen_z_meme_heavy → Bizarre scene + simple words. Weird situation, familiar vocabulary.
+  cinematic        → Dramatic one-liner. Action energy. Simple words.
+  grounded         → Normal life scene. Easy to picture.
+  desi_drama       → Full desi flavor. Family drama. Natural Hinglish.
+ 
+MEMORY_DECAY_TYPE:
+  fast_decay → Last sentence of hook_subtext = vivid image anchor
+  slow_decay → No image anchor
+ 
+SOCIAL_EGO:
+  competitive   → "Most students blank here. You won't."
+  collaborative → "Share this with your group tonight."
+  self_improver → "One minute to learn. Yours forever."
+ 
+════════════════════════════════════════
+LANGUAGE: ${language}
+════════════════════════════════════════
+english  → Simple English throughout. WhatsApp-level words in hook_text.
+hinglish → Natural Hinglish in hook_text, hook_context, hook_subtext.
+           Definition in simple English. Sound like a smart canteen friend.
+hindi    → Hindi throughout. Definition in simple Hindi.
+ 
+════════════════════════════════════════
+GENERATION MODE: ${mode.toUpperCase()}
+════════════════════════════════════════
 ${mode === 'lore'
-  ? 'LORE ENGINE: Write a vivid, cinematic narrative — characters, conflict, resolution — all mapped to the concept. hook_label MUST be: "Lore Engine Narrative:"'
-  : 'NEURAL HACK: Compressed mnemonic — acronym, first-letter trick, rhyme, or one-liner. Maximum 2 lines. Zero fluff. hook_label MUST be: "Neural Hack Mnemonic:"'
+  ? `LORE ENGINE: 40-60 word story. Every character/object maps to one concept element.
+Bizarre enough to stick. Every word passes Simplicity Test.
+hook_label = "Lore Engine Narrative:"
+word_chips = null. acronym_key = null.`
+  : `NEURAL HACK: One first-letter acronym mnemonic sentence.
+hook_text MAX 20 words. MNEMONIC ONLY. Dot format: B·eta M·aange C·ar
+hook_label = "Neural Hack Mnemonic:"
+Run Simplicity Test on every word. Rewrite any that fail.`
 }
-
-────────────────────────────────────────
-DEEP SCAN
-────────────────────────────────────────
-
-${deepScan
-  ? 'DEEP_SCAN = true → Cite specific NCERT chapter/section numbers and approximate CBSE board exam years in source_matrix.'
-  : 'DEEP_SCAN = false → Use generalized NCERT chapter references only.'
+ 
+════════════════════════════════════════
+DEEP SCAN: ${deepScan
+  ? 'ON — verified NCERT references are in the user message. Copy them exactly into source_matrix.'
+  : 'OFF — use general NCERT chapter references with realistic match percentages.'
 }
-
-────────────────────────────────────────
-3-PART FRAMEWORK (mandatory)
-────────────────────────────────────────
-
-PART 1 — GROUND TRUTH → definition field
-Academically precise. 1-3 sentences. NCERT language. Cold facts only.
-
-PART 2 — THE TRICK → hook_text field
-The mnemonic itself. Punchy. Filtered through VON_RESTORFF_STYLE + DOPAMINE_SCHEMA.
-
-PART 3 — THE DECODE → hook_subtext field
-Map every part of the trick back to the actual science. Prove it works.
-
-────────────────────────────────────────
-OUTPUT SCHEMA — RETURN ONLY VALID JSON ARRAY
-────────────────────────────────────────
-
-CRITICAL RULES:
-- Always return a JSON ARRAY even if there is only one item.
-- If the concept has multiple distinct parts (e.g. Group 1 and Group 2), return one object per part.
-- No markdown. No backticks. No preamble. Pure JSON array only.
-
+════════════════════════════════════════
+ 
+════════════════════════════════════════
+SELF-CHECK BEFORE OUTPUTTING
+════════════════════════════════════════
+1. Every word in hook_text → Class 10 student says it to friends? No → rewrite now.
+2. Every maps_to → filled and useful? No → fill it now.
+3. hook_subtext → non-empty string with actual decode content? No → write it now.
+4. hook_context ≠ hook_text → different content? No → separate them now.
+5. Any **, *, #, backtick anywhere → delete them.
+6. Multi-part topic → one object per part, all parts covered? → confirm.
+ 
+════════════════════════════════════════
+OUTPUT: RAW JSON ARRAY ONLY
+Nothing before [. Nothing after ].
+════════════════════════════════════════
+ 
 [
   {
-    "title": "Sharp, high-tech title for this concept part",
-    "definition": "Academically accurate 1-3 sentences. NCERT language.",
-    "latex_formula": "$$ formula $$" or null,
-    "hook_label": "Neural Hack Mnemonic:" or "Lore Engine Narrative:",
-    "hook_text": "THE TRICK — punchy, persona-filtered, unforgettable.",
-    "hook_subtext": "THE DECODE — map every element of the trick to the science.",
-    "source_matrix": [
-      { "title": "NCERT Class X Ch.Y — Chapter Name", "match_percentage": "p% Match", "icon_type": "book" },
-      { "title": "CBSE Board Exam ~20XX", "match_percentage": "q% Match", "icon_type": "file" }
+    "title": "Group 13 — Boron Family",
+    "definition": "Group 13 includes Boron, Aluminium, Gallium, Indium, Thallium, Nihonium — 3 valence electrons, +3 oxidation state.",
+    "latex_formula": null,
+    "hook_label": "Neural Hack Mnemonic:",
+    "hook_context": "6 elements, one scene. Order locked forever.",
+    "hook_text": "B·aingan A·alu G·ajar I·nch T·aaza N·ahi",
+    "word_chips": [
+      { "letter": "B", "rest": "aingan", "maps_to": "Boron — B"      },
+      { "letter": "A", "rest": "alu",    "maps_to": "Aluminium — Al" },
+      { "letter": "G", "rest": "ajar",   "maps_to": "Gallium — Ga"   },
+      { "letter": "I", "rest": "nch",    "maps_to": "Indium — In"    },
+      { "letter": "T", "rest": "aaza",   "maps_to": "Thallium — Tl"  },
+      { "letter": "N", "rest": "ahi",    "maps_to": "Nihonium — Nh"  }
     ],
-    "visual_cortex": { "tooltip_label": "Short 1-3 word label" }
+    "acronym_key": "BAGITN",
+    "hook_subtext": "[B]aingan=Boron, [A]alu=Aluminium, [G]ajar=Gallium, [I]nch=Indium, [T]aaza=Thallium, [N]ahi=Nihonium. Sabzi waala bol raha hai — aaj taaza maal nahi aaya.",
+    "source_matrix": [
+      { "title": "NCERT Class 11 Ch.11 — p-Block Elements", "match_percentage": "96% Match", "icon_type": "book" },
+      { "title": "CBSE Board Exam ~2023", "match_percentage": "85% Match", "icon_type": "file" }
+    ],
+    "visual_cortex": { "tooltip_label": "Group 13" }
   }
 ]
 `.trim();
-
-    // ── 7. Call Gemini ───────────────────────────────────────────
+ 
+    // ── Call Gemini ──────────────────────────────────────────────────────────
     const startTime = Date.now();
-
-    const result = await model.generateContent({
-      systemInstruction: systemPrompt,        // ← correct way to pass system prompt
-      contents: [{
-        role: 'user',
-        parts: [{ text: question }]           // ← only the user's question here
-      }],
-      generationConfig: {
-        temperature: mode === 'lore' ? 1.0 : 0.7,
-        maxOutputTokens: 4096,
-        // responseMimeType only when NOT using googleSearch tool
-        ...(!deepScan && { responseMimeType: 'application/json' })
+    let rawText = '';
+ 
+    if (deepScan) {
+ 
+      // Pass A — grounded facts
+      const searchModel = genAI.getGenerativeModel({
+        model: 'gemini-2.5-pro',
+        tools: [{ googleSearch: {} }],
+      });
+      const searchResult = await searchModel.generateContent({
+        systemInstruction: { parts: [{ text: 'CBSE researcher. Plain text bullet points only. No markdown. List NCERT chapter numbers, section numbers, board exam years for the topic.' }] },
+        contents: [{ role: 'user', parts: [{ text: `NCERT chapters, sections, exam years for: "${question}"` }] }]
+      });
+      const groundedFacts = safeExtractText(searchResult.response);
+      console.log('\n── GROUNDED FACTS ──\n', groundedFacts.slice(0, 500));
+      if (!groundedFacts) return res.status(500).json({ error: 'Deep Scan could not fetch references. Please retry.' });
+ 
+      // Pass B — JSON formatting with flash
+      const formatModel = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.85, maxOutputTokens: 8192 }
+      });
+      const formatResult = await formatModel.generateContent({
+        systemInstruction: { parts: [{ text: systemPromptText }] },
+        contents: [{ role: 'user', parts: [{ text: `Topic: ${question}\n\nVERIFIED NCERT REFERENCES (use in source_matrix):\n${groundedFacts}\n\nReturn the JSON array now. If topic has multiple groups, one object per group — cover ALL groups.` }] }]
+      });
+      rawText = safeExtractText(formatResult.response);
+      console.log('\n── PASS B ──\n', rawText ? rawText.slice(0, 600) : '(empty)');
+ 
+      // Fallback
+      if (!rawText) {
+        console.warn('[DeepScan] Pass B empty — plain fallback');
+        const fbModel = genAI.getGenerativeModel({
+          model: 'gemini-2.5-flash',
+          generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
+        });
+        const fbResult = await fbModel.generateContent({
+          systemInstruction: { parts: [{ text: systemPromptText }] },
+          contents: [{ role: 'user', parts: [{ text: `Topic: ${question}\n\nNCERT REFS:\n${groundedFacts}\n\nReturn ONLY valid JSON array starting [ ending ]. No markdown.\nJSON array:` }] }]
+        });
+        rawText = safeExtractText(fbResult.response);
+        console.log('\n── FALLBACK ──\n', rawText ? rawText.slice(0, 600) : '(still empty)');
       }
-    });
-
+      if (!rawText) return res.status(500).json({ error: 'AI returned empty. Please try again.' });
+ 
+    } else {
+ 
+      const model = genAI.getGenerativeModel({
+        model: mode === 'lore' ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
+        generationConfig: {
+          responseMimeType: 'application/json',
+          temperature: mode === 'lore' ? 1.0 : 0.75,
+          maxOutputTokens: 8192
+        }
+      });
+      const result = await model.generateContent({
+        systemInstruction: { parts: [{ text: systemPromptText }] },
+        contents: [{ role: 'user', parts: [{ text: question }] }]
+      });
+      rawText = safeExtractText(result.response);
+      console.log('\n── RAW RESPONSE ──\n', rawText ? rawText.slice(0, 600) : '(empty)');
+      if (!rawText) return res.status(500).json({ error: 'AI returned empty. Please try again.' });
+    }
+ 
     const timeTaken = Date.now() - startTime;
-
-    // ── 8. Get raw text ──────────────────────────────────────────
-    const rawText = result.response.text();   // ← stored as rawText, used as rawText
-    console.log('\n── RAW GEMINI RESPONSE ──\n', rawText);
-
-    // ── 9. Parse JSON ────────────────────────────────────────────
+ 
     let parsedResponse;
     try {
-      const cleaned = rawText
-        .replace(/^```json\s*/im, '')
-        .replace(/^```\s*/im, '')
-        .replace(/```\s*$/im, '')
-        .trim();
-
-      if (deepScan) {
-        // With googleSearch, model wraps JSON in explanation text
-        // Extract the first valid JSON array or object
-        const jsonMatch = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-        if (!jsonMatch) throw new Error('No JSON structure found in deep scan response');
-        parsedResponse = JSON.parse(jsonMatch[0]);
-      } else {
-        parsedResponse = JSON.parse(cleaned);
-      }
-
+      parsedResponse = robustJSONParse(rawText);
     } catch (parseError) {
       console.error('\n── PARSE ERROR ──\n', parseError.message);
-      console.error('Raw was:\n', rawText);
-      return res.status(500).json({ error: 'AI returned malformed response. Please retry.' });
+      console.error('Raw:\n', rawText);
+      return res.status(500).json({ error: 'AI returned an unreadable response. Please try again.' });
     }
-
-    // ── 10. Normalize: always an array ───────────────────────────
-    const normalized = Array.isArray(parsedResponse)
-      ? parsedResponse
-      : [parsedResponse];
-
-    // ── 11. Save to DB (after success only — no ghost records) ───
+ 
+    const normalized = Array.isArray(parsedResponse) ? parsedResponse : [parsedResponse];
+ 
     const newLI = await interaction.create({
-      user_id:             user._id,
-      feature_type:        'MNEMONIC_GENERATOR',
-      user_query_text:     question,
-      generation_mode:     mode,
-      deep_scan_enabled:   deepScan,
-      initial_ai_response: normalized,
-      time_taken_ms:       timeTaken,
-      is_bookmarked:       false,
-      answer_images:       [],
-      language : language , 
-      parent_id:           null,
+      user_id: user._id, feature_type: 'MNEMONIC_GENERATOR',
+      user_query_text: question, generation_mode: mode,
+      deep_scan_enabled: deepScan, initial_ai_response: normalized,
+      time_taken_ms: timeTaken, is_bookmarked: false,
+      answer_images: [], language, parent_id: null,
     });
-
-    // ── 12. Respond ──────────────────────────────────────────────
+ 
     return res.status(200).json({
-      _id:                 newLI._id,
-      initial_ai_response: normalized,
-      generation_mode:     mode,
-      deep_scan_enabled:   deepScan,
-      time_taken_ms:       timeTaken,
+      _id: newLI._id, initial_ai_response: normalized,
+      generation_mode: mode, deep_scan_enabled: deepScan, time_taken_ms: timeTaken,
     });
-
+ 
   } catch (err) {
-
-    console.error('\n── MNEMONIC ROUTE ERROR ──\n', err);
-
-    // Guard: don't send a second response if one already went out
+    console.error('\n── ROUTE ERROR ──\n', err);
     if (res.headersSent) return;
-
-    if (err.status === 429) {
+    if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED')))
       return res.status(429).json({ error: 'Too many requests. Wait a moment and retry.' });
-    }
-
     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
-
 });
-
-
-
-app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
-{
-    res.render("solutionfinder", {savedSolution : null}) ; 
-}
-)
 
 
 // solution finder 
@@ -1648,20 +2415,10 @@ const result = await model.generateContent(
 
     }) ;
 
+    const textResponse = await result.response.text();
 
-    const textResponse = result.response.text() ; 
-
-
-// pasre in JSON format 
-
-let parsed ;
-
-try 
-{
-    parsed = JSON.parse(textResponse) ; 
-}
-
-catch
+    // parse in JSON format
+    let parsed ;
 {
     parsed = {output : textResponse} ; 
 }
