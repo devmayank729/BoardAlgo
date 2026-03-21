@@ -702,8 +702,16 @@ window.addEventListener('DOMContentLoaded', () => {
                         if(interaction.feature_type === 'MNEMONIC_GENERATOR' || interaction.feature_type === 'MNEMONIC') { iconName='lightbulb'; iconColor='#fbbf24'; iconBg='rgba(245,158,11,0.1)'; }
                         if(interaction.feature_type === 'BOARD_EVALUATOR') { iconName='gavel'; iconColor='#f87171'; iconBg='rgba(239,68,68,0.1)'; }
                         if(interaction.feature_type === 'CONCEPT_PREDICTOR') { iconName='brain-circuit'; iconColor='#818cf8'; iconBg='rgba(99,102,241,0.1)'; }
+
                         let redirectUrl = "/history/" + interaction._id;
-                        if(interaction.feature_type === "MNEMONIC_GENERATOR" || interaction.feature_type === "MNEMONIC") { redirectUrl = "/mne/history/" + interaction._id; }
+
+                        if(interaction.feature_type === "MNEMONIC_GENERATOR" || interaction.feature_type === "MNEMONIC") 
+                        { redirectUrl = "/mne/history/" + interaction._id; }
+
+                        if(interaction.feature_type == "BOARD_EVALUATOR" )
+                        {
+                            redirectUrl = "/eve/history/" + interaction._id ; 
+                        }
                         %>
                         <div class="activity-item glass p-3 sm:p-4 rounded-xl border border-gray-200 dark:border-white/5 flex items-center justify-between gap-2"
                              data-type="<%= interaction.feature_type %>"

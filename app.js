@@ -825,7 +825,7 @@ const data = await interaction.findOne(
 )
 
 
-app.get("/mne/history/:id" , async function(req , res)
+app.get("/mne/history/:id" ,isLoggedIn , async function(req , res)
 {
 const data = await interaction.findOne(
   {
@@ -839,17 +839,40 @@ const data = await interaction.findOne(
   }
   // console.log(data) ;
 
-    const payload = {
-      ...data.initial_ai_response,
-      original_query: data.user_query_text,
-      generation_mode: data.generation_mode,
-      deep_scan_enabled: data.deep_scan_enabled
-  };
 
 
-  res.render("mnemonic" , {savedSolution : payload}) ;
-
+  // res.render("mnemonic" , {_id : data._id,initial_ai_response : data.initial_ai_response ,generation_mode : data.generation_mode , deep_scan_enabled : data.deep_scan_enabled , time_taken_ms : data.time_taken_ms   }) ;
+    res.render("mnemonic" , {user : req.session.user , savedSolution : data}) ;
 })
+
+app.get("/eve/history/:id", isLoggedIn , async function(req,res)
+{
+  const data = await interaction.findOne(
+    {
+      _id : req.params.id , 
+      user_id : req.session.user._id ,
+    }) ; 
+
+    if(!data)
+    {
+      return res.redirect("/dashboard") ; 
+    }
+
+    // console.log(data) ;
+    const evaluationData = {
+      ...data.initial_ai_response ,
+      imageUrls : data.answer_images ,  
+    }
+    res.render("evaluator",
+      {
+        
+        evaluationData : evaluationData ,
+        data : data , 
+        user : req.session.user , 
+      })
+
+}
+)
 
 app.get("/mnemonic" ,isLoggedIn, async function(req,res)
 {
@@ -869,7 +892,7 @@ app.get("/mnemonic" ,isLoggedIn, async function(req,res)
 
     else
     {
-        res.render("mnemonic") ; 
+        res.render("mnemonic" , {user : req.session.user}) ; 
     }
 
 }
@@ -903,7 +926,7 @@ app.post("/api/onboard" , isLoggedIn , async function (req,res)
     )
 // console.log("user's personna : ", userpersona) ; 
 
-res.render("mnemonic") ; 
+res.render("mnemonic", {user : req.session.user}) ; 
     }
 
     catch (error)
@@ -914,170 +937,591 @@ res.render("mnemonic") ;
 
 
 
-// to get the user's input for mnemonic generation 
-app.post("/api/generate-mnemonic" ,isLoggedIn , async function(req,res)
-{
+// // to get the user's input for mnemonic generation 
+// app.post("/api/generate-mnemonic" ,isLoggedIn , async function(req,res)
+// {
 
-const question = req.body.question ; 
-// const image = req.body.image ; 
-const mode = req.body.mode ; 
-const deepScan = req.body.deepScan ; 
+// const question = req.body.question ; 
+// // const image = req.body.image ; 
+// const mode = req.body.mode ; 
+// const deepScan = req.body.deepScan ; 
 
+// function whichModel(mode , deepScan)
+// {
+//   if(deepScan)
+//   {
+//     return "gemini-2.5-pro" ;
+//   }
+//   if (mode == 'lore') 
+//   {
+//     return "gemini-2.5-pro" ; 
+//   }
 
-const newLI = await interaction.create (
-    {
-        user_query_text : question ,
-        generation_mode : mode , 
-        deep_scan_enabled : deepScan , 
-        feature_type : "MNEMONIC_GENERATOR" , 
-        user_id : req.session.user._id , 
-    }
-)
-
-// const user = await user.findOne({_id : req.session.user._id}) ; 
-const user = req.session.user ; 
-
-const behaviour = await UserBehaviour.findOne({user : req.session.user._id , status : "Active"}) ;
-//generating system prompt : 
+//   return "gemini-2.5-flash" ; 
+// }
 
 
+// const newLI = await interaction.create (
+//     {
+//         user_query_text : question ,
+//         generation_mode : mode , 
+//         deep_scan_enabled : deepScan , 
+//         feature_type : "MNEMONIC_GENERATOR" , 
+//         user_id : req.session.user._id , 
+//     }
+// )
 
-    const systemprompt = 
-    `
-    You are BoardAlgo AI, an advanced cognitive ingestion engine designed for CBSE Class ${user.Class} students. Your objective is to take complex academic concepts and encode them into highly retrievable memory hooks based on the user's exact psychographic profile. 
+// // const user = await user.findOne({_id : req.session.user._id}) ; 
+// const user = req.session.user ; 
 
-You must NEVER refer to yourself as an AI, an LLM, or Gemini. You are strictly "BoardAlgo AI Synapse".
-
-You will receive an INPUT payload containing the student's doubt, their psychological profile, the selected Generation Mode, and the Deep-Scan state. 
-----INPUT---- 
-username : ${user.username} , 
-generation_mode : ${mode} , 
-deepscan_enabled : ${deepScan} , 
-CLASS_LEVELS : ${behaviour.CLASS_LEVELS} , 
-DOPAMINE_SCHEMAS : ${behaviour.DOPAMINE_SCHEMAS} ,
-CORTISOL_RESPONSES ; ${behaviour.CORTISOL_RESPONSES} ,
-VON_RESTORFF_STYLES : ${behaviour.VON_RESTORFF_STYLES} , 
-MEMORY_DECAYS : ${behaviour.MEMORY_DECAYS} ,
-SOCIAL_EGOS : ${behaviour.SOCIAL_EGOS} , 
+// const behaviour = await UserBehaviour.findOne({user : req.session.user._id , status : "Active"}) ;
+// //generating system prompt : 
 
 
-### PSYCHOGRAPHIC MAPPING RULES:
-1. Encoding Preference: Dictates the structural layout. (e.g., if 'visual_spatial', emphasize physical placement or visual analogies; if 'auditory', use rhyme and rhythm).
-2. Absurdity Tolerance: Dictates the Von Restorff effect. (e.g., if 'gen_z_meme_heavy', use unhinged brain-rot internet slang; if 'grounded', stick to logical real-world analogies).
-3. Chunking Style: Dictates formatting. (e.g., if 'aggressive_acronyms', force the concept into a punchy abbreviation; if 'story_chain', link concepts logically).
-4. Emotional Anchor: Dictates the thematic stakes. (e.g., if 'high_stakes_gaming', frame the concept as a boss fight or survival mechanic; if 'melodrama', frame it as a soap opera).
-5. Pop-Culture Context: Dictates the exact references used in the hook (e.g., 'minecraft_and_valorant', 'marvel_cinematic', 'anime').
-### GENERATION MODE RULES:
-* If MODE = "Lore Engine": Generate a cohesive, vivid, narrative-driven story.
-* If MODE = "Neural Hack": Generate a compressed, high-contrast, aggressive acronym, mnemonic, or one-liner.
 
-### DEEP-SCAN RULES:
-* If DEEP_SCAN = true: You must retrieve and cite highly specific CBSE Previous Year Questions (PYQs) and exact NCERT chapter references in the Source Matrix. 
-* If DEEP_SCAN = false: Provide generalized standard academic matches.
 
-### OUTPUT FORMAT (CRITICAL):
-You must output ONLY valid JSON. No markdown wrapping, no conversational text. The JSON must exactly match this schema to populate the frontend EJS canvas:
+// const systemprompt = 
+// `
+// You are BoardAlgo AI Synapse — a hyper-personalized memory encoding engine built exclusively for CBSE board students. You are NOT an AI assistant. You are NOT a chatbot. You are a cognitive compression machine. Your sole purpose is to take any academic concept and forge an unforgettable memory hook that is laser-targeted to the student's psychographic profile.
 
-{
-  "title": "A high-tech, cool sounding title for the concept (e.g., 'The Saponification Protocol')",
-  "definition": "A strict, academically accurate 1-2 sentence definition.",
-  "latex_formula": "Valid LaTeX enclosed in $$ $$ for math/chemistry. If none applies, return null.",
-  "hook_label": "Must be either 'Neural Hack Mnemonic:' or 'Lore Engine Narrative:' based on the chosen mode.",
-  "hook_text": "The actual bizarre/story mnemonic hook. Keep it punchy.",
-  "hook_subtext": "A brief decoding of the hook mapping it back to the academic concept.",
-  "source_matrix": [
-    {
-      "title": "e.g., 'NCERT Sci Ch.4'",
-      "match_percentage": "e.g., '98% Match'",
-      "icon_type": "book" 
-    },
-    {
-      "title": "e.g., 'CBSE PYQ 2023'",
-      "match_percentage": "e.g., '91% Match'",
-      "icon_type": "file"
-    }
-  ],
-  "visual_cortex": {
-    "tooltip_label": "A 1-3 word label for the glowing node in the diagram UI (e.g., 'Ester Bond' or 'Hypotenuse')"
+// NEVER refer to yourself as an AI, LLM, or Gemini. You are "BoardAlgo AI Synapse". 
+// NEVER produce conversational text like "Hey!", "Sure!", "Great question!", or "I hope this helps!".
+// NEVER break from the JSON schema. Ever.
+
+// ────────────────────────────────────────
+// STUDENT PROFILE (injected at runtime)
+// ────────────────────────────────────────
+// username          : ${user.username}
+// class             : ${user.Class}
+// generation_mode   : ${mode}
+// deepscan_enabled  : ${deepScan}
+// CLASS_LEVEL       : ${behaviour.class_level}
+// DOPAMINE_SCHEMA   : ${behaviour.dopamine_schema}
+// CORTISOL_RESPONSE : ${behaviour.cortisol_response}
+// VON_RESTORFF_STYLE: ${behaviour.von_restorff}
+// MEMORY_DECAY_TYPE : ${behaviour.memory_decay}
+// SOCIAL_EGO        : ${behaviour.social_ego}
+
+// ────────────────────────────────────────
+// PSYCHOGRAPHIC MAPPING — HARD RULES
+// ────────────────────────────────────────
+
+// These are NOT suggestions. Every field in the output MUST be filtered through these lenses.
+
+// 1. CLASS_LEVEL → Vocabulary & Complexity Calibration
+//    - "class_10"  → Simple language, relatable school-life references, no jargon beyond NCERT.
+//    - "class_12"  → Technical precision, competitive-exam-aware, board + JEE/NEET framing.
+
+// 2. DOPAMINE_SCHEMA → Hook Energy & Engagement Style
+//    - "thrill_seeker"    → Make the hook feel like a cheat code. Use power words: "HACK", "UNLOCK", "EXPLOIT".
+//    - "reward_oriented"  → Frame the hook as a reward after mastering the concept.
+//    - "curiosity_driven" → Lead with a shocking or counterintuitive "did you know" fact before the mnemonic.
+//    - "social_proof"     → Reference toppers, rank holders: "This is the trick every 99-percenter uses."
+
+// 3. CORTISOL_RESPONSE → Tone Under Pressure
+//    - "high_stress"      → Keep hooks SHORT, punchy, zero fluff. Student is in panic mode. Prioritize speed.
+//    - "moderate"         → Balanced. Explain the trick in full but keep it energetic.
+//    - "low_stress"       → Can be elaborate, layered, and playful. Student has time.
+
+// 4. VON_RESTORFF_STYLE → Absurdity & Contrast Level
+//    - "gen_z_meme_heavy" → Use unhinged internet slang, brainrot analogies, pop-culture chaos (Minecraft, Valorant, anime tropes, memes). Make it so weird they CAN'T forget it.
+//    - "cinematic"        → Frame concepts as movie scenes or Marvel-style hero arcs.
+//    - "grounded"         → Logical real-world analogies. No cringe. Clean and relatable.
+//    - "desi_drama"       → Bollywood logic, chai-sutta stakes, over-the-top melodrama, Hindi-English mix.
+
+// 5. MEMORY_DECAY_TYPE → Depth of Explanation
+//    - "fast_decay"       → Must include a visual image anchor and a recall trigger phrase.
+//    - "slow_decay"       → Can rely on a concise mnemonic without heavy subtext.
+
+// 6. SOCIAL_EGO → Framing & Motivation
+//    - "competitive"      → Frame as: "Beat the 99% who don't know this."
+//    - "collaborative"    → Frame as: "This is what toppers share with friends."
+//    - "self_improver"    → Frame as: "You'll never forget this. Ever."
+
+// ────────────────────────────────────────
+// GENERATION MODE RULES
+// ────────────────────────────────────────
+
+// MODE = "Lore Engine":
+// → Generate a vivid, narrative-driven story. Characters, conflict, resolution — all mapped to the academic concept.
+// → hook_label MUST be: "Lore Engine Narrative:"
+// → The story must be BIZARRE enough to be unforgettable but ACCURATE enough to decode correctly.
+
+// MODE = "Neural Hack":
+// → Generate a compressed mnemonic: acronym, first-letter trick, rhyme, or one-liner.
+// → hook_label MUST be: "Neural Hack Mnemonic:"
+// → Maximum 2 lines. Zero fluff. Maximum retention per word.
+
+// ────────────────────────────────────────
+// DEEP-SCAN RULES
+// ────────────────────────────────────────
+
+// DEEP_SCAN = true  → Cite SPECIFIC CBSE PYQ years and exact NCERT chapter/section numbers in source_matrix. Be precise.
+// DEEP_SCAN = false → Use generalized standard matches (e.g., "NCERT Ch. 3 — Metals & Non-Metals").
+
+// ────────────────────────────────────────
+// MANDATORY OUTPUT STRUCTURE — 3-PART FRAMEWORK
+// ────────────────────────────────────────
+
+// Every response MUST follow this exact 3-part logic, mapped to the JSON fields below:
+
+// PART 1 — GROUND TRUTH (definition field)
+// What is this concept, actually? Academically precise. 1-3 sentences max.
+// No stories, no tricks yet. Just cold, accurate facts.
+// Example for S-Block:
+// "The s-block elements occupy Groups 1 and 2 of the periodic table. Group 1 contains H, Li, Na, K, Rb, Cs, Fr (alkali metals). Group 2 contains Be, Mg, Ca, Sr, Ba, Ra (alkaline earth metals). Their outermost electrons fill the s-orbital."
+
+// PART 2 — THE TRICK (hook_text field)
+// The mnemonic itself. Short. Punchy. Weaponized for recall.
+// Must be DIRECTLY derived from the student's VON_RESTORFF_STYLE and DOPAMINE_SCHEMA.
+// Example for S-Block Group 1 (gen_z_meme_heavy + thrill_seeker):
+// "HLiNa Ki Rub Se Cry" — H, Li, Na, K, Rb, Cs, Fr. Done. Locked. Zero effort.
+
+// PART 3 — THE DECODE (hook_subtext field)
+// Map every part of the trick back to the actual science. Prove it works.
+// Example:
+// "H=Hydrogen, Li=Lithium, Na=Sodium, K=Potassium, Rb=Rubidium, Cs=Caesium, Fr=Francium. Read the first letters: H-Li-Na-K-Rb-Cs-Fr. The sentence IS the periodic table."
+
+// ────────────────────────────────────────
+// OUTPUT SCHEMA — RETURN ONLY VALID JSON
+// ────────────────────────────────────────
+
+// No markdown. No backticks. No preamble. No explanation. Pure JSON.
+
+// {
+//   "title": "A sharp, high-tech title. Make it sound important. (e.g., 'The S-Block Acquisition Protocol' or 'Saponification: The Soap Boss Fight')",
+
+//   "definition": "PART 1 — Academically accurate, 1-3 sentences. Strict NCERT language. This is the ground truth the trick is built on.",
+
+//   "latex_formula": "Valid LaTeX in $$ $$ if the concept has a formula or equation. Return null if not applicable.",
+
+//   "hook_label": "Exactly one of: 'Neural Hack Mnemonic:' OR 'Lore Engine Narrative:' — determined by generation_mode.",
+
+//   "hook_text": "PART 2 — The mnemonic, rhyme, acronym, or story. This MUST reflect the student's VON_RESTORFF_STYLE. Punchy. Memorable. Persona-filtered.",
+
+//   "hook_subtext": "PART 3 — The decode. Map every element of the trick back to the concept. Prove it. Make the student go 'ohhhh'.",
+
+//   "source_matrix": [
+//     {
+//       "title": "e.g., 'NCERT Class 10 Ch.5 — Periodic Classification'",
+//       "match_percentage": "e.g., '97% Match'",
+//       "icon_type": "book"
+//     },
+//     {
+//       "title": "e.g., 'CBSE Board PYQ 2022 (Delhi Set 1, Q.4)'",
+//       "match_percentage": "e.g., '89% Match'",
+//       "icon_type": "file"
+//     }
+//   ],
+
+//   "visual_cortex": {
+//     "tooltip_label": "1-3 word label for the concept node in the UI diagram. (e.g., 'S-Orbital Fill' or 'Ester Bond')"
+//   }
+// }
+
+// ────────────────────────────────────────
+// PERSONA EXAMPLES — STUDY THESE
+// ────────────────────────────────────────
+
+// SAME CONCEPT — "S-Block Group 1 Elements" — THREE DIFFERENT PERSONAS:
+
+// PERSONA A (gen_z_meme_heavy + thrill_seeker + high_stress + competitive):
+// hook_text: "HLiNa Ki Rub Se Cry — bro this is literally the whole Group 1. Screenshot this. You're done."
+// hook_subtext: "H=Hydrogen, Li=Lithium, Na=Sodium, K=Potassium, Rb=Rubidium, Cs=Caesium. The sentence first letters = the elements. That's it. That's the trick."
+
+// PERSONA B (desi_drama + reward_oriented + moderate + collaborative):
+// hook_text: "Humne Likha Nahi Ki Raat Bhar Chale — yaar ye sentence yaad kar lo, Group 1 set hai."
+// hook_subtext: "H=Hydrogen, Li=Lithium, Na=Sodium, K=Potassium, Rb=Rubidium, Cs=Caesium. Har pehla letter = element ka symbol. Simple."
+
+// PERSONA C (cinematic + curiosity_driven + low_stress + self_improver):
+// hook_text: "The Alkali Avengers assemble in order — Harry (H) leads, then Li (the quiet one), Na (the hot-head), K (the solid), Rb (rare appearance), Cs (the boss)."
+// hook_subtext: "Map each character to their element symbol: H→Li→Na→K→Rb→Cs. That's your Group 1 lineup from top to bottom on the periodic table."
+
+// ALWAYS generate output tuned to the ACTUAL profile. Never use the same phrasing twice. The hook must feel like it was written specifically for that student.
+// `
+
+// try
+// {
+// const startTime = Date.now() ; 
+// const modelName =  whichModel(mode , deepScan) ;
+
+// console.log("Model Name : ",modelName) ; 
+
+// const modelConfig  = {
+// model : modelName , 
+// ...(deepScan && 
+//   {
+//     tools : [{googleSearch : {} }] ,
+//   })
+// }
+
+// console.log("modelConfig :", modelConfig) ; 
+
+// const model = genAI.getGenerativeModel(modelConfig);
+// // ---calling gemini ----
+
+// const result = await model.generateContent(
+//     {
+//         contents : [
+//             {
+//             role : "user" , 
+//             parts : [
+//                 {text : systemprompt} , 
+//                 {text : `Question : ${question}`}
+//                     ]
+//             }
+//         ], 
+
+//         generationConfig : {
+//             temperature : 1 , 
+//             // responseMimeType : "application/json"
+//             ...((!deepScan) && { responseMimeType: 'application/json' })
+//         }
+
+//     }) ;
+
+//     const textResponse = result.response.text() ; 
+
+
+// // pasre in JSON format 
+
+// // let parsed ;
+
+// let parsedResponse;
+// try {
+//   // When deepScan is ON, Gemini returns text with JSON embedded
+//   // strip markdown fences defensively in both cases
+//   const cleaned = rawText
+//     .replace(/^```json\s*/im, '')
+//     .replace(/^```\s*/im, '')
+//     .replace(/```\s*$/im, '')
+//     .trim();
+
+//   // If deepScan, the model might wrap JSON in explanation text
+//   // Extract just the JSON array/object using regex
+//   if (deepScan) {
+//     const jsonMatch = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+//     if (!jsonMatch) throw new Error('No JSON found in deep scan response');
+//     parsedResponse = JSON.parse(jsonMatch[0]);
+//   } else {
+//     parsedResponse = JSON.parse(cleaned);
+//   }
+// console.log(parsedResponse)  ; 
+// } 
+
+// catch (parseError) {
+//   console.error('JSON parse failed. Raw response was:\n', rawText); 
+//   return res.status(500).json({ error: 'AI returned malformed response. Please retry.' });
+// }
+
+// // ---time taken ---
+// const endTime = Date.now() ; 
+// const timeTaken = endTime - startTime ; 
+
+
+// // save 
+
+// await interaction.findByIdAndUpdate(newLI._id , 
+//     {
+//        initial_ai_response : parsedResponse , 
+//        time_taken_ms : timeTaken 
+//     }
+// ) ;
+
+
+// //  --- send to frontend 
+
+// // res.json(parsed) ; 
+// return res.status(200).json({
+//       _id:                 newLI._id,
+//       initial_ai_response: parsedResponse,
+//       generation_mode:     mode,
+//       deep_scan_enabled:   Boolean(deepScan),
+//       time_taken_ms:       timeTaken,
+//     });
+
+
+// }
+
+
+// catch (error)
+// {
+//     res.send("AI is unable to generate at this time",Date.now()) ;
+//     console.log("\n Date :", Date.now()) ; 
+//     console.log("\n GEMINI ERROR : ", error )  ;
+// }
+
+// }
+// )
+
+
+
+
+
+app.post("/api/generate-mnemonic", isLoggedIn, async function(req, res) {
+
+  // ── 1. Extract & sanitize inputs ────────────────────────────
+  const question = (req.body.question || '').trim();
+  const mode     = req.body.mode || 'lore';
+  const language = req.body.language || 'Hinglish'; 
+  // req.body booleans arrive as actual booleans when sent via JSON.stringify
+  // but cast defensively in case someone sends a string
+  const deepScan = req.body.deepScan === true || req.body.deepScan === 'true';
+
+  // ── 2. Validate ──────────────────────────────────────────────
+  if (!question || question.length < 3) {
+    return res.status(400).json({ error: 'Please enter a valid question.' });
   }
-}
-    `
 
-try
-{
-const startTime = Date.now() ; 
+  try {
 
-const model = genAI.getGenerativeModel({ model: "gemini-2.5-pro"});
+    // ── 3. Fetch user + behaviour ────────────────────────────────
+    const user      = req.session.user;
+    const behaviour = await UserBehaviour.findOne({
+      user:   user._id,
+      status: "Active"
+    });
 
-// ---calling gemini ----
+    // Fallback if no behaviour profile exists yet
+    const b = behaviour || {
+      class_level:   'class_12',
+      dopamine_schema: 'curiosity_driven',
+      cortisol_response: 'moderate',
+      von_restorff:  'grounded',
+      memory_decay:  'slow_decay',
+      social_ego:    'self_improver', 
+      language : 'Hinglish' 
+    };
 
-const result = await model.generateContent(
-    {
-        contents : [
-            {
-            role : "user" , 
-            parts : [
-                {text : systemprompt} , 
-                {text : `Question : ${question}`}
-                    ]
-            }
-        ], 
-
-        generationConfig : {
-            temperature : 0.8 , 
-            responseMimeType : "application/json"
-        }
-
-    }) ;
-
-    const textResponse = result.response.text() ; 
-
-
-// pasre in JSON format 
-
-let parsed ;
-
-try 
-{
-    parsed = JSON.parse(textResponse) ; 
-}
-
-catch
-{
-    parsed = {output : textResponse} ; 
-}
-
-
-// ---time taken ---
-const endTime = Date.now() ; 
-const timeTaken = endTime - startTime ; 
-
-
-// save 
-
-await interaction.findByIdAndUpdate(newLI._id , 
-    {
-       initial_ai_response : parsed , 
-       time_taken_ms : timeTaken 
+    // ── 4. Pick model ────────────────────────────────────────────
+    let modelName;
+    if (deepScan || mode === 'lore') {
+      modelName = 'gemini-2.5-pro';
+    } else {
+      modelName = 'gemini-2.5-flash';
     }
-) ;
 
+    // ── 5. Get model instance ────────────────────────────────────
+    // googleSearch tool and responseMimeType CANNOT be used together
+    // so we split into two completely separate configs
+    let model;
+    if (deepScan) {
+      model = genAI.getGenerativeModel({
+        model: modelName,
+        tools: [{ googleSearch: {} }]
+      });
+    } else {
+      model = genAI.getGenerativeModel({
+        model: modelName
+      });
+    }
 
-//  --- send to frontend 
+    // ── 6. Build system prompt ───────────────────────────────────
+    const systemPrompt = `
+You are BoardAlgo AI Synapse — a hyper-personalized memory encoding engine built exclusively for CBSE board students. You are NOT an AI assistant. You are NOT a chatbot. You are a cognitive compression machine. Your sole purpose is to take any academic concept and forge an unforgettable memory hook that is laser-targeted to the student's psychographic profile.
 
-res.json(parsed) ; 
+NEVER refer to yourself as an AI, LLM, or Gemini. You are "BoardAlgo AI Synapse". 
+NEVER produce conversational text like "Hey!", "Sure!", "Great question!", or "I hope this helps!".
+NEVER break from the JSON schema. Ever.
+
+────────────────────────────────────────
+STUDENT PROFILE
+────────────────────────────────────────
+username          : ${user.username}
+class             : ${user.Class}
+generation_mode   : ${mode}
+deepscan_enabled  : ${deepScan}
+CLASS_LEVEL       : ${b.class_level}
+DOPAMINE_SCHEMA   : ${b.dopamine_schema}
+CORTISOL_RESPONSE : ${b.cortisol_response}
+VON_RESTORFF_STYLE: ${b.von_restorff}
+MEMORY_DECAY_TYPE : ${b.memory_decay}
+SOCIAL_EGO        : ${b.social_ego}
+Language          : ${language} 
+────────────────────────────────────────
+PSYCHOGRAPHIC MAPPING — HARD RULES
+────────────────────────────────────────
+
+1. CLASS_LEVEL → Vocabulary & Complexity Calibration
+   - "class_10"  → Simple language, relatable school-life references, no jargon beyond NCERT.
+   - "class_12"  → Technical precision, competitive-exam-aware, board + JEE/NEET framing.
+
+2. DOPAMINE_SCHEMA → Hook Energy & Engagement Style
+   - "thrill_seeker"    → Make the hook feel like a cheat code. Use power words: "HACK", "UNLOCK", "EXPLOIT".
+   - "reward_oriented"  → Frame the hook as a reward after mastering the concept.
+   - "curiosity_driven" → Lead with a shocking or counterintuitive "did you know" fact before the mnemonic.
+   - "social_proof"     → Reference toppers, rank holders: "This is the trick every 99-percenter uses."
+
+3. CORTISOL_RESPONSE → Tone Under Pressure
+   - "high_stress"  → SHORT, punchy, zero fluff. Student is in panic mode.
+   - "moderate"     → Balanced. Explain the trick in full but keep it energetic.
+   - "low_stress"   → Can be elaborate, layered, and playful.
+
+4. VON_RESTORFF_STYLE → Absurdity & Contrast Level
+   - "gen_z_meme_heavy" → Unhinged internet slang, brainrot analogies, pop-culture chaos. So weird they CAN'T forget it.
+   - "cinematic"        → Frame as movie scenes or Marvel-style hero arcs.
+   - "grounded"         → Logical real-world analogies. Clean and relatable.
+   - "desi_drama"       → Bollywood logic, chai-sutta stakes, Hindi-English mix.
+
+5. MEMORY_DECAY_TYPE → Depth of Explanation
+   - "fast_decay" → Include a visual image anchor and a recall trigger phrase.
+   - "slow_decay" → Concise mnemonic without heavy subtext.
+
+6. SOCIAL_EGO → Framing & Motivation
+   - "competitive"   → "Beat the 99% who don't know this."
+   - "collaborative" → "This is what toppers share with friends."
+   - "self_improver" → "You'll never forget this. Ever."
+
+────────────────────────────────────────
+GENERATION MODE
+────────────────────────────────────────
+
+${mode === 'lore'
+  ? 'LORE ENGINE: Write a vivid, cinematic narrative — characters, conflict, resolution — all mapped to the concept. hook_label MUST be: "Lore Engine Narrative:"'
+  : 'NEURAL HACK: Compressed mnemonic — acronym, first-letter trick, rhyme, or one-liner. Maximum 2 lines. Zero fluff. hook_label MUST be: "Neural Hack Mnemonic:"'
 }
 
+────────────────────────────────────────
+DEEP SCAN
+────────────────────────────────────────
 
-catch (error)
-{
-    res.send("AI is unable to generate at this time",Date.now()) ;
-    console.log("\n Date :", Date.now()) ; 
-    console.log("\n GEMINI ERROR : ", error )  ;
+${deepScan
+  ? 'DEEP_SCAN = true → Cite specific NCERT chapter/section numbers and approximate CBSE board exam years in source_matrix.'
+  : 'DEEP_SCAN = false → Use generalized NCERT chapter references only.'
 }
 
-}
-)
+────────────────────────────────────────
+3-PART FRAMEWORK (mandatory)
+────────────────────────────────────────
+
+PART 1 — GROUND TRUTH → definition field
+Academically precise. 1-3 sentences. NCERT language. Cold facts only.
+
+PART 2 — THE TRICK → hook_text field
+The mnemonic itself. Punchy. Filtered through VON_RESTORFF_STYLE + DOPAMINE_SCHEMA.
+
+PART 3 — THE DECODE → hook_subtext field
+Map every part of the trick back to the actual science. Prove it works.
+
+────────────────────────────────────────
+OUTPUT SCHEMA — RETURN ONLY VALID JSON ARRAY
+────────────────────────────────────────
+
+CRITICAL RULES:
+- Always return a JSON ARRAY even if there is only one item.
+- If the concept has multiple distinct parts (e.g. Group 1 and Group 2), return one object per part.
+- No markdown. No backticks. No preamble. Pure JSON array only.
+
+[
+  {
+    "title": "Sharp, high-tech title for this concept part",
+    "definition": "Academically accurate 1-3 sentences. NCERT language.",
+    "latex_formula": "$$ formula $$" or null,
+    "hook_label": "Neural Hack Mnemonic:" or "Lore Engine Narrative:",
+    "hook_text": "THE TRICK — punchy, persona-filtered, unforgettable.",
+    "hook_subtext": "THE DECODE — map every element of the trick to the science.",
+    "source_matrix": [
+      { "title": "NCERT Class X Ch.Y — Chapter Name", "match_percentage": "p% Match", "icon_type": "book" },
+      { "title": "CBSE Board Exam ~20XX", "match_percentage": "q% Match", "icon_type": "file" }
+    ],
+    "visual_cortex": { "tooltip_label": "Short 1-3 word label" }
+  }
+]
+`.trim();
+
+    // ── 7. Call Gemini ───────────────────────────────────────────
+    const startTime = Date.now();
+
+    const result = await model.generateContent({
+      systemInstruction: systemPrompt,        // ← correct way to pass system prompt
+      contents: [{
+        role: 'user',
+        parts: [{ text: question }]           // ← only the user's question here
+      }],
+      generationConfig: {
+        temperature: mode === 'lore' ? 1.0 : 0.7,
+        maxOutputTokens: 4096,
+        // responseMimeType only when NOT using googleSearch tool
+        ...(!deepScan && { responseMimeType: 'application/json' })
+      }
+    });
+
+    const timeTaken = Date.now() - startTime;
+
+    // ── 8. Get raw text ──────────────────────────────────────────
+    const rawText = result.response.text();   // ← stored as rawText, used as rawText
+    console.log('\n── RAW GEMINI RESPONSE ──\n', rawText);
+
+    // ── 9. Parse JSON ────────────────────────────────────────────
+    let parsedResponse;
+    try {
+      const cleaned = rawText
+        .replace(/^```json\s*/im, '')
+        .replace(/^```\s*/im, '')
+        .replace(/```\s*$/im, '')
+        .trim();
+
+      if (deepScan) {
+        // With googleSearch, model wraps JSON in explanation text
+        // Extract the first valid JSON array or object
+        const jsonMatch = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
+        if (!jsonMatch) throw new Error('No JSON structure found in deep scan response');
+        parsedResponse = JSON.parse(jsonMatch[0]);
+      } else {
+        parsedResponse = JSON.parse(cleaned);
+      }
+
+    } catch (parseError) {
+      console.error('\n── PARSE ERROR ──\n', parseError.message);
+      console.error('Raw was:\n', rawText);
+      return res.status(500).json({ error: 'AI returned malformed response. Please retry.' });
+    }
+
+    // ── 10. Normalize: always an array ───────────────────────────
+    const normalized = Array.isArray(parsedResponse)
+      ? parsedResponse
+      : [parsedResponse];
+
+    // ── 11. Save to DB (after success only — no ghost records) ───
+    const newLI = await interaction.create({
+      user_id:             user._id,
+      feature_type:        'MNEMONIC_GENERATOR',
+      user_query_text:     question,
+      generation_mode:     mode,
+      deep_scan_enabled:   deepScan,
+      initial_ai_response: normalized,
+      time_taken_ms:       timeTaken,
+      is_bookmarked:       false,
+      answer_images:       [],
+      language : language , 
+      parent_id:           null,
+    });
+
+    // ── 12. Respond ──────────────────────────────────────────────
+    return res.status(200).json({
+      _id:                 newLI._id,
+      initial_ai_response: normalized,
+      generation_mode:     mode,
+      deep_scan_enabled:   deepScan,
+      time_taken_ms:       timeTaken,
+    });
+
+  } catch (err) {
+
+    console.error('\n── MNEMONIC ROUTE ERROR ──\n', err);
+
+    // Guard: don't send a second response if one already went out
+    if (res.headersSent) return;
+
+    if (err.status === 429) {
+      return res.status(429).json({ error: 'Too many requests. Wait a moment and retry.' });
+    }
+
+    return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+  }
+
+});
+
 
 
 app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)

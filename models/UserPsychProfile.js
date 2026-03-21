@@ -38,6 +38,7 @@ const UserPsychProfileSchema = new Schema({
     enum: CORTISOL_RESPONSES,
     required: true
   },
+
   von_restorff: {
     type: String,
     enum: VON_RESTORFF_STYLES,

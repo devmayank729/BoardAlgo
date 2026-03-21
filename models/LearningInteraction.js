@@ -47,6 +47,10 @@ const LearningInteractionSchema = new Schema({
       'Computer Science', 'Accountancy', 'Business Studies'
     ]
   },
+    language : {
+    type : String,
+    // required : true
+  },
   total_marks: {
     type: Number,
     min: 1,

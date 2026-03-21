@@ -1,24 +1,23 @@
 <!DOCTYPE html>
-<html lang="en" class="dark scroll-smooth">
+<html lang="en" class="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>BoardAlgo | Cognitive Ingestion Engine</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>BoardAlgo | Memory Synthesizer</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700;800&display=swap" rel="stylesheet">
 
   <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <script src="https://unpkg.com/lucide@latest"></script>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
 
-<script>
-window.__INJECTED_RESULT__ = <%- typeof savedSolution !== "undefined" ? JSON.stringify(savedSolution) : "null" %>;
-</script>
+  <script>
+    window.__INJECTED_RESULT__ = <%- typeof savedSolution !== "undefined" ? JSON.stringify(savedSolution) : "null" %>;
+  </script>
+
   <script>
     tailwind.config = {
       darkMode: 'class',
@@ -26,25 +25,16 @@ window.__INJECTED_RESULT__ = <%- typeof savedSolution !== "undefined" ? JSON.str
         extend: {
           colors: {
             brand: {
-              primary: '#6C2BD9',
-              accent: '#16A34A',
-              dark: '#020617',
+              black:   '#020617',
               surface: '#0f172a',
-              panel: 'rgba(15, 23, 42, 0.6)',
-              border: 'rgba(255, 255, 255, 0.08)',
-              lightbg: '#F9FAFB',
-              lightpanel: 'rgba(255, 255, 255, 0.8)',
-              lightborder: '#E5E7EB'
+              border:  '#1e293b',
+              primary: '#6C2BD9',
+              accent:  '#16A34A',
             }
           },
           fontFamily: {
-            sans: ['Inter','sans-serif'],
-            display: ['Poppins','sans-serif'],
-            mono: ['ui-monospace','SFMono-Regular','Menlo','Monaco','Consolas','monospace']
-          },
-          boxShadow: {
-            'glow-primary': '0 0 20px rgba(108, 43, 217, 0.5)',
-            'glow-accent': '0 0 20px rgba(22, 163, 74, 0.8)'
+            sans:    ['Inter', 'sans-serif'],
+            display: ['Poppins', 'sans-serif'],
           }
         }
       }
@@ -52,756 +42,1023 @@ window.__INJECTED_RESULT__ = <%- typeof savedSolution !== "undefined" ? JSON.str
   </script>
 
   <style>
-    body { overflow-x:hidden; transition: background-color .5s ease, color .5s ease; }
-    #canvas-container { position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; pointer-events:none; }
-    @media (prefers-reduced-motion: reduce) { #canvas-container{display:none!important} .spring-slide{transition:none!important} }
-    .hud-panel{ background: var(--panel-bg, rgba(15,23,42,.7)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid var(--panel-border, rgba(255,255,255,.1)); box-shadow:0 8px 32px 0 rgba(0,0,0,.3); transition:all .5s ease; }
-    html.dark .hud-panel{ --panel-bg: rgba(15,23,42,.7); --panel-border: rgba(255,255,255,.1); }
-    html:not(.dark) .hud-panel{ --panel-bg: rgba(255,255,255,.85); --panel-border: rgba(0,0,0,.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,.05); }
-    .spring-slide{ transition: transform .6s cubic-bezier(.34,1.56,.64,1), background-color .3s ease; }
-    ::-webkit-scrollbar{ width:6px } ::-webkit-scrollbar-track{ background:transparent } ::-webkit-scrollbar-thumb{ background:#6C2BD9; border-radius:4px }
-    textarea:focus{ outline:none }
-    .input-wrapper:focus-within{ border-color:#6C2BD9; box-shadow: 0 0 25px rgba(108,43,217,0.2) inset, 0 0 20px rgba(108,43,217,0.3) }
-    .tooltip{ visibility:hidden; opacity:0; transition:opacity .3s ease, transform .3s ease; transform:translateY(10px); }
-    .has-tooltip:hover .tooltip, .has-tooltip:focus .tooltip{ visibility:visible; opacity:1; transform:translateY(0) }
-    .wireframe-bg{ background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); background-size:20px 20px }
-    html.dark .wireframe-bg{ --grid-color: rgba(255,255,255,.05) } html:not(.dark) .wireframe-bg{ --grid-color: rgba(0,0,0,.05) }
-    .file-preview { max-height: 120px; object-fit:contain; border-radius:8px; }
-    .short-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 8px; font-size: 14px; z-index: 60; }
-    /* KaTeX overrides for better dark mode contrast if needed */
-    .katex-display { margin: 1em 0; overflow-x: auto; overflow-y: hidden; padding-top: 0.5em; padding-bottom: 0.5em; }
+    /* ─── Base ──────────────────────────────────────────── */
+    body { background-color:#f8fafc; color:#0f172a; transition:background-color .3s,color .3s; overflow-x:hidden; }
+    .dark body { background-color:#020617; color:#f8fafc; }
+
+    /* ─── Glass ─────────────────────────────────────────── */
+    .glass {
+      background:rgba(255,255,255,0.72);
+      backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+      border:1px solid rgba(0,0,0,0.06); transition:all .3s ease;
+    }
+    .dark .glass { background:rgba(15,23,42,0.65); border:1px solid rgba(255,255,255,0.08); }
+
+    /* ─── Scrollbar ─────────────────────────────────────── */
+    ::-webkit-scrollbar { width:6px; }
+    ::-webkit-scrollbar-track { background:transparent; }
+    ::-webkit-scrollbar-thumb { background:rgba(108,43,217,0.25); border-radius:3px; }
+
+    /* ─── Glow dot ──────────────────────────────────────── */
+    .glow-dot {
+      width:7px; height:7px; border-radius:50%;
+      background:#16A34A; box-shadow:0 0 6px #16A34A;
+      display:inline-block; animation:dotpulse 2s ease-in-out infinite;
+    }
+    @keyframes dotpulse { 0%,100%{opacity:1;transform:scale(1);} 50%{opacity:0.55;transform:scale(0.82);} }
+
+    /* ─── Avatar ring ────────────────────────────────────── */
+    .avatar-ring { background:conic-gradient(#6C2BD9 0%,#a78bfa 45%,#16A34A 70%,#6C2BD9 100%); border-radius:50%; padding:2px; display:inline-flex; }
+    .avatar-inner { border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; font-family:'Poppins',sans-serif; font-weight:700; }
+
+    /* ─── Input shell ────────────────────────────────────── */
+    #brain-dump { outline:none; resize:none; caret-color:#6C2BD9; }
+    .input-shell:focus-within { border-color:rgba(108,43,217,0.5) !important; box-shadow:0 0 0 3px rgba(108,43,217,0.1), 0 0 30px rgba(108,43,217,0.08); }
+
+    /* ─── Deep scan btn ─────────────────────────────────── */
+    .deepscan-btn { border:2px solid rgba(0,0,0,0.08); transition:all .3s ease; }
+    .dark .deepscan-btn { border-color:rgba(255,255,255,0.1); }
+    .deepscan-btn.active { border-color:#16A34A !important; background:rgba(22,163,74,0.08) !important; box-shadow:0 0 20px rgba(22,163,74,0.2); }
+
+    /* ─── Language pill ─────────────────────────────────── */
+    .lang-track { display:flex; background:rgba(0,0,0,0.06); border:1px solid rgba(0,0,0,0.08); border-radius:10px; padding:3px; gap:2px; }
+    .dark .lang-track { background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.08); }
+    .lang-btn { flex:1; padding:6px 10px; border-radius:7px; border:none; cursor:pointer; font-family:'Inter',sans-serif; font-size:0.75rem; font-weight:600; transition:all .25s ease; white-space:nowrap; background:transparent; color:#64748b; }
+    .dark .lang-btn { color:#94a3b8; }
+    .lang-btn.active { background:#6C2BD9; color:#fff; box-shadow:0 2px 10px rgba(108,43,217,0.4); }
+    .lang-btn:not(.active):hover { background:rgba(108,43,217,0.08); color:#6C2BD9; }
+
+    /* ─── Generate button ───────────────────────────────── */
+    .gen-btn { background:linear-gradient(135deg,#6C2BD9,#7c3aed); box-shadow:0 4px 20px rgba(108,43,217,0.4); transition:all .3s cubic-bezier(.34,1.56,.64,1); position:relative; overflow:hidden; }
+    .gen-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent); border-radius:inherit; }
+    .gen-btn:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(108,43,217,0.55); }
+    .gen-btn:active { transform:scale(0.97); }
+
+    /* ─── Spinners ───────────────────────────────────────── */
+    #ui-state-processing { background:rgba(255,255,255,0.85); backdrop-filter:blur(20px); }
+    .dark #ui-state-processing { background:rgba(2,6,23,0.92); }
+    .ring-outer { border:2px solid rgba(108,43,217,0.15); animation:spin 8s linear infinite; }
+    .ring-mid { border:2px solid transparent; border-top-color:#6C2BD9; animation:spin 1.1s linear infinite; }
+    .ring-inner { border:1px solid rgba(108,43,217,0.3); border-top-color:rgba(108,43,217,0.6); animation:spin .7s linear infinite reverse; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+
+    /* ─── Terminal ───────────────────────────────────────── */
+    .terminal-line { opacity:0; transform:translateY(6px); animation:termReveal .35s ease forwards; }
+    @keyframes termReveal { to { opacity:1; transform:translateY(0); } }
+
+    /* ─── Progress bar ───────────────────────────────────── */
+    #progress-bar { transition:width .5s ease; background:linear-gradient(90deg,#6C2BD9,#a855f7,#16A34A); background-size:200% 100%; animation:barShift 2s linear infinite; }
+    @keyframes barShift { 0%{background-position:0 0;} 100%{background-position:-200% 0;} }
+
+    /* ─── Result card ────────────────────────────────────── */
+    .result-card { border:1px solid rgba(108,43,217,0.12); border-radius:16px; transition:border-color .3s ease, box-shadow .3s ease; position:relative; overflow:hidden; }
+    .result-card::before { content:''; position:absolute; top:0; left:0; right:0; height:1px; background:linear-gradient(90deg,transparent,rgba(108,43,217,0.4),transparent); }
+    .result-card:hover { border-color:rgba(108,43,217,0.28); box-shadow:0 8px 30px rgba(108,43,217,0.08); }
+
+    /* ─── Mnemonic hero ─────────────────────────────────── */
+    .mnemonic-hero { background:linear-gradient(135deg,rgba(108,43,217,0.08),rgba(108,43,217,0.03)); border:1px solid rgba(108,43,217,0.2); border-left:4px solid #6C2BD9; border-radius:0 12px 12px 0; position:relative; overflow:hidden; }
+    .mnemonic-hero::after { content:''; position:absolute; top:-40px; right:-40px; width:150px; height:150px; background:radial-gradient(circle,rgba(108,43,217,0.12),transparent 70%); pointer-events:none; }
+
+    /* ─── Formula box ────────────────────────────────────── */
+    .formula-box { background:rgba(108,43,217,0.05); border:1px solid rgba(108,43,217,0.15); border-radius:12px; overflow-x:auto; }
+    .dark .formula-box { background:rgba(108,43,217,0.08); }
+    .katex-display { margin:.5em 0 !important; }
+    .dark .katex { color:#e2e8f0; }
+
+    /* ─── Source card ────────────────────────────────────── */
+    .source-card { border-left:3px solid #6C2BD9; border-radius:12px; transition:transform .25s ease,box-shadow .25s ease; }
+    .source-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(108,43,217,0.12); }
+
+    /* ─── Toast ──────────────────────────────────────────── */
+    .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:24px; background:rgba(15,23,42,0.95); color:#f1f5f9; padding:10px 18px; border-radius:10px; font-size:13px; z-index:500; border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(10px); animation:termReveal .3s ease forwards; font-family:'Inter',sans-serif; white-space:nowrap; }
+
+    /* ─── State sections ─────────────────────────────────── */
+    .state-section { transition:opacity .3s ease; }
+
+    /* ─── Badges ─────────────────────────────────────────── */
+    .badge { display:inline-flex;align-items:center;gap:3px;padding:2px 8px;border-radius:99px;font-size:.68rem;font-weight:700;letter-spacing:.04em;text-transform:uppercase; }
+    .badge-lore { background:rgba(108,43,217,0.12);color:#a78bfa;border:1px solid rgba(108,43,217,0.25); }
+    .badge-hack { background:rgba(22,163,74,0.1);color:#4ade80;border:1px solid rgba(22,163,74,0.2); }
+    .badge-deep { background:rgba(59,130,246,0.1);color:#60a5fa;border:1px solid rgba(59,130,246,0.2); }
+
+    /* ─── Logout btn ─────────────────────────────────────── */
+    .logout-btn { display:flex;align-items:center;gap:6px;padding:7px 13px;border-radius:9px;border:1px solid rgba(239,68,68,0.28);background:rgba(239,68,68,0.07);color:#f87171;font-size:.8rem;font-weight:500;text-decoration:none;font-family:'Inter',sans-serif;transition:all .2s; }
+    .logout-btn:hover { background:rgba(239,68,68,0.15);border-color:rgba(239,68,68,0.45); }
+
+    /* ─── Reconfigure button ─────────────────────────────── */
+    .reconfig-btn { display:inline-flex;align-items:center;gap:5px;padding:5px 12px;border-radius:8px;font-size:0.75rem;font-weight:600;border:1px solid rgba(239,68,68,0.22);background:rgba(239,68,68,0.05);color:#f87171;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s; }
+    .reconfig-btn:hover { background:rgba(239,68,68,0.12);border-color:rgba(239,68,68,0.4); }
+
+    /* ─── Confirm modal ──────────────────────────────────── */
+    #confirm-modal { position:fixed;inset:0;z-index:300;background:rgba(0,0,0,0.55);backdrop-filter:blur(6px);display:none;align-items:center;justify-content:center;padding:1rem; }
+    #confirm-modal.open { display:flex; }
+    #confirm-modal-box { background:#fff;border-radius:20px;padding:2rem;max-width:380px;width:100%;box-shadow:0 24px 60px rgba(0,0,0,0.2);border:1px solid rgba(0,0,0,0.06);animation:termReveal .3s ease; }
+    .dark #confirm-modal-box { background:#0f172a;border-color:rgba(255,255,255,0.08); }
+
+    /* ─── Image preview strip ────────────────────────────── */
+    #img-preview-strip { display:none;align-items:center;gap:10px;padding:8px 16px;border-top:1px solid rgba(0,0,0,0.05);background:rgba(108,43,217,0.03); }
+    .dark #img-preview-strip { border-top-color:rgba(255,255,255,0.05);background:rgba(108,43,217,0.05); }
+    #img-preview-strip.visible { display:flex; }
+    #preview-thumb { width:52px;height:52px;object-fit:cover;border-radius:8px;border:2px solid rgba(108,43,217,0.3);flex-shrink:0; }
+
+    /* ─── GSAP entry ─────────────────────────────────────── */
+    .gsap-entry { opacity:0; transform:translateY(16px); }
   </style>
 </head>
 
-<body class="bg-brand-lightbg dark:bg-brand-dark text-slate-800 dark:text-slate-200 min-h-screen selection:bg-brand-primary selection:text-white flex flex-col">
+<body class="antialiased min-h-screen flex flex-col relative">
 
-  <div id="canvas-container" aria-hidden="true"></div>
+  <canvas id="bg-canvas" class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none" style="opacity:0.35;"></canvas>
+  <div class="fixed inset-0 -z-10 pointer-events-none dark:opacity-100 opacity-0 transition-opacity duration-500"
+    style="background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(108,43,217,0.12),transparent);"></div>
 
-  <nav class="fixed top-0 w-full z-50 border-b border-brand-lightborder dark:border-white/10 bg-white/70 dark:bg-brand-dark/70 backdrop-blur-md transition-colors duration-500">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <i data-lucide="cpu" class="w-6 h-6 text-brand-primary"></i>
-        <span class="text-xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
-          BOARD <span class="text-brand-primary">Algo</span>
-        </span>
+  <!-- ══════════════ CONFIRM MODAL ══════════════ -->
+  <div id="confirm-modal" role="dialog" aria-modal="true">
+    <div id="confirm-modal-box">
+      <div class="flex items-center gap-3 mb-4">
+        <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(239,68,68,0.1);">
+          <i data-lucide="refresh-cw" class="w-5 h-5 text-red-400"></i>
+        </div>
+        <div>
+          <h3 class="font-display font-bold text-slate-900 dark:text-white text-base">Reconfigure Profile?</h3>
+          <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">This will reset your learning persona</p>
+        </div>
       </div>
-      <div class="flex items-center gap-3">
-        <% if (typeof user !== 'undefined' && user) { %>
-          <div class="text-sm text-slate-600 dark:text-slate-300 hidden sm:block"><%= user.name || user.email || '' %></div>
-        <% } %>
-        <button id="theme-toggle" aria-label="Toggle Dark Mode" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:ring-2 focus:ring-brand-primary">
-          <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
-          <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-brand-primary"></i>
+      <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-5">
+        Your current psychographic profile will be deleted and you'll answer the setup questions again.
+        Your history and saved hooks <strong>won't</strong> be affected.
+      </p>
+      <div class="flex gap-3">
+        <button id="modal-cancel-btn"
+          class="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
+          Keep Profile
         </button>
+        <button id="modal-confirm-btn"
+          class="flex-1 py-2.5 rounded-xl text-white text-sm font-bold transition-all"
+          style="background:linear-gradient(135deg,#dc2626,#b91c1c);box-shadow:0 4px 14px rgba(220,38,38,0.35);">
+          Yes, Reset It
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══════════════ NAV ══════════════ -->
+  <nav class="fixed top-0 w-full z-50 glass" style="border-bottom:1px solid rgba(0,0,0,0.05);">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between h-16 gap-2 sm:gap-4">
+
+        <div class="flex items-center gap-3 min-w-0 flex-shrink-0">
+          <a href="/dashboard" class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-colors text-sm font-medium">
+            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+            <span class="hidden sm:inline">Dashboard</span>
+          </a>
+          <span class="text-slate-300 dark:text-slate-700">|</span>
+          <a href="/" class="flex items-center gap-2">
+            <div class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-base"
+              style="background:linear-gradient(135deg,#6C2BD9,#a855f7);box-shadow:0 3px 10px rgba(108,43,217,0.4);">B</div>
+            <span class="text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white">
+              BOARD <span class="text-brand-primary">Algo</span>
+            </span>
+          </a>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+          <button id="theme-toggle" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 transition-colors">
+            <i data-lucide="sun"  class="hidden dark:block w-4 h-4 sm:w-5 sm:h-5"></i>
+            <i data-lucide="moon" class="block dark:hidden w-4 h-4 sm:w-5 sm:h-5"></i>
+          </button>
+          <a href="/auth/logout" class="logout-btn hidden sm:flex">
+            <i data-lucide="log-out" class="w-3.5 h-3.5"></i><span>Logout</span>
+          </a>
+          <div class="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 border-l border-gray-200 dark:border-gray-800">
+            <div class="text-right hidden sm:block">
+              <p class="text-sm font-semibold text-slate-900 dark:text-white leading-tight"><%= user.username %></p>
+              <p class="text-xs font-medium mt-0.5" style="color:#6C2BD9;">
+                <% if(user.subscription_status === 'ACTIVE'){ %>Pro Member<% } else { %>Free Trial<% } %>
+              </p>
+            </div>
+            <% if(user.photoURL){ %>
+            <div class="avatar-ring flex-shrink-0" style="width:36px;height:36px;">
+              <div class="avatar-inner" style="width:100%;height:100%;">
+                <img src="<%= user.photoURL %>" style="width:100%;height:100%;object-fit:cover;">
+              </div>
+            </div>
+            <% } else { %>
+            <div class="h-9 w-9 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-base"
+              style="background:linear-gradient(135deg,rgba(108,43,217,0.8),rgba(168,85,247,0.7));border:2px solid rgba(108,43,217,0.4);">
+              <%= user.username.charAt(0).toUpperCase() %>
+            </div>
+            <% } %>
+          </div>
+        </div>
+
       </div>
     </div>
   </nav>
 
-  <main class="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-28 pb-20 flex-grow flex flex-col gap-6">
+  <!-- ══════════════ MAIN ══════════════ -->
+  <main class="flex-grow pt-20 pb-16">
+    <div class="max-w-4xl mx-auto px-4 sm:px-6">
 
-    <header class="text-center mb-2">
-      <h1 class="text-3xl md:text-5xl font-display font-extrabold text-slate-900 dark:text-white mb-2">Synthesize Pathway</h1>
-      <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base">Upload a photo, paste a diagram, or type your board doubt.</p>
-    </header>
-
-    <section id="ui-state-idle" class="flex flex-col gap-6 w-full max-w-3xl mx-auto transition-opacity duration-300">
-
-      <form id="mnemonic-form" action="/api/generate-mnemonic" method="POST" class="flex flex-col gap-6" autocomplete="off" novalidate>
-        <div class="hud-panel rounded-2xl border border-transparent input-wrapper transition-all duration-300 p-0 overflow-hidden">
-          <textarea name="question" id="brain-dump" aria-label="Cognitive Input"
-            class="w-full min-h-[140px] bg-transparent text-slate-900 dark:text-white p-6 rounded-t-xl resize-none font-medium placeholder-slate-400 dark:placeholder-slate-500"
-            placeholder="Paste text, drop a photo of a textbook question, or type your doubt here..." required></textarea>
-
-          <div class="flex flex-wrap items-center justify-between px-4 py-3 border-t border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 rounded-b-xl gap-2">
-            <div class="flex gap-1 sm:gap-2 items-center">
-              <button id="btn-camera" type="button" class="has-tooltip relative p-2 md:px-3 md:py-2 rounded-lg bg-white dark:bg-brand-surface border border-brand-lightborder dark:border-white/10 hover:border-brand-primary text-slate-600 dark:text-slate-300 hover:text-brand-primary transition-all flex items-center gap-2 focus:ring-2 focus:ring-brand-primary">
-                <i data-lucide="camera" class="w-4 h-4"></i>
-                <span class="text-xs font-bold hidden sm:inline">Scan</span>
-                <div class="tooltip absolute -top-10 left-0 w-max px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg">Capture via Camera</div>
-              </button>
-
-              <button id="btn-upload" type="button" class="has-tooltip relative p-2 md:px-3 md:py-2 rounded-lg bg-white dark:bg-brand-surface border border-brand-lightborder dark:border-white/10 hover:border-brand-primary text-slate-600 dark:text-slate-300 hover:text-brand-primary transition-all flex items-center gap-2 focus:ring-2 focus:ring-brand-primary">
-                <i data-lucide="image" class="w-4 h-4"></i>
-                <span class="text-xs font-bold hidden sm:inline">Upload</span>
-                <div class="tooltip absolute -top-10 left-0 w-max px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg">Upload Image (Max 5MB)</div>
-              </button>
-
-              <input id="file-input" name="image" type="file" accept="image/*" class="hidden" />
-              <img id="file-preview" src="" alt="" class="hidden file-preview ml-2" />
-            </div>
-
-            <div class="text-[10px] sm:text-xs text-slate-400 font-mono flex items-center gap-1">
-              <i data-lucide="paperclip" class="w-3 h-3"></i> Clipboard ready
-            </div>
-          </div>
+      <!-- Header -->
+      <div class="gsap-entry text-center pt-8 pb-6">
+        <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 text-xs font-semibold"
+          style="background:rgba(108,43,217,0.08);border:1px solid rgba(108,43,217,0.2);color:#a78bfa;">
+          <span class="glow-dot"></span>
+          BoardAlgo AI · Memory Synthesizer
         </div>
+        <h1 class="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 dark:text-white tracking-tight mb-3">
+          Never forget a concept.<br class="hidden sm:block">
+          <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent">Ever again.</span>
+        </h1>
+        <p class="text-slate-500 dark:text-gray-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
+          Type what you want to memorize. BoardAlgo AI turns it into a trick your brain cannot unsee.
+        </p>
+      </div>
 
-        <div class="flex flex-col md:flex-row items-center justify-between gap-4 hud-panel rounded-2xl p-4">
-          <div class="flex items-center gap-4 w-full md:w-auto">
-            <div role="radiogroup" aria-label="Generation Mode" class="relative flex w-full md:w-[260px] h-12 bg-black/5 dark:bg-black/40 rounded-full p-1 border border-black/10 dark:border-white/10">
-              <div id="mode-indicator" class="absolute top-1 left-1 bottom-1 w-[calc(50%-4px)] bg-brand-primary rounded-full shadow-lg spring-slide z-0"></div>
+      <!-- ══════════════════════════════
+           STATE: IDLE
+      ══════════════════════════════ -->
+      <section id="ui-state-idle" class="state-section gsap-entry">
+        <form id="mnemonic-form" action="/api/generate-mnemonic" method="POST" autocomplete="off" novalidate>
 
-              <button id="btn-lore" role="radio" aria-checked="true" type="button" class="has-tooltip flex-1 flex items-center justify-center gap-2 font-bold text-sm text-white transition-colors duration-300 relative z-10 focus:outline-none">
-                <i data-lucide="book-open" class="w-4 h-4"></i> Lore
-                <div class="tooltip absolute -top-14 left-0 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none">
-                  <span class="font-bold text-brand-primary">Narrative:</span> Unforgettable stories.
-                </div>
-              </button>
+          <!-- Textarea -->
+          <div class="glass input-shell rounded-2xl overflow-hidden mb-4">
+            <textarea id="brain-dump" name="question"
+              class="w-full min-h-[140px] bg-transparent text-slate-900 dark:text-white p-5 pb-3 font-sans text-base placeholder-slate-400 dark:placeholder-slate-500 leading-relaxed"
+              placeholder="e.g. I want to memorize s-block elements of the periodic table..."
+              required></textarea>
 
-              <button id="btn-hack" role="radio" aria-checked="false" type="button" class="has-tooltip flex-1 flex items-center justify-center gap-2 font-bold text-sm text-slate-500 dark:text-slate-400 transition-colors duration-300 relative z-10 focus:outline-none">
-                <i data-lucide="zap" class="w-4 h-4"></i> Hack
-                <div class="tooltip absolute -top-14 right-0 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none">
-                  <span class="font-bold text-brand-accent">Bizarre:</span> Aggressive acronyms.
-                </div>
-              </button>
-            </div>
-
-            <button id="btn-deepscan" aria-pressed="false" type="button" class="has-tooltip relative w-12 h-12 shrink-0 rounded-full border-2 border-slate-300 dark:border-slate-700 flex items-center justify-center bg-white dark:bg-brand-surface text-slate-400 hover:text-brand-accent transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-accent">
-              <i data-lucide="radar" class="w-5 h-5"></i>
-              <div class="tooltip absolute -top-14 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none z-20">
-                <span class="font-bold text-brand-accent">Deep-Scan:</span> Rigorous board retrieval.
+            <!-- Image preview strip — hidden until image chosen -->
+            <div id="img-preview-strip">
+              <img id="preview-thumb" src="" alt="Preview" />
+              <div class="flex-1 min-w-0">
+                <p id="preview-filename" class="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate"></p>
+                <p id="preview-filesize" class="text-[11px] text-slate-400 mt-0.5"></p>
               </div>
-            </button>
-          </div>
+              <button id="btn-remove-img" type="button"
+                class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
 
-          <input type="hidden" name="mode" id="mode-input" value="lore" />
-          <input type="hidden" name="deepScan" id="deepscan-input" value="false" />
-
-          <button id="btn-generate" type="submit" class="w-full md:w-auto px-8 h-12 rounded-xl bg-brand-primary text-white font-display font-bold hover:scale-[1.02] active:scale-95 transition-transform shadow-glow-primary flex items-center justify-center gap-2 focus:ring-4 focus:ring-brand-primary/50">
-            <i data-lucide="fingerprint" class="w-4 h-4"></i>
-            Generate Hook
-          </button>
-        </div>
-      </form>
-    </section>
-
-    <section id="ui-state-processing" class="hidden flex-col items-center justify-center w-full max-w-2xl mx-auto min-h-[300px] hud-panel rounded-2xl p-8 transition-opacity duration-300 opacity-0" aria-live="polite" aria-busy="false">
-      <div class="relative w-20 h-20 mb-6">
-        <div class="absolute inset-0 border-4 border-brand-primary/20 rounded-full"></div>
-        <div class="absolute inset-0 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
-        <i data-lucide="brain-circuit" class="absolute inset-0 m-auto w-8 h-8 text-brand-primary animate-pulse"></i>
-      </div>
-
-      <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white mb-2">Processing Synapse...</h2>
-
-      <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
-        <div id="progress-bar" class="bg-gradient-to-r from-brand-primary to-brand-accent h-2 rounded-full transition-all duration-300" style="width:15%"></div>
-      </div>
-
-      <div class="font-mono text-xs sm:text-sm text-slate-500 dark:text-slate-400 w-full text-left bg-black/5 dark:bg-black/40 p-4 rounded-lg border border-brand-lightborder dark:border-white/10">
-        <div class="text-brand-accent mb-1">> Extracting multimodal input... [Done]</div>
-        <div id="processing-line" class="text-brand-primary animate-pulse">> Scanning NCERT & CBSE 10-Year Database... (ETA: —)</div>
-      </div>
-
-      <button id="btn-cancel" class="mt-8 px-6 py-2 rounded-full border border-slate-300 dark:border-slate-600 text-slate-500 hover:text-red-500 hover:border-red-500 text-sm font-bold transition-colors">
-        Cancel & Restart
-      </button>
-    </section>
-
-    <section id="ui-state-output" class="hidden flex-col gap-6 w-full transition-opacity duration-300 opacity-0" aria-live="polite">
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div class="lg:col-span-1 flex flex-col gap-3" id="source-matrix-container">
-          <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
-            <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
-          </h3>
-        </div>
-
-        <div class="lg:col-span-3 hud-panel rounded-2xl overflow-hidden border border-brand-primary/20 flex flex-col">
-          <div class="h-12 border-b border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 flex items-center px-4 justify-between">
-            <div class="flex items-center gap-2">
-              <span class="relative flex h-3 w-3">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-accent opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-accent shadow-glow-accent"></span>
+            <!-- Toolbar -->
+            <div class="flex flex-wrap items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-white/5 bg-black/2 dark:bg-black/20 gap-2">
+              <div class="flex items-center gap-2">
+                <button id="btn-camera" type="button"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/8 bg-white/60 dark:bg-white/5 text-slate-500 hover:text-brand-primary hover:border-brand-primary/40 transition-all text-xs font-medium">
+                  <i data-lucide="camera" class="w-3.5 h-3.5"></i>
+                  <span class="hidden sm:inline">Scan Photo</span>
+                </button>
+                <!-- Upload — FULLY WIRED -->
+                <button id="btn-upload" type="button"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-gray-200 dark:border-white/8 bg-white/60 dark:bg-white/5 text-slate-500 hover:text-brand-primary hover:border-brand-primary/40 transition-all text-xs font-medium">
+                  <i data-lucide="image" class="w-3.5 h-3.5"></i>
+                  <span class="hidden sm:inline">Upload Image</span>
+                </button>
+                <input id="file-input" name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+              </div>
+              <span class="text-xs text-slate-400 dark:text-slate-600 font-medium flex items-center gap-1">
+                <i data-lucide="command" class="w-3 h-3"></i>+Enter to generate
               </span>
-              <span class="font-mono text-xs font-bold uppercase tracking-widest text-brand-accent">BoardAlgo AI Synapse</span>
             </div>
-            <button id="btn-reset" class="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 transition-colors">
-              <i data-lucide="rotate-ccw" class="w-3 h-3"></i> New Query
+          </div>
+
+          <!-- Controls card -->
+          <div class="glass rounded-2xl p-5 mb-4">
+
+            <!-- Mode -->
+            <p class="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-3">Choose your weapon</p>
+            <div class="flex gap-3 mb-5">
+
+              <button id="btn-lore" type="button" role="radio" aria-checked="true"
+                class="mode-btn flex-1 flex flex-col items-start p-4 rounded-xl border-2 transition-all duration-300 text-left focus:outline-none"
+                style="border-color:#6C2BD9;background:rgba(108,43,217,0.07);">
+                <div class="flex items-center gap-2 mb-1.5 w-full">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(108,43,217,0.15);">
+                    <i data-lucide="book-open" class="w-4 h-4" style="color:#a78bfa;"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold font-display text-slate-900 dark:text-white text-sm">Lore Engine</p>
+                    <span class="badge badge-lore">Story Mode</span>
+                  </div>
+                  <div class="ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 mode-radio" style="border-color:#6C2BD9;">
+                    <div class="w-2 h-2 rounded-full" style="background:#6C2BD9;"></div>
+                  </div>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
+                  Cinematic story — characters, drama, plot twists — all secretly mapped to your concept. Impossible to forget.
+                </p>
+              </button>
+
+              <button id="btn-hack" type="button" role="radio" aria-checked="false"
+                class="mode-btn flex-1 flex flex-col items-start p-4 rounded-xl border-2 transition-all duration-300 text-left focus:outline-none"
+                style="border-color:rgba(0,0,0,0.08);">
+                <div class="flex items-center gap-2 mb-1.5 w-full">
+                  <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(22,163,74,0.1);">
+                    <i data-lucide="zap" class="w-4 h-4" style="color:#4ade80;"></i>
+                  </div>
+                  <div>
+                    <p class="font-bold font-display text-slate-900 dark:text-white text-sm">Neural Hack</p>
+                    <span class="badge badge-hack">Cheat Code</span>
+                  </div>
+                  <div class="ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 mode-radio" style="border-color:rgba(0,0,0,0.2);">
+                    <div class="w-2 h-2 rounded-full hidden" style="background:#16A34A;"></div>
+                  </div>
+                </div>
+                <p class="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">
+                  Brutal 2-line trick: first letters, rhymes, one absurd sentence. Screenshot it. You're done.
+                </p>
+              </button>
+
+            </div>
+
+            <div class="border-t border-gray-100 dark:border-white/5 mb-5"></div>
+
+            <!-- ── Language selector ── -->
+            <div class="mb-5">
+              <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                <div>
+                  <p class="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-0.5">Response Language</p>
+                  <p class="text-[11px] text-slate-400 dark:text-slate-600">BoardAlgo AI will speak to you in your chosen language</p>
+                </div>
+                <div class="lang-track flex-shrink-0">
+                  <button type="button" class="lang-btn active" data-lang="english">🇬🇧 English</button>
+                  <button type="button" class="lang-btn" data-lang="hinglish">🔀 Hinglish</button>
+                  <button type="button" class="lang-btn" data-lang="hindi">🇮🇳 Hindi</button>
+                </div>
+              </div>
+              <div class="mt-2.5 flex items-center gap-1.5 pl-0.5">
+                <i data-lucide="info" class="w-3 h-3 text-slate-400 flex-shrink-0"></i>
+                <p id="lang-desc-text" class="text-xs text-slate-400 dark:text-slate-500">Full English output — precise, clean, board-exam ready.</p>
+              </div>
+            </div>
+
+            <div class="border-t border-gray-100 dark:border-white/5 mb-5"></div>
+
+            <!-- Deep Scan + Generate -->
+            <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+
+              <button id="btn-deepscan" type="button" aria-pressed="false"
+                class="deepscan-btn glass flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all focus:outline-none flex-1 sm:flex-none">
+                <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-white/50 dark:bg-white/5">
+                  <i data-lucide="radar" class="w-4 h-4 text-slate-500 dark:text-slate-400" id="deepscan-icon"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                    Deep Scan
+                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                      style="background:rgba(22,163,74,0.1);color:#4ade80;border:1px solid rgba(22,163,74,0.2);">Pro</span>
+                  </p>
+                  <p class="text-xs text-slate-400 dark:text-gray-500 leading-snug">Cross-references NCERT chapters and builds citation-backed hooks. Best before exams.</p>
+                </div>
+                <div class="w-10 h-6 rounded-full relative flex-shrink-0 border transition-all duration-300" id="deepscan-track"
+                  style="background:rgba(0,0,0,0.08);border-color:rgba(0,0,0,0.1);">
+                  <div class="w-4 h-4 rounded-full absolute top-0.5 left-0.5 transition-all duration-300 shadow-sm" id="deepscan-knob"
+                    style="background:#94a3b8;"></div>
+                </div>
+              </button>
+
+              <input type="hidden" name="mode"     id="mode-input"     value="lore" />
+              <input type="hidden" name="deepScan" id="deepscan-input" value="false" />
+              <input type="hidden" name="language" id="language-input" value="english" />
+
+              <button id="btn-generate" type="submit"
+                class="gen-btn flex-1 sm:flex-none sm:min-w-[180px] px-6 py-3 rounded-xl text-white font-display font-bold text-sm flex items-center justify-center gap-2 focus:outline-none focus:ring-4 focus:ring-brand-primary/30">
+                <i data-lucide="fingerprint" class="w-4 h-4"></i>
+                Generate Hook
+              </button>
+            </div>
+
+          </div>
+
+          <!-- Hint row + Reconfigure -->
+          <div class="gsap-entry flex flex-wrap items-center justify-between gap-3 px-1">
+            <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-600">
+              <span class="flex items-center gap-1"><i data-lucide="book-open" class="w-3 h-3"></i> Lore → long chapters</span>
+              <span class="hidden sm:inline text-slate-300 dark:text-slate-700">·</span>
+              <span class="flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> Hack → lists &amp; formulas</span>
+              <span class="hidden sm:inline text-slate-300 dark:text-slate-700">·</span>
+              <span class="flex items-center gap-1"><i data-lucide="radar" class="w-3 h-3"></i> Deep Scan → before exams</span>
+            </div>
+            <button type="button" id="btn-reconfig" class="reconfig-btn">
+              <i data-lucide="refresh-cw" class="w-3 h-3"></i>
+              Reconfigure Profile
             </button>
           </div>
 
-          <div id="ai-output-area" class="p-6 md:p-8 font-sans text-slate-800 dark:text-slate-200 leading-relaxed text-sm md:text-base border-b border-brand-lightborder dark:border-white/10">
-            <div id="ai-title" class="text-xl md:text-2xl font-display font-bold text-brand-primary mb-4">Result</div>
-            <div id="ai-content" class="mb-4 prose max-w-none"></div>
+        </form>
+      </section>
 
-            <div id="ai-formula" class="bg-black/5 dark:bg-black/40 p-4 rounded-xl border border-brand-lightborder dark:border-white/10 mb-4 overflow-x-auto hidden text-slate-800 dark:text-slate-200"></div>
+      <!-- ══════════════════════════════
+           STATE: PROCESSING
+      ══════════════════════════════ -->
+      <section id="ui-state-processing"
+        class="state-section hidden rounded-2xl border border-gray-200 dark:border-white/8 p-8 md:p-12 flex flex-col items-center"
+        aria-live="polite" aria-busy="false" style="min-height:360px;">
 
-            <div id="ai-mnemonic" class="bg-brand-primary/10 border-l-4 border-brand-primary p-4 rounded-r-xl hidden">
-              <strong class="text-brand-primary">Neural Hack Mnemonic:</strong>
-              <p id="ai-mnemonic-text" class="mt-1 font-bold"></p>
-              <p id="ai-mnemonic-sub" class="text-xs opacity-70 mt-1"></p>
+        <div class="relative w-20 h-20 mb-7">
+          <div class="ring-outer absolute inset-0 rounded-full border-2"></div>
+          <div class="ring-mid absolute inset-2 rounded-full border-2"></div>
+          <div class="ring-inner absolute inset-4 rounded-full border"></div>
+          <i data-lucide="brain-circuit" class="absolute inset-0 m-auto w-7 h-7 text-brand-primary"></i>
+        </div>
+
+        <h2 id="proc-title" class="text-xl font-display font-bold text-slate-900 dark:text-white mb-1">BoardAlgo AI is thinking...</h2>
+        <p id="proc-subtitle" class="text-xs font-medium text-slate-500 mb-6 uppercase tracking-widest">Lore Engine · Narrative Mode</p>
+
+        <div class="w-full max-w-sm bg-gray-200 dark:bg-white/5 rounded-full h-1.5 mb-6 overflow-hidden">
+          <div id="progress-bar" class="h-1.5 rounded-full" style="width:15%;"></div>
+        </div>
+
+        <div id="terminal-log"
+          class="w-full max-w-sm font-mono text-xs bg-black/5 dark:bg-black/40 rounded-xl p-4 border border-gray-100 dark:border-white/5 space-y-2 min-h-[96px]">
+        </div>
+
+        <button id="btn-cancel"
+          class="mt-8 px-5 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-slate-500 hover:text-red-400 hover:border-red-400/50 text-sm font-medium transition-colors focus:outline-none">
+          Cancel
+        </button>
+      </section>
+
+      <!-- ══════════════════════════════
+           STATE: OUTPUT
+      ══════════════════════════════ -->
+      <section id="ui-state-output" class="state-section hidden" aria-live="polite">
+        <div class="grid grid-cols-1 lg:grid-cols-4 gap-5">
+
+          <div class="lg:col-span-1 order-2 lg:order-1" id="source-matrix-container"></div>
+
+          <div class="lg:col-span-3 order-1 lg:order-2">
+            <div class="glass rounded-t-2xl overflow-hidden border border-gray-200 dark:border-white/8 border-b-0">
+              <div class="flex items-center justify-between px-5 py-3 border-b border-gray-100 dark:border-white/5 bg-black/2 dark:bg-black/20">
+                <div class="flex items-center gap-2 flex-wrap">
+                  <span class="glow-dot"></span>
+                  <span class="text-xs font-bold uppercase tracking-widest text-brand-primary font-display">BoardAlgo AI · Result</span>
+                  <span id="output-mode-badge" class="badge badge-lore">Lore Engine</span>
+                  <span id="output-lang-badge" class="badge" style="background:rgba(108,43,217,0.08);color:#a78bfa;border:1px solid rgba(108,43,217,0.2);">EN</span>
+                </div>
+                <button id="btn-reset" class="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-brand-primary transition-colors focus:outline-none">
+                  <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> New Hook
+                </button>
+              </div>
             </div>
-          </div>
 
-          <div class="relative wireframe-bg flex flex-col items-center justify-center min-h-[250px] p-6 group">
-            <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-              <button id="btn-zoom" class="p-1.5 bg-white dark:bg-brand-surface rounded shadow border border-brand-lightborder dark:border-white/10 hover:text-brand-primary"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
-              <button id="btn-download-output" class="p-1.5 bg-white dark:bg-brand-surface rounded shadow border border-brand-lightborder dark:border-white/10 hover:text-brand-primary"><i data-lucide="download" class="w-4 h-4"></i></button>
-            </div>
+            <div id="ai-items-container" class="glass rounded-b-2xl border border-gray-200 dark:border-white/8 border-t-0 p-5 md:p-7 space-y-5"></div>
 
-            <div id="ai-visual" class="w-full max-w-md h-40 bg-white/50 dark:bg-black/30 border border-brand-primary/30 rounded-lg flex flex-col items-center justify-center relative shadow-lg gap-2">
-              <i data-lucide="layers" class="w-10 h-10 text-brand-primary opacity-40"></i>
-              <span class="text-xs font-bold uppercase tracking-widest text-brand-primary opacity-60">Visual Cortex: Coming Soon</span>
-            </div>
-
-            <div class="mt-4 flex gap-2">
-              <button id="btn-copy-output" class="px-3 py-1 rounded border">Copy</button>
-              <button id="btn-save-txt" class="px-3 py-1 rounded border">Download .txt</button>
+            <div class="flex items-center justify-center gap-3 mt-4 flex-wrap">
+              <button id="btn-copy-output"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-white/8 bg-white/60 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:border-brand-primary/40 hover:text-brand-primary text-sm font-medium transition-all">
+                <i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy
+              </button>
+              <button id="btn-save-txt"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-white/8 bg-white/60 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:border-brand-primary/40 hover:text-brand-primary text-sm font-medium transition-all">
+                <i data-lucide="download" class="w-3.5 h-3.5"></i> Save
+              </button>
+              <button id="btn-bookmark"
+                class="flex items-center gap-2 px-4 py-2 rounded-xl border border-gray-200 dark:border-white/8 bg-white/60 dark:bg-white/5 text-slate-600 dark:text-slate-400 hover:border-amber-400/40 hover:text-amber-400 text-sm font-medium transition-all">
+                <i data-lucide="bookmark" class="w-3.5 h-3.5"></i> Save to History
+              </button>
             </div>
           </div>
 
         </div>
-      </div>
-    </section>
+      </section>
 
+    </div>
   </main>
 
+  <!-- ══════════════ SCRIPTS ══════════════ -->
   <script>
-  // ---------- icons ----------
   lucide.createIcons();
 
-  // ---------- elements ----------
-  const form = document.getElementById('mnemonic-form');
-  const textarea = document.getElementById('brain-dump');
-  const fileInput = document.getElementById('file-input');
-  const filePreview = document.getElementById('file-preview');
-
-  const btnUpload = document.getElementById('btn-upload');
-  const btnCamera = document.getElementById('btn-camera');
-  const btnLore = document.getElementById('btn-lore');
-  const btnHack = document.getElementById('btn-hack');
-  const modeIndicator = document.getElementById('mode-indicator');
-  const modeInput = document.getElementById('mode-input');
-  const btnDeepScan = document.getElementById('btn-deepscan');
-  const deepScanInput = document.getElementById('deepscan-input');
-  const btnGenerate = document.getElementById('btn-generate');
-
-  const stateIdle = document.getElementById('ui-state-idle');
-  const stateProcessing = document.getElementById('ui-state-processing');
-  const stateOutput = document.getElementById('ui-state-output');
-  const progressBar = document.getElementById('progress-bar');
-  const processingLine = document.getElementById('processing-line');
-
-  const aiContent = document.getElementById('ai-content');
-  const aiTitle = document.getElementById('ai-title');
-  const aiFormula = document.getElementById('ai-formula');
-  const aiMnemonic = document.getElementById('ai-mnemonic');
-  const aiMnemonicText = document.getElementById('ai-mnemonic-text');
-  const aiMnemonicSub = document.getElementById('ai-mnemonic-sub');
-  const sourceMatrixContainer = document.getElementById('source-matrix-container');
-  const aiVisualContainer = document.getElementById('ai-visual');
-
-  const btnCancel = document.getElementById('btn-cancel');
-  const btnReset = document.getElementById('btn-reset');
-  const btnCopyOutput = document.getElementById('btn-copy-output');
-  const btnSaveTxt = document.getElementById('btn-save-txt');
-  const btnDownloadOutputTop = document.getElementById('btn-download-output');
-
-  const themeToggleBtn = document.getElementById('theme-toggle');
-  const htmlElement = document.documentElement;
-
-  // ---------- small helpers ----------
-  function show(elem){ elem.classList.remove('hidden'); elem.classList.replace?.('opacity-0','opacity-100'); }
-  function hide(elem){ elem.classList.add('hidden'); }
-  function switchState(hideElem, showElem){
-    try { hideElem.classList.replace('opacity-100','opacity-0'); } catch(e){}
-    setTimeout(()=>{
-      hideElem.classList.add('hidden'); hideElem.classList.remove('flex');
-      showElem.classList.remove('hidden'); showElem.classList.add('flex');
-      void showElem.offsetWidth;
-      try{ showElem.classList.replace('opacity-0','opacity-100'); } catch(e){}
-    }, 300);
-  }
-
-  // ---------- auto-expand textarea ----------
-  textarea.addEventListener('input', function(){ this.style.height='auto'; this.style.height = Math.max(140,this.scrollHeight)+'px'; });
-
-  // ---------- mode logic ----------
-  let currentMode = 'lore';
-  function updateModesUI(){
-    if(currentMode === 'lore'){
-      modeIndicator.style.transform = 'translateX(0%)';
-      modeIndicator.style.backgroundColor = '#6C2BD9';
-      btnLore.classList.add('text-white'); btnLore.classList.remove('text-slate-500');
-      btnLore.setAttribute('aria-checked','true');
-      btnHack.classList.remove('text-white'); btnHack.classList.add('text-slate-500'); btnHack.setAttribute('aria-checked','false');
-    } else {
-      modeIndicator.style.transform = 'translateX(100%)';
-      modeIndicator.style.backgroundColor = '#16A34A';
-      btnHack.classList.add('text-white'); btnHack.classList.remove('text-slate-500');
-      btnHack.setAttribute('aria-checked','true');
-      btnLore.classList.remove('text-white'); btnLore.classList.add('text-slate-500'); btnLore.setAttribute('aria-checked','false');
-    }
-    modeInput.value = currentMode;
-  }
-  btnLore.addEventListener('click', ()=>{ currentMode='lore'; updateModesUI(); });
-  btnHack.addEventListener('click', ()=>{ currentMode='hack'; updateModesUI(); });
-  updateModesUI();
-
-  // ---------- deepscan toggle ----------
-  let isDeepScanOn = false;
-  btnDeepScan.addEventListener('click', ()=>{
-    isDeepScanOn = !isDeepScanOn;
-    btnDeepScan.setAttribute('aria-pressed', isDeepScanOn);
-    deepScanInput.value = isDeepScanOn ? 'true' : 'false';
-    if(isDeepScanOn){
-      btnDeepScan.classList.add('border-brand-accent','text-brand-accent','shadow-glow-accent');
-      btnDeepScan.classList.remove('border-slate-300','text-slate-400');
-    } else {
-      btnDeepScan.classList.remove('border-brand-accent','text-brand-accent','shadow-glow-accent');
-      btnDeepScan.classList.add('border-slate-300','text-slate-400');
-    }
+  // ── Theme ─────────────────────────────────────────────
+  const html = document.documentElement;
+  (function(){
+    const s = localStorage.theme;
+    if(s==='dark'||(!s&&window.matchMedia('(prefers-color-scheme: dark)').matches)) html.classList.add('dark');
+    else html.classList.remove('dark');
+  })();
+  document.getElementById('theme-toggle').addEventListener('click',()=>{
+    html.classList.toggle('dark');
+    localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
+    if(typeof updateThreeColors === 'function') updateThreeColors();
   });
 
-  // ---------- upload / scan: show "Coming soon" only ----------
-  function showToast(msg, ms=1200){
-    const t = document.createElement('div');
-    t.className = 'short-toast';
-    t.textContent = msg;
+  // ── DOM refs ──────────────────────────────────────────
+  const form            = document.getElementById('mnemonic-form');
+  const textarea        = document.getElementById('brain-dump');
+  const fileInput       = document.getElementById('file-input');
+  const imgStrip        = document.getElementById('img-preview-strip');
+  const previewThumb    = document.getElementById('preview-thumb');
+  const previewFilename = document.getElementById('preview-filename');
+  const previewFilesize = document.getElementById('preview-filesize');
+  const btnRemoveImg    = document.getElementById('btn-remove-img');
+  const btnUpload       = document.getElementById('btn-upload');
+  const btnCamera       = document.getElementById('btn-camera');
+  const btnLore         = document.getElementById('btn-lore');
+  const btnHack         = document.getElementById('btn-hack');
+  const modeInput       = document.getElementById('mode-input');
+  const btnDeepScan     = document.getElementById('btn-deepscan');
+  const deepScanInput   = document.getElementById('deepscan-input');
+  const deepscanTrack   = document.getElementById('deepscan-track');
+  const deepscanKnob    = document.getElementById('deepscan-knob');
+  const deepscanIcon    = document.getElementById('deepscan-icon');
+  const languageInput   = document.getElementById('language-input');
+  const langDescText    = document.getElementById('lang-desc-text');
+  const outputLangBadge = document.getElementById('output-lang-badge');
+  const btnGenerate     = document.getElementById('btn-generate');
+  const stateIdle       = document.getElementById('ui-state-idle');
+  const stateProc       = document.getElementById('ui-state-processing');
+  const stateOutput     = document.getElementById('ui-state-output');
+  const progressBar     = document.getElementById('progress-bar');
+  const terminalLog     = document.getElementById('terminal-log');
+  const procTitle       = document.getElementById('proc-title');
+  const procSubtitle    = document.getElementById('proc-subtitle');
+  const aiItems         = document.getElementById('ai-items-container');
+  const sourceMatrix    = document.getElementById('source-matrix-container');
+  const outputModeBadge = document.getElementById('output-mode-badge');
+  const btnCancel       = document.getElementById('btn-cancel');
+  const btnReset        = document.getElementById('btn-reset');
+  const btnCopy         = document.getElementById('btn-copy-output');
+  const btnSave         = document.getElementById('btn-save-txt');
+  const btnReconfig     = document.getElementById('btn-reconfig');
+  const confirmModal    = document.getElementById('confirm-modal');
+  const modalCancelBtn  = document.getElementById('modal-cancel-btn');
+  const modalConfirmBtn = document.getElementById('modal-confirm-btn');
+
+  // ── App state ─────────────────────────────────────────
+  let currentMode     = 'lore';
+  let isDeepScan      = false;
+  let currentLanguage = 'english';
+  let ctrl            = null;
+  let progTimer       = null;
+  let imageBase64     = null;
+
+  // ── Helpers ───────────────────────────────────────────
+  function showToast(msg, ms=1800){
+    const t = document.createElement('div'); t.className='toast'; t.textContent=msg;
     document.body.appendChild(t);
-    setTimeout(()=> t.classList.add('fade'), 20);
-    setTimeout(()=> {
-      if(t.parentNode) t.parentNode.removeChild(t);
-    }, ms);
+    setTimeout(()=>{ if(t.parentNode) t.parentNode.removeChild(t); }, ms);
   }
-  btnUpload.addEventListener('click', ()=> {
-    showToast('📸 Coming soon — image upload will be enabled later', 1200);
-  });
-  btnCamera.addEventListener('click', ()=> {
-    showToast('📷 Coming soon — camera capture will be enabled later', 1200);
+
+  function switchState(hide, show){
+    hide.style.opacity='0';
+    setTimeout(()=>{
+      hide.classList.add('hidden'); hide.classList.remove('flex');
+      show.classList.remove('hidden');
+      void show.offsetWidth;
+      show.style.opacity='1';
+    }, 280);
+  }
+
+  function formatBytes(b){
+    if(b<1024) return b+' B';
+    if(b<1048576) return (b/1024).toFixed(1)+' KB';
+    return (b/1048576).toFixed(1)+' MB';
+  }
+
+  // ── Mode selection ────────────────────────────────────
+  function setMode(mode){
+    currentMode = mode;
+    modeInput.value = mode;
+    btnLore.style.borderColor = mode==='lore' ? '#6C2BD9' : 'rgba(0,0,0,0.08)';
+    btnLore.style.background  = mode==='lore' ? 'rgba(108,43,217,0.07)' : '';
+    btnHack.style.borderColor = mode==='hack' ? '#16A34A'  : 'rgba(0,0,0,0.08)';
+    btnHack.style.background  = mode==='hack' ? 'rgba(22,163,74,0.06)'  : '';
+    const loreDot = btnLore.querySelector('.mode-radio div');
+    const hackDot = btnHack.querySelector('.mode-radio div');
+    btnLore.querySelector('.mode-radio').style.borderColor = mode==='lore' ? '#6C2BD9' : 'rgba(0,0,0,0.2)';
+    btnHack.querySelector('.mode-radio').style.borderColor = mode==='hack' ? '#16A34A' : 'rgba(0,0,0,0.2)';
+    if(loreDot) loreDot.classList.toggle('hidden', mode!=='lore');
+    if(hackDot) hackDot.classList.toggle('hidden', mode!=='hack');
+    btnLore.setAttribute('aria-checked', mode==='lore');
+    btnHack.setAttribute('aria-checked', mode==='hack');
+    if(mode==='hack'){
+      btnGenerate.style.background = 'linear-gradient(135deg,#16A34A,#15803d)';
+      btnGenerate.style.boxShadow  = '0 4px 20px rgba(22,163,74,0.4)';
+    } else {
+      btnGenerate.style.background = 'linear-gradient(135deg,#6C2BD9,#7c3aed)';
+      btnGenerate.style.boxShadow  = '0 4px 20px rgba(108,43,217,0.4)';
+    }
+  }
+  btnLore.addEventListener('click', ()=> setMode('lore'));
+  btnHack.addEventListener('click', ()=> setMode('hack'));
+  setMode('lore');
+
+  // ── Deep Scan ─────────────────────────────────────────
+  btnDeepScan.addEventListener('click', ()=>{
+    isDeepScan = !isDeepScan;
+    deepScanInput.value = isDeepScan ? 'true' : 'false';
+    btnDeepScan.setAttribute('aria-pressed', isDeepScan);
+    if(isDeepScan){
+      btnDeepScan.classList.add('active');
+      deepscanTrack.style.background  = '#16A34A';
+      deepscanTrack.style.borderColor = '#16A34A';
+      deepscanKnob.style.left         = '20px';
+      deepscanKnob.style.background   = '#fff';
+      deepscanIcon.style.color        = '#4ade80';
+    } else {
+      btnDeepScan.classList.remove('active');
+      deepscanTrack.style.background  = 'rgba(0,0,0,0.08)';
+      deepscanTrack.style.borderColor = 'rgba(0,0,0,0.1)';
+      deepscanKnob.style.left         = '2px';
+      deepscanKnob.style.background   = '#94a3b8';
+      deepscanIcon.style.color        = '';
+    }
   });
 
-  // ---------- file preview (only if file added via paste or manual dev) ----------
-  fileInput.addEventListener('change', () => {
-    const f = fileInput.files && fileInput.files[0];
-    if(!f) { filePreview.src=''; filePreview.classList.add('hidden'); return; }
-    const url = URL.createObjectURL(f);
-    filePreview.src = url;
-    filePreview.classList.remove('hidden');
+  // ── Language selector ─────────────────────────────────
+  const LANG_META = {
+    english:  { badge:'🇬🇧 EN', desc:'Full English output — precise, clean, board-exam ready.' },
+    hinglish: { badge:'🔀 HE',  desc:'Hindi + English mix — the way toppers actually talk. Natural and fast to remember.' },
+    hindi:    { badge:'🇮🇳 HI', desc:'Pure Hindi output — best if you think and memorize in Hindi.' }
+  };
+  document.querySelectorAll('.lang-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      document.querySelectorAll('.lang-btn').forEach(b=> b.classList.remove('active'));
+      btn.classList.add('active');
+      currentLanguage = btn.dataset.lang;
+      languageInput.value = currentLanguage;
+      langDescText.textContent = LANG_META[currentLanguage].desc;
+    });
   });
 
-  // ---------- clipboard paste (text + images) ----------
-  window.addEventListener('paste', async (e)=>{
+  // ── Image upload — FULLY WIRED ────────────────────────
+  btnUpload.addEventListener('click', ()=> fileInput.click());
+  btnCamera.addEventListener('click', ()=> showToast('📷 Camera capture coming soon'));
+
+  function loadImageFile(file){
+    if(!file) return;
+    if(file.size > 5 * 1024 * 1024){ showToast('❌ Image too large — max 5MB'); fileInput.value=''; return; }
+    const reader = new FileReader();
+    reader.onload = (e)=>{
+      imageBase64 = e.target.result;
+      previewThumb.src = imageBase64;
+      previewFilename.textContent = file.name;
+      previewFilesize.textContent = formatBytes(file.size);
+      imgStrip.classList.add('visible');
+      btnUpload.style.borderColor = '#6C2BD9';
+      btnUpload.style.color       = '#6C2BD9';
+    };
+    reader.readAsDataURL(file);
+  }
+
+  fileInput.addEventListener('change', ()=> loadImageFile(fileInput.files && fileInput.files[0]));
+
+  function clearImage(){
+    imageBase64 = null; fileInput.value = '';
+    previewThumb.src = ''; previewFilename.textContent = ''; previewFilesize.textContent = '';
+    imgStrip.classList.remove('visible');
+    btnUpload.style.borderColor = ''; btnUpload.style.color = '';
+  }
+  btnRemoveImg.addEventListener('click', clearImage);
+
+  // Paste image from clipboard
+  window.addEventListener('paste', (e)=>{
     if(!e.clipboardData) return;
-    const items = e.clipboardData.items;
-    for(let i=0;i<items.length;i++){
-      const it = items[i];
-      if(it.type && it.type.startsWith && it.type.startsWith('image/')){
+    for(const it of e.clipboardData.items){
+      if(it.type && it.type.startsWith('image/')){
         const blob = it.getAsFile();
-        const dt = new DataTransfer();
-        dt.items.add(blob);
+        if(blob.size > 5*1024*1024){ showToast('❌ Pasted image too large — max 5MB'); return; }
+        const dt = new DataTransfer(); dt.items.add(blob);
         fileInput.files = dt.files;
-        filePreview.src = URL.createObjectURL(blob);
-        filePreview.classList.remove('hidden');
+        loadImageFile(blob);
         return;
       }
     }
-    const text = e.clipboardData.getData('text');
-    if(text) {
-      const pos = textarea.selectionStart || textarea.value.length;
-      const before = textarea.value.slice(0,pos);
-      const after = textarea.value.slice(pos);
-      textarea.value = before + text + after;
-      textarea.dispatchEvent(new Event('input'));
-    }
   });
 
-  // ---------- processing / abort / fake progress ----------
-  let currentController = null;
-  let progressInterval = null;
-  function startFakeProgress(){
-    clearInterval(progressInterval);
-    let p = 20;
-    progressBar.style.width = p + '%';
-    progressInterval = setInterval(()=>{
-      if(p < 80){ p += Math.random()*6; if(p>80) p=80; progressBar.style.width = Math.floor(p)+'%'; }
-    }, 450);
-  }
-  function stopFakeProgress(){
-    clearInterval(progressInterval);
-    progressInterval = null;
-  }
+  // ── Textarea auto-expand ──────────────────────────────
+  textarea.addEventListener('input', function(){
+    this.style.height='auto';
+    this.style.height = Math.max(140, this.scrollHeight)+'px';
+  });
 
-  // ---------- helper: convert file to base64 dataURL ----------
-  function fileToDataURL(file){
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = ()=> resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(file);
+  // ── Processing terminal ───────────────────────────────
+  const TERMINAL = {
+    lore: [
+      { t:'> Reading your concept...',                    c:'#94a3b8', d:0 },
+      { t:'> Mapping to your learning profile...',        c:'#a78bfa', d:700 },
+      { t:'> Constructing narrative arc...',              c:'#94a3b8', d:1500 },
+      { t:'> Planting memory anchors in the story...',    c:'#a78bfa', d:2600 },
+      { t:'> Finalizing lore sequence...',                c:'#94a3b8', d:4000 },
+    ],
+    hack: [
+      { t:'> Extracting concept signal...',               c:'#94a3b8', d:0 },
+      { t:'> Compressing to minimum viable mnemonic...',  c:'#4ade80', d:500 },
+      { t:'> Applying persona filter...',                 c:'#94a3b8', d:1200 },
+      { t:'> Neural hack ready. Encoding...',             c:'#4ade80', d:2000 },
+    ],
+    deep: [
+      { t:'> Deep Scan activated...',                     c:'#60a5fa', d:0 },
+      { t:'> Cross-referencing NCERT chapter index...',   c:'#94a3b8', d:700 },
+      { t:'> Pulling chapter references...',              c:'#60a5fa', d:1600 },
+      { t:'> Validating academic accuracy...',            c:'#94a3b8', d:2800 },
+      { t:'> Building citation-backed hook...',           c:'#60a5fa', d:4200 },
+    ]
+  };
+
+  let termTimers = [];
+  function runTerminal(lines){
+    terminalLog.innerHTML = ''; termTimers.forEach(clearTimeout); termTimers = [];
+    lines.forEach(({t,c,d})=>{
+      const tid = setTimeout(()=>{
+        const el = document.createElement('div');
+        el.className='terminal-line'; el.style.color=c; el.textContent=t;
+        terminalLog.appendChild(el); terminalLog.scrollTop=terminalLog.scrollHeight;
+      }, d);
+      termTimers.push(tid);
     });
   }
 
-  // ---------- form submit: send JSON (no multipart) ----------
+  function startProgress(fast){
+    clearInterval(progTimer); let p=15;
+    progTimer=setInterval(()=>{
+      if(p<78){ p+=Math.random()*(fast?10:5); if(p>78)p=78; progressBar.style.width=Math.floor(p)+'%'; }
+    }, fast?280:480);
+  }
+  function stopProgress(){ clearInterval(progTimer); progTimer=null; }
+
+  // ── Render output ─────────────────────────────────────
+  function renderOutput(rawData, mode, deepScan, language){
+    const items = Array.isArray(rawData) ? rawData : [rawData];
+    if(!items.length) return;
+
+    // Badges
+    if(deepScan){ outputModeBadge.textContent='Deep Scan'; outputModeBadge.className='badge badge-deep'; }
+    else if(mode==='hack'){ outputModeBadge.textContent='Neural Hack'; outputModeBadge.className='badge badge-hack'; }
+    else { outputModeBadge.textContent='Lore Engine'; outputModeBadge.className='badge badge-lore'; }
+    outputLangBadge.textContent = (LANG_META[language]||LANG_META.english).badge;
+
+    // Build cards
+    aiItems.innerHTML='';
+    items.forEach((json,idx)=>{
+      const card = document.createElement('div');
+      card.className='result-card p-5 md:p-6';
+      card.style.cssText=`opacity:0;transform:translateY(12px);transition:opacity .4s ease ${idx*0.12}s,transform .4s ease ${idx*0.12}s;`;
+
+      if(items.length>1){
+        const pl=document.createElement('div');
+        pl.className='text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2';
+        pl.style.color='#a78bfa';
+        pl.innerHTML=`<i data-lucide="layers" class="w-3 h-3"></i> Part ${idx+1} of ${items.length}`;
+        card.appendChild(pl);
+      }
+
+      const titleEl=document.createElement('div');
+      titleEl.className='text-lg md:text-xl font-display font-bold text-brand-primary mb-3';
+      titleEl.textContent=json.title||'Result';
+      card.appendChild(titleEl);
+
+      if(json.definition){
+        const def=document.createElement('p');
+        def.className='text-sm text-slate-600 dark:text-gray-300 leading-relaxed mb-4 pb-4 border-b border-gray-100 dark:border-white/5';
+        def.textContent=json.definition;
+        card.appendChild(def);
+      }
+
+      if(json.latex_formula && json.latex_formula!=='null' && json.latex_formula!==null){
+        const fBox=document.createElement('div');
+        fBox.className='formula-box p-4 mb-4 text-slate-800 dark:text-slate-200';
+        const clean=json.latex_formula.replace(/\$\$/g,'').trim();
+        try{ if(window.katex) katex.render(clean,fBox,{displayMode:true,throwOnError:false}); else fBox.textContent=json.latex_formula; }
+        catch(e){ fBox.textContent=json.latex_formula; }
+        card.appendChild(fBox);
+      }
+
+      if(json.hook_text){
+        const hero=document.createElement('div');
+        hero.className='mnemonic-hero p-5 md:p-6';
+        const hl=document.createElement('div');
+        hl.className='text-[10px] font-bold uppercase tracking-widest mb-3 flex items-center gap-2';
+        hl.style.color='#a78bfa';
+        hl.innerHTML=`<i data-lucide="${mode==='hack'?'zap':'book-open'}" class="w-3 h-3"></i> ${json.hook_label||(mode==='lore'?'Lore Engine Narrative:':'Neural Hack Mnemonic:')}`;
+        hero.appendChild(hl);
+        const ht=document.createElement('p');
+        ht.className='text-xl md:text-2xl font-display font-bold text-slate-900 dark:text-white leading-snug mb-3';
+        ht.textContent=json.hook_text;
+        hero.appendChild(ht);
+        if(json.hook_subtext){
+          const sub=document.createElement('div');
+          sub.className='pt-3 border-t border-brand-primary/10';
+          const sl=document.createElement('p');
+          sl.className='text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1.5';
+          sl.textContent='How it maps →';
+          sub.appendChild(sl);
+          const st=document.createElement('p');
+          st.className='text-xs text-slate-500 dark:text-gray-400 leading-relaxed font-mono';
+          st.textContent=json.hook_subtext;
+          sub.appendChild(st);
+          hero.appendChild(sub);
+        }
+        card.appendChild(hero);
+      }
+
+      aiItems.appendChild(card);
+      requestAnimationFrame(()=> requestAnimationFrame(()=>{
+        card.style.opacity='1'; card.style.transform='translateY(0)';
+      }));
+    });
+
+    lucide.createIcons();
+
+    // Source matrix
+    const allSources = items.flatMap(j=> j.source_matrix||[]);
+    if(allSources.length){
+      let h=`<div class="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-gray-500 flex items-center gap-2 mb-3 px-1"><i data-lucide="database" class="w-3 h-3"></i> NCERT References</div>`;
+      allSources.forEach((s,i)=>{
+        const ac=i%2===0?'#6C2BD9':'#16A34A';
+        const icon=s.icon_type==='file'?'file-text':'book-open';
+        h+=`<div class="source-card glass p-3 mb-3" style="border-left-color:${ac};">
+          <div class="flex items-start justify-between gap-2 mb-2">
+            <p class="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">${s.title||'Source'}</p>
+            <span class="text-[10px] font-bold whitespace-nowrap px-1.5 py-0.5 rounded flex-shrink-0" style="color:${ac};background:rgba(108,43,217,0.08);border:1px solid rgba(108,43,217,0.15);">${s.match_percentage||''}</span>
+          </div>
+          <div class="flex items-center gap-1.5 text-slate-400">
+            <i data-lucide="${icon}" class="w-3.5 h-3.5"></i>
+            <span class="text-[11px]">${icon==='file-text'?'Board Paper':'NCERT Chapter'}</span>
+          </div>
+        </div>`;
+      });
+      sourceMatrix.innerHTML=h; lucide.createIcons();
+    } else {
+      sourceMatrix.innerHTML='';
+    }
+  }
+
+  // ── Form submit ───────────────────────────────────────
   form.addEventListener('submit', async (ev)=>{
     ev.preventDefault();
+    const q = textarea.value.trim();
+    if(!q){ showToast('Please type what you want to memorize'); return; }
 
-    const question = textarea.value && textarea.value.trim();
-    if(!question && (!fileInput.files || fileInput.files.length===0)){
-      alert('Please enter a question or paste an image.');
-      return;
-    }
+    const isFast  = currentMode==='hack' && !isDeepScan;
+    const lines   = isDeepScan ? TERMINAL.deep : (currentMode==='hack' ? TERMINAL.hack : TERMINAL.lore);
 
-    switchState(stateIdle, stateProcessing);
-    stateProcessing.setAttribute('aria-busy','true');
-    processingLine.textContent = '> Preparing request...';
-    progressBar.style.width = '15%';
-    startFakeProgress();
+    procTitle.textContent    = isDeepScan ? 'Running Deep Scan...' : (currentMode==='hack' ? 'Hacking your concept...' : 'Crafting your lore...');
+    procSubtitle.textContent = isDeepScan ? 'Deep Scan · NCERT Cross-Reference' : (currentMode==='hack' ? 'Neural Hack · Compression Mode' : 'Lore Engine · Narrative Mode');
 
-    let imageBase64 = null;
-    if(fileInput.files && fileInput.files[0]){
-      try {
-        imageBase64 = await fileToDataURL(fileInput.files[0]);
-      } catch(e){
-        console.error('Failed to convert file to base64', e);
-        imageBase64 = null;
-      }
-    }
+    runTerminal(lines);
+    progressBar.style.width='15%';
+    startProgress(isFast);
+    stateProc.setAttribute('aria-busy','true');
+    switchState(stateIdle, stateProc);
 
-    const payload = {
-      question: question || '',
-      mode: modeInput.value || currentMode,
-      deepScan: (deepScanInput.value === 'true' || isDeepScanOn === true),
-      image: imageBase64
-    };
+    const payload = { question:q, mode:currentMode, deepScan:isDeepScan, language:currentLanguage, image:imageBase64 };
+    ctrl = new AbortController();
 
-    currentController = new AbortController();
-
-    try {
+    try{
       const res = await fetch(form.action, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-        signal: currentController.signal
+        method:'POST', headers:{'Content-Type':'application/json'},
+        credentials:'include', body:JSON.stringify(payload), signal:ctrl.signal
       });
-
-      processingLine.textContent = '> Awaiting model output...';
-      progressBar.style.width = '85%';
-
+      progressBar.style.width='88%';
+      if(!res.ok){ const e=await res.json().catch(()=>({})); throw new Error(e.error||`Server error ${res.status}`); }
       const json = await res.json();
+      stopProgress(); progressBar.style.width='100%';
 
-      stopFakeProgress();
-      progressBar.style.width = '100%';
+      renderOutput(json.initial_ai_response||json, currentMode, isDeepScan, currentLanguage);
+      stateProc.setAttribute('aria-busy','false');
+      switchState(stateProc, stateOutput);
 
-      // -------------------------------------------------------------
-      // UPDATED JSON PARSING BLOCK
-      // -------------------------------------------------------------
-      
-      // 1. Map Core Content
-      const output = json.definition || json.output || json.text || '';
-      const title = json.title || 'Result';
-      const formulaHtml = json.latex_formula || '';
-      const hookText = json.hook_text || '';
-      const hookSubtext = json.hook_subtext || '';
-      const hookLabel = json.hook_label || (currentMode === 'lore' ? 'Lore Engine Narrative:' : 'Neural Hack Mnemonic:');
-
-      aiTitle.textContent = title;
-      aiContent.innerHTML = output;
-
-      // 2. Map Formula (with KaTeX rendering)
-      if (formulaHtml) {
-        // Remove the $$ delimiters for KaTeX
-        const cleanFormula = formulaHtml.replace(/\$\$/g, '').trim();
-        try {
-          katex.render(cleanFormula, aiFormula, {
-            displayMode: true,
-            throwOnError: false
-          });
-        } catch (error) {
-          console.error("KaTeX Rendering Error:", error);
-          aiFormula.textContent = formulaHtml; // Fallback to plain text if rendering fails
-        }
-        aiFormula.classList.remove('hidden');
-      } else {
-        aiFormula.classList.add('hidden');
-        aiFormula.innerHTML = ''; // Clear previous rendering
-      }
-
-      // 3. Map Mnemonic / Lore Hook
-      if (hookText) {
-        const strongLabel = aiMnemonic.querySelector('strong');
-        if (strongLabel) strongLabel.textContent = hookLabel;
-        
-        aiMnemonicText.textContent = hookText;
-        aiMnemonicSub.textContent = hookSubtext;
-        aiMnemonic.classList.remove('hidden');
-      } else {
-        aiMnemonic.classList.add('hidden');
-      }
-
-      // 4. Visual Cortex Label - Kept static "Coming Soon" in HTML for now.
-      // if (json.visual_cortex && json.visual_cortex.tooltip_label) { ... }
-
-      // 5. Map Source Matrix (Dynamic Injection)
-      if (json.source_matrix && Array.isArray(json.source_matrix)) {
-          const headerHtml = `
-            <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
-              <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
-            </h3>`;
-          
-          let panelsHtml = '';
-          
-          json.source_matrix.forEach((source, index) => {
-              const colorClass = index === 0 ? 'border-l-brand-primary' : 'border-l-brand-accent';
-              const textClass = index === 0 ? 'text-brand-primary' : 'text-brand-accent';
-              const icon = source.icon_type === 'file' ? 'file-text' : 'book-open';
-
-              panelsHtml += `
-              <div class="hud-panel p-3 rounded-xl border-l-4 ${colorClass} hover:-translate-y-1 transition-transform cursor-pointer mb-3">
-                  <div class="flex justify-between items-start mb-2">
-                      <span class="text-xs font-bold text-slate-900 dark:text-white">${source.title || 'Source'}</span>
-                      <span class="text-[10px] font-mono bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20">${source.match_percentage || ''}</span>
-                  </div>
-                  <div class="h-16 bg-slate-200 dark:bg-slate-800 rounded mb-2 flex items-center justify-center overflow-hidden border border-brand-lightborder dark:border-white/5">
-                      <i data-lucide="${icon}" class="text-slate-400 w-6 h-6"></i>
-                  </div>
-                  <button id="btn-view-context-${index + 1}" class="text-[10px] font-bold w-full text-center ${textClass}">View Context</button>
-              </div>`;
-          });
-          
-          sourceMatrixContainer.innerHTML = headerHtml + panelsHtml;
-          
-          // Re-initialize Lucide icons for the new HTML
-          if(window.lucide) window.lucide.createIcons();
-      }
-
-      stateProcessing.setAttribute('aria-busy','false');
-      switchState(stateProcessing, stateOutput);
-
-    } catch (err) {
-      console.error(err);
-      stopFakeProgress();
-      progressBar.style.width = '0%';
-      stateProcessing.setAttribute('aria-busy','false');
-      switchState(stateProcessing, stateIdle);
-
-      if(err.name === 'AbortError'){
-        alert('Request cancelled.');
-      } else {
-        // Check if it's a JSON parsing error from the response
-        if(err instanceof SyntaxError) {
-           alert('Server error: Received invalid response format.');
-        } else {
-           alert('Request failed. Check console for details.');
-        }
-      }
+    } catch(err){
+      stopProgress(); progressBar.style.width='0%';
+      stateProc.setAttribute('aria-busy','false');
+      switchState(stateProc, stateIdle);
+      if(err.name==='AbortError') showToast('Cancelled.');
+      else { showToast('❌ '+(err.message||'Something went wrong.')); console.error(err); }
     } finally {
-      currentController = null;
-      stopFakeProgress();
+      ctrl=null; termTimers.forEach(clearTimeout); termTimers=[];
     }
   });
 
-  // ---------- cancel ----------
-  btnCancel.addEventListener('click', ()=>{
-    if(currentController) currentController.abort();
-    stateProcessing.setAttribute('aria-busy','false');
-    switchState(stateProcessing, stateIdle);
-    progressBar.style.width = '0%';
+  // ── Cancel ────────────────────────────────────────────
+  btnCancel.addEventListener('click',()=>{
+    if(ctrl) ctrl.abort();
+    stateProc.setAttribute('aria-busy','false');
+    switchState(stateProc,stateIdle);
+    stopProgress(); progressBar.style.width='0%';
   });
 
-  // ---------- reset / new query ----------
-  btnReset.addEventListener('click', ()=>{
-    form.reset();
-    filePreview.src = ''; filePreview.classList.add('hidden');
-    aiContent.innerHTML = '';
-    aiTitle.textContent = 'Result';
-    aiFormula.classList.add('hidden'); aiMnemonic.classList.add('hidden');
-    progressBar.style.width = '0%';
-    
-    // Reset Source Matrix Container to original state
-    sourceMatrixContainer.innerHTML = `
-      <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
-        <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
-      </h3>`;
-    if(window.lucide) window.lucide.createIcons();
-
-    switchState(stateOutput, stateIdle);
-    textarea.focus();
+  // ── Reset ─────────────────────────────────────────────
+  btnReset.addEventListener('click',()=>{
+    form.reset(); clearImage();
+    aiItems.innerHTML=''; sourceMatrix.innerHTML='';
+    progressBar.style.width='0%';
+    switchState(stateOutput,stateIdle);
+    setMode('lore'); textarea.focus();
   });
 
-  // ---------- copy & download ----------
-  function copyText(text){
-    navigator.clipboard.writeText(text).then(()=>{
-      const el = document.createElement('div');
-      el.className = 'short-toast';
-      el.textContent = 'Copied to clipboard';
-      document.body.appendChild(el);
-      setTimeout(()=> document.body.removeChild(el), 900);
-    });
+  // ── Copy / Save ───────────────────────────────────────
+  btnCopy.addEventListener('click',()=>{
+    const txt=aiItems.innerText||'';
+    if(!txt) return showToast('Nothing to copy yet');
+    navigator.clipboard.writeText(txt).then(()=>showToast('✓ Copied to clipboard'));
+  });
+  btnSave.addEventListener('click',()=>{
+    const txt=aiItems.innerText||'';
+    if(!txt) return showToast('Nothing to save yet');
+    const blob=new Blob([txt],{type:'text/plain'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='boardalgo-mnemonic.txt'; a.click();
+  });
+  document.getElementById('btn-bookmark').addEventListener('click',()=>showToast('📌 Bookmark feature coming soon'));
+
+  // ── Keyboard shortcut ─────────────────────────────────
+  textarea.addEventListener('keydown',(e)=>{ if((e.ctrlKey||e.metaKey)&&e.key==='Enter') btnGenerate.click(); });
+
+  // ── Reconfigure Profile modal ─────────────────────────
+  btnReconfig.addEventListener('click',()=>{
+    confirmModal.classList.add('open');
+    document.body.style.overflow='hidden';
+  });
+  function closeConfirmModal(){
+    confirmModal.classList.remove('open');
+    document.body.style.overflow='';
   }
-  btnCopyOutput.addEventListener('click', ()=> {
-    const txt = aiContent.innerText || aiContent.textContent || '';
-    if(!txt) return alert('No content to copy');
-    copyText(txt);
-  });
+  modalCancelBtn.addEventListener('click', closeConfirmModal);
+  confirmModal.addEventListener('click',(e)=>{ if(e.target===confirmModal) closeConfirmModal(); });
 
-  btnSaveTxt.addEventListener('click', ()=> {
-    const txt = aiContent.innerText || aiContent.textContent || '';
-    if(!txt) return alert('No content to save');
-    const blob = new Blob([txt], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'boardalgo-output.txt';
-    a.click();
-  });
-  btnDownloadOutputTop.addEventListener('click', ()=> btnSaveTxt.click());
-
-  // ---------- view context placeholders ("Coming Soon") ----------
-  sourceMatrixContainer.addEventListener('click', (e) => {
-    // Check if the clicked element or its parent is a view-context button
-    const button = e.target.closest('button');
-    if (button && button.id && button.id.startsWith('btn-view-context-')) {
-      alert('Context viewer is coming soon!');
+  modalConfirmBtn.addEventListener('click', async ()=>{
+    modalConfirmBtn.textContent='Resetting...';
+    modalConfirmBtn.disabled=true;
+    try{
+      // ← Change this URL to match your reset-behaviour route
+      await fetch('/api/user/reset-behaviour', { method:'POST', credentials:'include' });
+      // ← Change this to your onboarding/persona-setup page URL
+      window.location.href='/onboarding';
+    } catch(e){
+      showToast('❌ Reset failed. Try again.');
+      modalConfirmBtn.textContent='Yes, Reset It';
+      modalConfirmBtn.disabled=false;
+      closeConfirmModal();
     }
   });
 
-  // ---------- shortcut ----------
-  textarea.addEventListener('keydown', (e)=>{
-    if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ btnGenerate.click(); }
-  });
+  // ── GSAP entrance ─────────────────────────────────────
+  gsap.to('.gsap-entry',{ y:0, opacity:1, stagger:.1, duration:.55, ease:'power2.out', delay:.05 });
 
-  // ---------- theme toggle ----------
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  if(prefersDark) htmlElement.classList.add('dark');
-  themeToggleBtn.addEventListener('click', ()=>{ htmlElement.classList.toggle('dark'); updateThreeJSColors(); });
-
-  // ---------- three.js background ----------
-  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let scene, camera, renderer, grid, particlesMesh;
-  function initThreeJS(){
-    if(prefersReducedMotion) return;
-    const container = document.getElementById('canvas-container');
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.set(0,3,10); camera.rotation.x = -0.2;
-    renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    container.appendChild(renderer.domElement);
-
-    const gridGeo = new THREE.PlaneGeometry(200,200,60,60);
-    const gridMat = new THREE.MeshBasicMaterial({ color:0x6C2BD9, wireframe:true, transparent:true, opacity:0.12 });
-    grid = new THREE.Mesh(gridGeo, gridMat);
-    grid.rotation.x = -Math.PI/2; scene.add(grid);
-
-    const particlesGeo = new THREE.BufferGeometry();
-    const particlesCount = 300;
-    const posArray = new Float32Array(particlesCount*3);
-    for(let i=0;i<posArray.length;i++) posArray[i] = (Math.random()-0.5) * 60;
-    particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const particlesMat = new THREE.PointsMaterial({ size:0.08, color:0xffffff, transparent:true, opacity:0.4 });
-    particlesMesh = new THREE.Points(particlesGeo, particlesMat);
-    scene.add(particlesMesh);
-
-    updateThreeJSColors();
-
-    let time = 0;
-    function animate(){
+  // ── Three.js background ───────────────────────────────
+  let threeParticles, threeRenderer, threeScene;
+  function updateThreeColors(){
+    if(!threeParticles) return;
+    threeParticles.material.opacity = html.classList.contains('dark') ? 0.6 : 0.2;
+  }
+  (function(){
+    const canvas = document.getElementById('bg-canvas');
+    threeRenderer = new THREE.WebGLRenderer({canvas,alpha:true});
+    threeScene    = new THREE.Scene();
+    const camera  = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000);
+    threeRenderer.setSize(innerWidth,innerHeight);
+    threeRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    const count=1500, pos=new Float32Array(count*3);
+    for(let i=0;i<count*3;i++) pos[i]=(Math.random()-.5)*20;
+    const geo=new THREE.BufferGeometry();
+    geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+    const mat=new THREE.PointsMaterial({size:.02,color:0x6C2BD9,transparent:true,opacity:.6});
+    threeParticles=new THREE.Points(geo,mat);
+    threeScene.add(threeParticles); camera.position.z=4;
+    let mx=0,my=0;
+    document.addEventListener('mousemove',e=>{ mx=e.clientX/innerWidth-.5; my=e.clientY/innerHeight-.5; });
+    (function animate(){
       requestAnimationFrame(animate);
-      time += 0.003;
-      grid.position.z = (time*10) % 5;
-      const positions = gridGeo.attributes.position;
-      for(let i=0;i<positions.count;i++){
-        positions.setZ(i, Math.sin(i/5 + time*5) * 0.2);
-      }
-      positions.needsUpdate = true;
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    window.addEventListener('resize', ()=>{
-      camera.aspect = window.innerWidth/window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+      threeParticles.rotation.y+=.0005+mx*.002;
+      threeParticles.rotation.x+=.0002+my*.001;
+      threeRenderer.render(threeScene,camera);
+    })();
+    window.addEventListener('resize',()=>{
+      camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix();
+      threeRenderer.setSize(innerWidth,innerHeight);
     });
-  }
-  function updateThreeJSColors(){
-    if(!scene) return;
-    const isDark = htmlElement.classList.contains('dark');
-    if(isDark){
-      scene.fog = new THREE.FogExp2(0x020617, 0.03);
-      if(particlesMesh) particlesMesh.material.color.setHex(0xffffff);
-    } else {
-      scene.fog = new THREE.FogExp2(0xF9FAFB, 0.03);
-      if(particlesMesh) particlesMesh.material.color.setHex(0x6C2BD9);
-    }
-  }
-  initThreeJS();
+    updateThreeColors();
+  })();
 
-  // ---------- initialize UI visibility ----------
-  stateIdle.classList.remove('hidden');
-  stateProcessing.classList.add('hidden');
-  stateOutput.classList.add('hidden');
+  // ── Injected result loader ────────────────────────────
+  (function(){
+    if(!window.__INJECTED_RESULT__) return;
+    const saved = window.__INJECTED_RESULT__;
+    const raw   = saved.initial_ai_response || saved;
+    const mode  = saved.generation_mode  || 'lore';
+    const deep  = saved.deep_scan_enabled || false;
+    const lang  = saved.language          || 'english';
 
+    currentMode=mode; isDeepScan=deep; currentLanguage=lang;
+    setMode(mode);
+    if(deep) btnDeepScan.click();
 
-// ---------- injected result loader ----------
-(function(){
+    // Sync language pills
+    document.querySelectorAll('.lang-btn').forEach(b=>{
+      b.classList.toggle('active', b.dataset.lang===lang);
+    });
+    languageInput.value=lang;
+    langDescText.textContent=(LANG_META[lang]||LANG_META.english).desc;
 
-  if(!window.__INJECTED_RESULT__) return;
-
-  const json =
-      window.__INJECTED_RESULT__.initial_ai_response ||
-      window.__INJECTED_RESULT__;
-
-switchState(stateIdle, stateOutput);
-
-  // populate title + content
-  aiTitle.textContent = json.title || "Result";
-  aiContent.innerHTML = json.definition || json.output || json.text || "";
-
-  // render formula
-  if(json.latex_formula){
-      const clean = json.latex_formula.replace(/\$\$/g,"").trim();
-      try{
-          katex.render(clean, aiFormula, { displayMode:true });
-      }catch(e){
-          aiFormula.textContent = json.latex_formula;
-      }
-      aiFormula.classList.remove("hidden");
-  }
-
-  // mnemonic / lore
-  if(json.hook_text){
-      aiMnemonic.classList.remove("hidden");
-      aiMnemonicText.textContent = json.hook_text;
-      aiMnemonicSub.textContent = json.hook_subtext || "";
-  }
-
-  // source matrix
-  if(Array.isArray(json.source_matrix)){
-
-      let html = `
-      <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
-        <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
-      </h3>`;
-
-      json.source_matrix.forEach((s)=>{
-
-          const icon = s.icon_type === "file" ? "file-text" : "book-open";
-
-          html += `
-          <div class="hud-panel p-3 rounded-xl border-l-4 border-l-brand-primary mb-3">
-            <div class="flex justify-between mb-2">
-              <span class="text-xs font-bold">${s.title || "Source"}</span>
-              <span class="text-[10px] font-mono">${s.match_percentage || ""}</span>
-            </div>
-
-            <div class="h-16 flex items-center justify-center">
-              <i data-lucide="${icon}" class="w-6 h-6"></i>
-            </div>
-          </div>`;
-      });
-
-      sourceMatrixContainer.innerHTML = html;
-
-      if(window.lucide) lucide.createIcons();
-  }
-
-})();
-
+    renderOutput(raw, mode, deep, lang);
+    switchState(stateIdle, stateOutput);
+  })();
 
   </script>
-<script src="/js/tracking.js" defer></script>
+
+  <script src="/js/tracking.js" defer></script>
 </body>
 </html>
