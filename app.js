@@ -92,11 +92,11 @@ function isLoggedIn (req,res,next)
       if (req.originalUrl.startsWith("/api"))
             {
               console.log("/api is accessed without logging in, so error ") ; 
-              res.render("login", {message : "please login first" , color : "red"}) ; 
+             return res.render("login", {message : "please login first" , color : "red"}) ; 
             }
 
         console.log("user is not logged in, so redirected to login page") ; 
-        res.render("login" , {message : "please login/signup first" , color : "red"}) ;  
+        return res.render("login" , {message : "please login/signup first" , color : "red"}) ;  
     }
 }
 
@@ -130,6 +130,7 @@ const interaction = require("./models/LearningInteraction") ;
 // const LearningInteraction = require("./models/LearningInteraction");
 const UserBehaviour = require("./models/UserPsychProfile");
 const PasswordReset = require("./models/PasswordReset") ;
+const MnemonicFeedback = require("./models/mnemonicFeedback") ; 
 const { render } = require("ejs");
  //======================
 
@@ -167,7 +168,8 @@ app.post("/api/auth/google", async function(req, res) {
     picture = googleResponse.data.picture;
     sub = googleResponse.data.sub;
 
-  } catch (error) { // CHANGED: Added 'error' parameter to catch block to log the actual issue
+  }
+   catch (error) { // CHANGED: Added 'error' parameter to catch block to log the actual issue
     console.log("Error is there while even calling the API", error); // CHANGED: Included the error variable in the log
     return res.render("login", { message: "One Tap Login ERROR 404, please login manually" }); // ADDED: 'return' to stop execution and prevent app crash
   }
@@ -209,7 +211,7 @@ app.post("/api/auth/google", async function(req, res) {
     });
 
 
-    }); // CHANGED: Added semicolon
+    }); 
   } 
   
   else 
@@ -899,13 +901,18 @@ app.get("/mnemonic" ,isLoggedIn, async function(req,res)
 )
 
 
+
+
+
 // to recieve the user's personaa from personna.ejs 
 
 app.post("/api/onboard" , isLoggedIn , async function (req,res)
 {
+  console.log("post request from personnaEJS") ; 
     try 
     {
     const class_level = req.body.class_level ;
+    const language = req.body.language ;
     const dopamine_schema = req.body.dopamine_schema ;
     const cortisol_response = req.body.cortisol_response ; 
     const von_restorff = req.body.von_restorff ; 
@@ -917,6 +924,7 @@ app.post("/api/onboard" , isLoggedIn , async function (req,res)
         {
             user : req.session.user._id ,
             class_level: class_level,
+            language : language , 
             dopamine_schema: dopamine_schema,
             cortisol_response: cortisol_response,
             von_restorff: von_restorff,
@@ -924,929 +932,972 @@ app.post("/api/onboard" , isLoggedIn , async function (req,res)
             social_ego: social_ego
         }
     )
-// console.log("user's personna : ", userpersona) ; 
+console.log("user's personna : ", userpersona) ; 
 
 res.render("mnemonic", {user : req.session.user}) ; 
     }
 
     catch (error)
     {
-        // console.log("ERROR in creating database for personaa :", error) ; 
+        console.log("ERROR in creating database for personaa :", error) ; 
     }
 })
 
 
-
-// // to get the user's input for mnemonic generation 
-// app.post("/api/generate-mnemonic" ,isLoggedIn , async function(req,res)
+// app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
 // {
-
-// const question = req.body.question ; 
-// // const image = req.body.image ; 
-// const mode = req.body.mode ; 
-// const deepScan = req.body.deepScan ; 
-
-// function whichModel(mode , deepScan)
-// {
-//   if(deepScan)
-//   {
-//     return "gemini-2.5-pro" ;
-//   }
-//   if (mode == 'lore') 
-//   {
-//     return "gemini-2.5-pro" ; 
-//   }
-
-//   return "gemini-2.5-flash" ; 
+//     res.render("solutionfinder", {savedSolution : null}) ; 
 // }
-
-
-// const newLI = await interaction.create (
-//     {
-//         user_query_text : question ,
-//         generation_mode : mode , 
-//         deep_scan_enabled : deepScan , 
-//         feature_type : "MNEMONIC_GENERATOR" , 
-//         user_id : req.session.user._id , 
-//     }
 // )
 
-// // const user = await user.findOne({_id : req.session.user._id}) ; 
-// const user = req.session.user ; 
 
-// const behaviour = await UserBehaviour.findOne({user : req.session.user._id , status : "Active"}) ;
-// //generating system prompt : 
+// ─────────────────────────────────────────────────────────────────────────────
+// TIER
+// ─────────────────────────────────────────────────────────────────────────────
+
+function getTier(user) {
+  if (user.subscription_status === 'ACTIVE') {
+    return { isPro: true,  maxReqPerMin: 12, deepScanAllowed: true  };
+  }
+  return   { isPro: false, maxReqPerMin: 4,  deepScanAllowed: false };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// RATE LIMITER — in-memory rolling window
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _rl = new Map();
+
+function checkRateLimit(userId, max) {
+  const now = Date.now(), win = 60_000;
+  const r   = _rl.get(userId) || { n: 0, t: now };
+  if (now - r.t > win) { r.n = 0; r.t = now; }
+  if (r.n >= max) return { ok: false, wait: Math.ceil((win - (now - r.t)) / 1000) };
+  r.n++;
+  _rl.set(userId, r);
+  return { ok: true };
+}
+
+setInterval(() => {
+  const cutoff = Date.now() - 120_000;
+  for (const [k, v] of _rl) if (v.t < cutoff) _rl.delete(k);
+}, 5 * 60_000);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CACHE — profile-aware, 24 h TTL
+// Language is part of the cache key because it comes from the profile now.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const _cache = new Map();
+const TTL    = 24 * 60 * 60_000;
+
+function cacheKey(question, mode, language, ctx) {
+  const fp = [
+    ctx.class_level,
+    ctx.language,
+    ctx.dopamine_schema,
+    ctx.cortisol_response,
+    ctx.von_restorff,
+    ctx.memory_decay,
+    ctx.social_ego,
+  ].join('|');
+
+  return crypto
+    .createHash('md5')
+    .update([question.toLowerCase().trim(), mode, language, fp].join('::'))
+    .digest('hex');
+}
+
+function cacheGet(k) {
+  const e = _cache.get(k);
+  if (!e) return null;
+  if (Date.now() > e.x) { _cache.delete(k); return null; }
+  return e.v;
+}
+
+function cacheSet(k, v) { _cache.set(k, { v, x: Date.now() + TTL }); }
+
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, e] of _cache) if (now > e.x) _cache.delete(k);
+}, 60 * 60_000);
+
+// ─────────────────────────────────────────────────────────────────────────────
+// safeExtractText
+// ─────────────────────────────────────────────────────────────────────────────
+
+function safeExtractText(response) {
+  try {
+    const c     = response?.candidates?.[0];
+    const block = response?.promptFeedback?.blockReason;
+    if (c?.finishReason && c.finishReason !== 'STOP') {
+      console.warn('[safeExtract] finish=' + c.finishReason);
+    }
+    if (block) { console.error('[safeExtract] blocked:', block); return { text: '', truncated: false }; }
+    const parts = c?.content?.parts;
+    if (!parts?.length) return { text: '', truncated: false };
+    return {
+      text:      parts.filter(p => typeof p.text === 'string').map(p => p.text).join('').trim(),
+      truncated: c?.finishReason === 'MAX_TOKENS',
+    };
+  } catch (e) {
+    console.error('[safeExtract]', e.message);
+    return { text: '', truncated: false };
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// JSON REPAIR — 5-layer extraction handles all truncation cases
+// ─────────────────────────────────────────────────────────────────────────────
+
+function robustJSONParse(raw) {
+  if (!raw?.trim()) throw new Error('Empty');
+  const c = raw.trim()
+    .replace(/^```json\s*/im, '')
+    .replace(/^```\s*/im, '')
+    .replace(/```\s*$/im, '')
+    .trim();
+
+  try { const p = JSON.parse(c); return Array.isArray(p) ? p : [p]; } catch (_) {}
+
+  const objs = _recoverObjects(c);
+  if (objs.length) { console.log('[parse] recovered ' + objs.length + ' obj(s)'); return objs; }
+
+  const am = c.match(/(\[[\s\S]*\])/);
+  if (am) { try { const p = JSON.parse(am[1]); return Array.isArray(p) ? p : [p]; } catch (_) {} }
+
+  const os = _firstObj(c);
+  if (os) { try { return [JSON.parse(os)]; } catch (_) {} }
+
+  const rep = _repair(c);
+  if (rep) { try { console.log('[parse] repaired'); const p = JSON.parse(rep); return Array.isArray(p) ? p : [p]; } catch (_) {} }
+
+  throw new Error('No JSON. Starts: "' + raw.slice(0, 80) + '"');
+}
+
+function _recoverObjects(s) {
+  const r = []; let d = 0, st = -1, inS = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; } if (c === '\\' && inS) { esc = true; continue; }
+    if (c === '"') { inS = !inS; continue; } if (inS) continue;
+    if (c === '{') { if (!d) st = i; d++; }
+    else if (c === '}') { d--; if (!d && st !== -1) { try { r.push(JSON.parse(s.slice(st, i + 1))); } catch (_) {} st = -1; } }
+  }
+  return r;
+}
+
+function _firstObj(s) {
+  let d = 0, st = -1, inS = false, esc = false;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; } if (c === '\\' && inS) { esc = true; continue; }
+    if (c === '"') { inS = !inS; continue; } if (inS) continue;
+    if (c === '{') { if (!d) st = i; d++; }
+    else if (c === '}') { d--; if (!d && st !== -1) return s.slice(st, i + 1); }
+  }
+  return null;
+}
+
+function _repair(s) {
+  const stk = []; let inS = false, esc = false, lc = -1, lo = -1;
+  for (let i = 0; i < s.length; i++) {
+    const c = s[i];
+    if (esc) { esc = false; continue; } if (c === '\\' && inS) { esc = true; continue; }
+    if (c === '"') { inS = !inS; continue; } if (inS) continue;
+    if (c === '{' || c === '[') stk.push(c);
+    else if (c === '}' || c === ']') { stk.pop(); lo = i + 1; if (stk.length === 1 && stk[0] === '[') lc = i + 1; }
+    else if (c === ',' && lo > 0) lc = i;
+  }
+  if (!stk.length) return null;
+  const cut = lc > 0 ? lc : lo; if (cut <= 0) return null;
+  const p  = s.slice(0, cut).trimEnd().replace(/,\s*$/, '');
+  const cl = stk.map(c => c === '{' ? '}' : ']').reverse().join('');
+  const rep = p + cl;
+  try { JSON.parse(rep); return rep; } catch (_) { return null; }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// CONTINUATION FALLBACK
+// ─────────────────────────────────────────────────────────────────────────────
+
+async function continueJSON(partialRaw, genAI) {
+  console.log('[continuation] Truncation detected — asking flash to complete...');
+
+  const model = genAI.getGenerativeModel({
+    model: 'gemini-2.5-flash',
+    generationConfig: { temperature: 0.1, maxOutputTokens: 8192 },
+  });
+
+  const result = await model.generateContent({
+    systemInstruction: {
+      parts: [{ text: [
+        'You are a JSON completion engine.',
+        'You will be given a truncated JSON array.',
+        'Your ONLY job: output the exact continuation characters needed to make the JSON valid and complete.',
+        'Rules:',
+        '- Start your response from EXACTLY where the truncation happened (the very next character)',
+        '- Do NOT repeat any part of the input',
+        '- Do NOT add any explanation, preamble, or markdown',
+        '- Close all open strings, objects, and arrays properly',
+        '- The completed JSON must be parseable by JSON.parse()',
+      ].join('\n') }],
+    },
+    contents: [{
+      role: 'user',
+      parts: [{ text: 'Complete this truncated JSON array. Output ONLY the continuation:\n\n' + partialRaw }],
+    }],
+  });
+
+  const { text } = safeExtractText(result.response);
+  if (!text) return null;
+
+  const completed = partialRaw + text;
+  console.log('[continuation] Merged length:', completed.length);
+  return completed;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// SYSTEM PROMPT BUILDER
+// Separated so it can be audited and tested in isolation.
+// All variable names match UserPsychProfile.toPromptContext() output exactly.
+// ─────────────────────────────────────────────────────────────────────────────
 
 
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FALLBACK PROFILE CONTEXT
+// Used when no onboarding record exists (legacy user or migration gap).
+// Values match UserPsychProfile enum strings exactly.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// const systemprompt = 
-// `
-// You are BoardAlgo AI Synapse — a hyper-personalized memory encoding engine built exclusively for CBSE board students. You are NOT an AI assistant. You are NOT a chatbot. You are a cognitive compression machine. Your sole purpose is to take any academic concept and forge an unforgettable memory hook that is laser-targeted to the student's psychographic profile.
+// ─────────────────────────────────────────────────────────────────────────────
+// THE Nmeonic generator starts here
+// ─────────────────────────────────────────────────────────────────────────────
+// ─────────────────────────────────────────────────────────────────────────────
+// MODULAR PROMPT SYSTEM
+// Each block is a pure function → string.
+// buildSystemPrompt() assembles them at call-time.
+// To edit one concern, open one block. Nothing else changes.
+// ─────────────────────────────────────────────────────────────────────────────
 
-// NEVER refer to yourself as an AI, LLM, or Gemini. You are "BoardAlgo AI Synapse". 
-// NEVER produce conversational text like "Hey!", "Sure!", "Great question!", or "I hope this helps!".
-// NEVER break from the JSON schema. Ever.
+// // ── Block 1: System Identity (static, never changes) ─────────────────────────
+// function blockSystem() {
+//   return `
+// You are BoardAlgo AI Synapse — a memory encoding engine for Indian CBSE board students.
+// NOT an AI assistant. NOT a chatbot. A cognitive compression machine.
+// Your job: show WHAT to learn AND provide an unforgettable trick to remember it.
+// NEVER write greetings or commentary outside the JSON.
+// NEVER break the JSON schema.
+// OUTPUT: RAW JSON ARRAY ONLY — nothing before [ and nothing after ].
+// `.trim();
+// }
 
-// ────────────────────────────────────────
-// STUDENT PROFILE (injected at runtime)
-// ────────────────────────────────────────
+// // ── Block 2: Student Profile (fully dynamic per request) ──────────────────────
+// function blockProfile(user, ctx, mode, language) {
+//   return `
+// ════════════════════════════════════════
+// STUDENT PROFILE
+// ════════════════════════════════════════
 // username          : ${user.username}
 // class             : ${user.Class}
 // generation_mode   : ${mode}
-// deepscan_enabled  : ${deepScan}
-// CLASS_LEVEL       : ${behaviour.class_level}
-// DOPAMINE_SCHEMA   : ${behaviour.dopamine_schema}
-// CORTISOL_RESPONSE : ${behaviour.cortisol_response}
-// VON_RESTORFF_STYLE: ${behaviour.von_restorff}
-// MEMORY_DECAY_TYPE : ${behaviour.memory_decay}
-// SOCIAL_EGO        : ${behaviour.social_ego}
+// CLASS_LEVEL       : ${ctx.class_level}
+// LANGUAGE          : ${language}
+// DOPAMINE_SCHEMA   : ${ctx.dopamine_schema}
+// CORTISOL_RESPONSE : ${ctx.cortisol_response}
+// VON_RESTORFF_STYLE: ${ctx.von_restorff}
+// MEMORY_DECAY_TYPE : ${ctx.memory_decay}
+// SOCIAL_EGO        : ${ctx.social_ego}
+// FRUSTRATION_LEVEL : ${ctx.frustration_level}/5
+// `.trim();
+// }
 
-// ────────────────────────────────────────
-// PSYCHOGRAPHIC MAPPING — HARD RULES
-// ────────────────────────────────────────
+// // ── Block 3: Psychographic Directives (resolved from profile enums) ───────────
+// // Each value maps to a concrete instruction. No "see rules section" references.
+// function blockPsychographic(ctx, dopamineMotivator, egoMotivator) {
 
-// These are NOT suggestions. Every field in the output MUST be filtered through these lenses.
+//   const cortisolDirective = {
+//     audio_kinesthetic:
+//       'RECALL STYLE — Audio/Kinesthetic: Build hook_text with rhythm and a beat. Use rhyme or repetition. This student needs to hear it in their head. Mnemonics that can be spoken aloud work best.',
+//     spatial_visual:
+//       'RECALL STYLE — Spatial/Visual: In hook_subtext, anchor to visual locations — "top of the page", "left column", "middle box". This student tries to picture WHERE they read it.',
+//     chunking:
+//       'RECALL STYLE — Chunking: Acronym mnemonics are the highest priority. hook_text must be a single clean acronym sentence. The first-letter trigger is this student\'s fastest path to recall.',
+//     algorithmic:
+//       'RECALL STYLE — Algorithmic: Always show the underlying rule or derivation in concept_content. The hook can reference "derive from here". This student reconstructs from logic, not rote.',
+//   }[ctx.cortisol_response] || 'RECALL STYLE — Balanced: Standard mnemonic format.';
 
-// 1. CLASS_LEVEL → Vocabulary & Complexity Calibration
-//    - "class_10"  → Simple language, relatable school-life references, no jargon beyond NCERT.
-//    - "class_12"  → Technical precision, competitive-exam-aware, board + JEE/NEET framing.
+//   const memoryDecayDirective = {
+//     serial_position:
+//       'DECAY PATTERN — Serial Position: This student loses the middle. Front-load and back-load the most critical elements. End hook_subtext with a vivid image anchor that covers the middle items.',
+//     jumbled_mess:
+//       'DECAY PATTERN — Sequence Scrambler: This student remembers the items but shuffles the order. State the ORDER explicitly in hook_subtext: "First [X], then [Y], finally [Z]." Use numbered sequence cues.',
+//     vocab_block:
+//       'DECAY PATTERN — Vocab Block: This student understands the concept but the exact scientific keywords vanish. Repeat the exact scientific term at least once in hook_subtext. Make the word itself part of the hook.',
+//     wall_of_text:
+//       'DECAY PATTERN — Block Rejection: This student\'s brain rejects paragraphs entirely. concept_content type MUST be "list" or "steps". Never "statement". Structure = survival.',
+//   }[ctx.memory_decay] || 'DECAY PATTERN — Standard: Balanced structure.';
 
-// 2. DOPAMINE_SCHEMA → Hook Energy & Engagement Style
-//    - "thrill_seeker"    → Make the hook feel like a cheat code. Use power words: "HACK", "UNLOCK", "EXPLOIT".
-//    - "reward_oriented"  → Frame the hook as a reward after mastering the concept.
-//    - "curiosity_driven" → Lead with a shocking or counterintuitive "did you know" fact before the mnemonic.
-//    - "social_proof"     → Reference toppers, rank holders: "This is the trick every 99-percenter uses."
+//   const vonRestorffDirective = {
+//     gen_z_meme_heavy:
+//       'MNEMONIC STYLE — Unhinged: Maximally bizarre. Absurd scene. Weird = memorable. The stranger the better. Use internet-culture energy but only simple words.',
+//     desi_drama:
+//       'MNEMONIC STYLE — Desi Drama: Full Bollywood climax energy. Betrayal, crying, shouting. Natural Hinglish. Heavy dialogue feel.',
+//     cinematic:
+//       'MNEMONIC STYLE — Cinematic: Dramatic one-liner. Final-boss, action-movie energy. Maximum punch in minimum words. Think trailer voice-over.',
+//     grounded:
+//       'MNEMONIC STYLE — Grounded: Normal everyday scene. Easy to picture. No chaos. Clarity beats cleverness here.',
+//   }[ctx.von_restorff] || 'MNEMONIC STYLE — Standard.';
 
-// 3. CORTISOL_RESPONSE → Tone Under Pressure
-//    - "high_stress"      → Keep hooks SHORT, punchy, zero fluff. Student is in panic mode. Prioritize speed.
-//    - "moderate"         → Balanced. Explain the trick in full but keep it energetic.
-//    - "low_stress"       → Can be elaborate, layered, and playful. Student has time.
+//   const frustrationDirective = ctx.frustration_level >= 3
+//     ? `⚠ FRUSTRATION OVERRIDE (level ${ctx.frustration_level}/5):
+//   Simplify aggressively. hook_text max 10 words. concept_content type = "list" or "steps" only.
+//   Use only the most basic everyday words. Zero ambiguity. This student is struggling — don't add cognitive load.`
+//     : null;
 
-// 4. VON_RESTORFF_STYLE → Absurdity & Contrast Level
-//    - "gen_z_meme_heavy" → Use unhinged internet slang, brainrot analogies, pop-culture chaos (Minecraft, Valorant, anime tropes, memes). Make it so weird they CAN'T forget it.
-//    - "cinematic"        → Frame concepts as movie scenes or Marvel-style hero arcs.
-//    - "grounded"         → Logical real-world analogies. No cringe. Clean and relatable.
-//    - "desi_drama"       → Bollywood logic, chai-sutta stakes, over-the-top melodrama, Hindi-English mix.
+//   return `
+// ════════════════════════════════════════
+// PSYCHOGRAPHIC DIRECTIVES
+// ════════════════════════════════════════
+// HOOK_CONTEXT must open with : "${dopamineMotivator}"
+// HOOK_CONTEXT must close with: "${egoMotivator}"
 
-// 5. MEMORY_DECAY_TYPE → Depth of Explanation
-//    - "fast_decay"       → Must include a visual image anchor and a recall trigger phrase.
-//    - "slow_decay"       → Can rely on a concise mnemonic without heavy subtext.
+// ${cortisolDirective}
 
-// 6. SOCIAL_EGO → Framing & Motivation
-//    - "competitive"      → Frame as: "Beat the 99% who don't know this."
-//    - "collaborative"    → Frame as: "This is what toppers share with friends."
-//    - "self_improver"    → Frame as: "You'll never forget this. Ever."
+// ${memoryDecayDirective}
 
-// ────────────────────────────────────────
-// GENERATION MODE RULES
-// ────────────────────────────────────────
+// ${vonRestorffDirective}
 
-// MODE = "Lore Engine":
-// → Generate a vivid, narrative-driven story. Characters, conflict, resolution — all mapped to the academic concept.
-// → hook_label MUST be: "Lore Engine Narrative:"
-// → The story must be BIZARRE enough to be unforgettable but ACCURATE enough to decode correctly.
+// CLASS_LEVEL DIRECTIVE:
+// ${ctx.class_level === '10'
+//   ? '  Class 10: Hinglish mix in mnemonics. Home/school examples only. No JEE/NEET terminology.'
+//   : '  Class 12: Technical precision in definition. Mnemonic words must still pass Simplicity Test.'}
 
-// MODE = "Neural Hack":
-// → Generate a compressed mnemonic: acronym, first-letter trick, rhyme, or one-liner.
-// → hook_label MUST be: "Neural Hack Mnemonic:"
-// → Maximum 2 lines. Zero fluff. Maximum retention per word.
+// SOCIAL_EGO CLOSER: Use "${
+//   { competitive:'Most students blank here. You won\'t.',
+//     collaborative:'Share this with your group tonight.',
+//     self_improver:'One minute to learn. Yours forever.'
+//   }[ctx.social_ego] || ''
+// }" as the last sentence of hook_context.
 
-// ────────────────────────────────────────
-// DEEP-SCAN RULES
-// ────────────────────────────────────────
+// ${frustrationDirective || ''}
+// `.trim();
+// }
 
-// DEEP_SCAN = true  → Cite SPECIFIC CBSE PYQ years and exact NCERT chapter/section numbers in source_matrix. Be precise.
-// DEEP_SCAN = false → Use generalized standard matches (e.g., "NCERT Ch. 3 — Metals & Non-Metals").
+// // ── Block 4: Core Rules (static — the non-negotiable laws) ────────────────────
+// function blockRules(ctx) {
+//   const conceptContentOverride = ctx.memory_decay === 'wall_of_text'
+//     ? '\nMANDATORY OVERRIDE FOR THIS STUDENT: concept_content type must be "list" or "steps". Never "statement".\n'
+//     : '';
 
-// ────────────────────────────────────────
-// MANDATORY OUTPUT STRUCTURE — 3-PART FRAMEWORK
-// ────────────────────────────────────────
+//   return `
+// ════════════════════════════════════════
+// RULE 1 — THE SIMPLICITY TEST
+// ════════════════════════════════════════
+// Every word in hook_text must already live in a Class 10 student's head.
+// Test: "Would a Class 10 Indian student say this word to a friend?"
+// YES → keep.   NO → replace immediately.
 
-// Every response MUST follow this exact 3-part logic, mapped to the JSON fields below:
+// ALWAYS PASS: Bhaiya, Didi, Maa, Papa, Chai, Roti, Maggi, Samosa, Run, Wicket,
+//              Six, Ghar, Dukaan, Sadak, Kitab, Cycle, Phone, Exam, Teacher, Bell
 
-// PART 1 — GROUND TRUTH (definition field)
-// What is this concept, actually? Academically precise. 1-3 sentences max.
-// No stories, no tricks yet. Just cold, accurate facts.
-// Example for S-Block:
-// "The s-block elements occupy Groups 1 and 2 of the periodic table. Group 1 contains H, Li, Na, K, Rb, Cs, Fr (alkali metals). Group 2 contains Be, Mg, Ca, Sr, Ba, Ra (alkaline earth metals). Their outermost electrons fill the s-orbital."
+// ALWAYS FAIL: Sriracha, Quinoa, Serendipity, Ephemeral, Pracheen, Vishambhar,
+//              any concept word used as the mnemonic word itself.
 
-// PART 2 — THE TRICK (hook_text field)
-// The mnemonic itself. Short. Punchy. Weaponized for recall.
-// Must be DIRECTLY derived from the student's VON_RESTORFF_STYLE and DOPAMINE_SCHEMA.
-// Example for S-Block Group 1 (gen_z_meme_heavy + thrill_seeker):
-// "HLiNa Ki Rub Se Cry" — H, Li, Na, K, Rb, Cs, Fr. Done. Locked. Zero effort.
+// PROVEN CORRECT:  "B·eta M·aange C·ar, S·cooter B·aad R·akh"  → Group 2 (Be Mg Ca Sr Ba Ra)
+// PROVEN WRONG:    "B·eryllium M·agnesium C·alcium…"           → This IS the concept. Zero help.
 
-// PART 3 — THE DECODE (hook_subtext field)
-// Map every part of the trick back to the actual science. Prove it works.
-// Example:
-// "H=Hydrogen, Li=Lithium, Na=Sodium, K=Potassium, Rb=Rubidium, Cs=Caesium, Fr=Francium. Read the first letters: H-Li-Na-K-Rb-Cs-Fr. The sentence IS the periodic table."
+// ════════════════════════════════════════
+// RULE 1B — THE CIRCULAR MNEMONIC TRAP ⚠ MOST COMMON FAILURE
+// ════════════════════════════════════════
+// NEVER use the concept word itself as the mnemonic word.
 
-// ────────────────────────────────────────
-// OUTPUT SCHEMA — RETURN ONLY VALID JSON
-// ────────────────────────────────────────
+// HOW THE TRAP WORKS:
+//   L·anthanum → L key + "Lanthanum" word = student still has to know "Lanthanum" to use it. Useless.
+//   C·erium    → C key + "Cerium" word    = zero cognitive saving.
+//   A·ldol     → A key + "Aldol" word     = circular. Forbidden.
 
-// No markdown. No backticks. No preamble. No explanation. Pure JSON.
+// ESCAPE:
+//   L·aal  → "Laal" (red) is unrelated to chemistry → hooks to Lanthanum. Works.
+//   C·hai  → "Chai" (tea) is unrelated to chemistry → hooks to Cerium. Works.
+//   A·alu  → "Aalu" (potato) → hooks to Alpha-H removed. Works.
 
+// THE CHIP-LEVEL TEST (run before writing EVERY word_chip):
+//   Q: "Does this mnemonic word appear anywhere in concept_content?"
+//   YES → circular. Rewrite with an unrelated everyday word.
+//   NO  → safe to use.
+
+// THIS APPLIES TO EVERYTHING:
+//   Newton's First Law → N·ahi C·halna = correct.  N·ewton = circular. FORBIDDEN.
+//   Sine               → S·amosa = correct.         S·ine   = circular. FORBIDDEN.
+//   Aldol steps        → A·alu B·heja L·o D·aal = correct.
+
+// ════════════════════════════════════════
+// RULE 2 — NO MARKDOWN IN JSON
+// ════════════════════════════════════════
+// No **bold**, no *italic*, no # headers, no backticks inside any string value.
+
+// ════════════════════════════════════════
+// RULE 3 — FIELD SEPARATION
+// ════════════════════════════════════════
+// hook_text    = MNEMONIC ONLY. Max 20 words. Nothing motivational.
+// hook_context = ONE motivating line. Max 10 words. Never the same as hook_text.
+
+// ════════════════════════════════════════
+// RULE 4 — DOT FORMAT FOR ACRONYMS
+// ════════════════════════════════════════
+// CORRECT:   L·aal C·hai P·ee
+// FORBIDDEN: **L**anthanum  /  [L]anthanum  /  L-anthanum
+
+// ════════════════════════════════════════
+// RULE 5 — maps_to: MANDATORY, NON-CIRCULAR, ON EVERY CHIP
+// ════════════════════════════════════════
+// maps_to encodes the CONCEPT, never the mnemonic word.
+
+// CORRECT:   { letter:"L", rest:"aal",      maps_to:"Lanthanum (La, 57)" }
+// CORRECT:   { letter:"A", rest:"lu",       maps_to:"Alpha-H removed" }
+// FORBIDDEN: { letter:"L", rest:"anthanum", maps_to:"Lanthanum" }   ← circular
+// FORBIDDEN: { letter:"A", rest:"ldol",     maps_to:"Aldol" }        ← circular
+// FORBIDDEN: maps_to: "" / "Element" / "See chapter"
+
+// FORMAT: element name + symbol + number  OR  reaction step  OR  law  OR  formula part.
+
+// ════════════════════════════════════════
+// RULE 6 — hook_subtext: MANDATORY, NON-EMPTY, DECODE FORMAT
+// ════════════════════════════════════════
+// Walk through each letter mapping. Like texting a classmate. Max 3 sentences.
+// Pattern: "[mnemonic word] = [what it maps to]."
+// Example: "Laal = Lanthanum (La). Chai = Cerium (Ce). Pee = Praseodymium (Pr)."
+
+// ════════════════════════════════════════
+// RULE 7 — concept_content: MANDATORY, ALWAYS PRESENT
+// ════════════════════════════════════════
+// Shows the student EXACTLY what they are memorizing — appears ABOVE the mnemonic.
+
+// FIELDS:
+//   type:          "reaction" | "formula" | "table" | "list" | "statement" | "steps"
+//   content:       plain text, always required, \\n for line breaks
+//   latex_content: array of LaTeX strings (reaction/formula/table) or null (list/statement/steps)
+
+// TYPE GUIDE:
+//   reaction  → balanced equations + conditions. \\ce{} for all chemistry.
+//   formula   → math relationships. \\dfrac{}{}, \\theta, \\sqrt{}, etc.
+//   table     → \\begin{array}{c|ccc} ... \\end{array}
+//   list      → one item per \\n line. latex_content = null
+//   statement → full NCERT wording. latex_content = null
+//   steps     → numbered steps. latex_content = null
+// ${conceptContentOverride}
+// MULTI-PART COMPACT RULE:
+//   Multiple objects in one response → latex_content = null in ALL objects. Plain content only.
+//   Single-topic request → full latex_content allowed.
+
+// ════════════════════════════════════════
+// RULE 8 — MULTI-PART COVERAGE REQUIREMENTS
+// ════════════════════════════════════════
+// definition: 1 sentence max. hook_subtext: 2 sentences max. concept_content: concise.
+
+// Required objects per topic type:
+//   p-block     → 6 objects  : Group 13, 14, 15, 16, 17, 18
+//   s-block     → 2 objects  : Group 1, Group 2
+//   d-block     → 4 objects  : 3d (Sc–Zn), 4d (Y–Cd), 5d (Hf–Hg), 6d (Rf–Cn)
+//   f-block     → 2 objects  : Lanthanides (La–Lu), Actinides (Ac–Lr)
+//   Newton's    → 3 objects  : First, Second, Third law
+//   integration → 5 objects  : Basic, Trig, Substitution, Parts, Special Forms
+
+// F-BLOCK IRON RULE:
+//   Each f-block object encodes ALL 15 elements using ONE mnemonic sentence.
+//   acronym_key = first letters of all 15 elements in order.
+//   EVERY chip word = an unrelated everyday Hindi/English word for that letter.
+//   ZERO element names as chip words. ZERO element symbols as chip words.
+// `.trim();
+// }
+
+// // ── Block 5: Language Directive (dynamic) ────────────────────────────────────
+// function blockLanguage(language) {
+//   const directives = {
+//     english: `
+// LANGUAGE — English:
+//   Simple English throughout. WhatsApp-level vocabulary in hook_text.
+//   No idioms a Class 10 student wouldn't know.
+// `,
+//     hinglish: `
+// LANGUAGE — Hinglish (STRICT):
+//   hook_text, hook_context, hook_subtext MUST mix Hindi + English in EVERY sentence.
+//   Think school canteen conversation: "Beta ne CAR li, SCOOTER baad mein."
+//   NEVER write a full Hindi sentence. Every sentence needs English words.
+//   NEVER write a full English sentence in mnemonic fields. Mix is mandatory.
+//   definition field = plain English only.
+
+//   WRONG: "सबसे कठिन 3d सीरीज़, अब होगी झटपट याद!" (pure Hindi — forbidden)
+//   RIGHT:  "Sabse tough 3d series, ab brain mein lock ho jayegi!" (Hinglish — correct)
+//   WRONG: "This is the toughest series to remember." (pure English in mnemonic — forbidden)
+//   RIGHT:  "Yeh series sabse tough hai, but ab hook hai na." (Hinglish — correct)
+// `,
+//     hindi: `
+// LANGUAGE — Hindi:
+//   Hindi throughout all mnemonic fields (hook_text, hook_context, hook_subtext).
+//   definition = plain English only.
+//   latex_content = always in LaTeX notation regardless of language.
+// `,
+//   };
+//   return (directives[language] || directives.english).trim();
+// }
+
+// // ── Block 6: Mode Directive (dynamic: lore vs hack) ───────────────────────────
+// function blockMode(mode) {
+//   if (mode === 'lore') {
+//     return `
+// ════════════════════════════════════════
+// GENERATION MODE — LORE ENGINE
+// ════════════════════════════════════════
+// Write a 40-60 word cinematic story. Every character or object in the story maps
+// to exactly one element/concept. Bizarre enough to stick. Every word passes Rule 1.
+
+// CRITICAL LORE RULE — NO CONCEPT NAMES IN THE STORY:
+//   WRONG: "Lanthanum the warrior met Cerium the king…" — concept words inside story = circular.
+//   RIGHT:  "A red tea-seller (L) chased a crying man (C) past a yellow gate (P)…"
+//           — story words are unrelated. Initials map to La, Ce, Pr.
+
+// hook_label  = "Lore Engine Narrative:"
+// word_chips  = null
+// acronym_key = null
+// `.trim();
+//   }
+
+//   return `
+// ════════════════════════════════════════
+// GENERATION MODE — NEURAL HACK
+// ════════════════════════════════════════
+// One first-letter acronym sentence. Dot format: L·aal C·hai P·ee
+// hook_text MAX 20 words. Mnemonic only — no motivation in hook_text.
+// hook_label = "Neural Hack Mnemonic:"
+
+// MANDATORY BEFORE WRITING: Run Rule 1 (Simplicity Test) + Rule 1B (Circular Trap)
+// on EVERY single chip word. If either test fails → rewrite the word.
+// `.trim();
+// }
+
+// // ── Block 7: Deep Scan Directive (dynamic) ────────────────────────────────────
+// function blockDeepScan(deepScan) {
+//   return `
+// ════════════════════════════════════════
+// DEEP SCAN: ${deepScan
+//   ? 'ON — verified NCERT references have been provided in the user message. Copy them exactly into source_matrix.'
+//   : 'OFF — generate general NCERT references. Use realistic chapter numbers and match percentages.'}
+// ════════════════════════════════════════
+// `.trim();
+// }
+
+// // ── Block 8: Shot Examples (topic-aware — pick most relevant) ─────────────────
+// // These are the gold standard outputs the model should pattern-match to.
+// function blockExamples(question) {
+//   const q = question.toLowerCase();
+
+//   // f-block / lanthanide / actinide
+//   if (/lanthanide|lanthanum|actinide|f.block|f block/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// EXAMPLE OUTPUT (Lanthanides — match this quality)
+// ════════════════════════════════════════
 // {
-//   "title": "A sharp, high-tech title. Make it sound important. (e.g., 'The S-Block Acquisition Protocol' or 'Saponification: The Soap Boss Fight')",
-
-//   "definition": "PART 1 — Academically accurate, 1-3 sentences. Strict NCERT language. This is the ground truth the trick is built on.",
-
-//   "latex_formula": "Valid LaTeX in $$ $$ if the concept has a formula or equation. Return null if not applicable.",
-
-//   "hook_label": "Exactly one of: 'Neural Hack Mnemonic:' OR 'Lore Engine Narrative:' — determined by generation_mode.",
-
-//   "hook_text": "PART 2 — The mnemonic, rhyme, acronym, or story. This MUST reflect the student's VON_RESTORFF_STYLE. Punchy. Memorable. Persona-filtered.",
-
-//   "hook_subtext": "PART 3 — The decode. Map every element of the trick back to the concept. Prove it. Make the student go 'ohhhh'.",
-
-//   "source_matrix": [
-//     {
-//       "title": "e.g., 'NCERT Class 10 Ch.5 — Periodic Classification'",
-//       "match_percentage": "e.g., '97% Match'",
-//       "icon_type": "book"
-//     },
-//     {
-//       "title": "e.g., 'CBSE Board PYQ 2022 (Delhi Set 1, Q.4)'",
-//       "match_percentage": "e.g., '89% Match'",
-//       "icon_type": "file"
-//     }
+//   "title": "Lanthanides (La–Lu)",
+//   "definition": "14 f-block elements from Lanthanum (57) to Lutetium (71), filling 4f orbitals, with similar properties and industrial uses in magnets and lasers.",
+//   "concept_content": {
+//     "type": "list",
+//     "content": "La (57) Lanthanum\\nCe (58) Cerium\\nPr (59) Praseodymium\\nNd (60) Neodymium\\nPm (61) Promethium\\nSm (62) Samarium\\nEu (63) Europium\\nGd (64) Gadolinium\\nTb (65) Terbium\\nDy (66) Dysprosium\\nHo (67) Holmium\\nEr (68) Erbium\\nTm (69) Thulium\\nYb (70) Ytterbium\\nLu (71) Lutetium",
+//     "latex_content": null
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Most students mix up these 15. You won't after this.",
+//   "hook_text": "L·aal C·hai P·ee, N·a P·apa S·o E·k G·adi T·aang D·aude H·ai, E·k T·opi Y·aad L·o",
+//   "word_chips": [
+//     { "letter": "L", "rest": "aal",  "maps_to": "Lanthanum (La, 57)" },
+//     { "letter": "C", "rest": "hai",  "maps_to": "Cerium (Ce, 58)" },
+//     { "letter": "P", "rest": "ee",   "maps_to": "Praseodymium (Pr, 59)" },
+//     { "letter": "N", "rest": "a",    "maps_to": "Neodymium (Nd, 60)" },
+//     { "letter": "P", "rest": "apa",  "maps_to": "Promethium (Pm, 61)" },
+//     { "letter": "S", "rest": "o",    "maps_to": "Samarium (Sm, 62)" },
+//     { "letter": "E", "rest": "k",    "maps_to": "Europium (Eu, 63)" },
+//     { "letter": "G", "rest": "adi",  "maps_to": "Gadolinium (Gd, 64)" },
+//     { "letter": "T", "rest": "aang", "maps_to": "Terbium (Tb, 65)" },
+//     { "letter": "D", "rest": "aude", "maps_to": "Dysprosium (Dy, 66)" },
+//     { "letter": "H", "rest": "ai",   "maps_to": "Holmium (Ho, 67)" },
+//     { "letter": "E", "rest": "k",    "maps_to": "Erbium (Er, 68)" },
+//     { "letter": "T", "rest": "opi",  "maps_to": "Thulium (Tm, 69)" },
+//     { "letter": "Y", "rest": "aad",  "maps_to": "Ytterbium (Yb, 70)" },
+//     { "letter": "L", "rest": "o",    "maps_to": "Lutetium (Lu, 71)" }
 //   ],
-
-//   "visual_cortex": {
-//     "tooltip_label": "1-3 word label for the concept node in the UI diagram. (e.g., 'S-Orbital Fill' or 'Ester Bond')"
+//   "acronym_key": "LCPNPSEGTDHETYL",
+//   "hook_subtext": "Laal chai pee = La Ce Pr. Na papa so = Nd Pm Sm. Ek gadi taang daude hai = Eu Gd Tb Dy Ho. Ek topi yaad lo = Er Tm Yb Lu. Picture: red tea stall, papa sleeping, car running on legs wearing a cap.",
+//   "source_matrix": [{ "title": "NCERT Class 12 Ch.8 — d and f Block", "match_percentage": "96% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Lanthanides" }
+// }
+// NOTE: La·nthanum / Ce·rium style chips are WRONG. The above is the only correct pattern.
+// `.trim();
 //   }
-// }
 
-// ────────────────────────────────────────
-// PERSONA EXAMPLES — STUDY THESE
-// ────────────────────────────────────────
-
-// SAME CONCEPT — "S-Block Group 1 Elements" — THREE DIFFERENT PERSONAS:
-
-// PERSONA A (gen_z_meme_heavy + thrill_seeker + high_stress + competitive):
-// hook_text: "HLiNa Ki Rub Se Cry — bro this is literally the whole Group 1. Screenshot this. You're done."
-// hook_subtext: "H=Hydrogen, Li=Lithium, Na=Sodium, K=Potassium, Rb=Rubidium, Cs=Caesium. The sentence first letters = the elements. That's it. That's the trick."
-
-// PERSONA B (desi_drama + reward_oriented + moderate + collaborative):
-// hook_text: "Humne Likha Nahi Ki Raat Bhar Chale — yaar ye sentence yaad kar lo, Group 1 set hai."
-// hook_subtext: "H=Hydrogen, Li=Lithium, Na=Sodium, K=Potassium, Rb=Rubidium, Cs=Caesium. Har pehla letter = element ka symbol. Simple."
-
-// PERSONA C (cinematic + curiosity_driven + low_stress + self_improver):
-// hook_text: "The Alkali Avengers assemble in order — Harry (H) leads, then Li (the quiet one), Na (the hot-head), K (the solid), Rb (rare appearance), Cs (the boss)."
-// hook_subtext: "Map each character to their element symbol: H→Li→Na→K→Rb→Cs. That's your Group 1 lineup from top to bottom on the periodic table."
-
-// ALWAYS generate output tuned to the ACTUAL profile. Never use the same phrasing twice. The hook must feel like it was written specifically for that student.
-// `
-
-// try
+//   // chemistry reaction / organic
+//   if (/aldol|reaction|organic|carbonyl|ester|alcohol|acid/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// EXAMPLE OUTPUT (Organic Reaction — match this quality)
+// ════════════════════════════════════════
 // {
-// const startTime = Date.now() ; 
-// const modelName =  whichModel(mode , deepScan) ;
-
-// console.log("Model Name : ",modelName) ; 
-
-// const modelConfig  = {
-// model : modelName , 
-// ...(deepScan && 
-//   {
-//     tools : [{googleSearch : {} }] ,
-//   })
+//   "title": "Aldol Reaction",
+//   "definition": "Aldehydes/ketones with alpha-hydrogen react with dilute alkali to form beta-hydroxy carbonyl compounds.",
+//   "concept_content": {
+//     "type": "reaction",
+//     "content": "2 CH3CHO + dil. NaOH (cold) → CH3CH(OH)CH2CHO\\n(Aldol = beta-hydroxy aldehyde)\\nOn heating → CH3CH=CHCHO + H2O",
+//     "latex_content": [
+//       "\\\\ce{2CH3CHO ->[dil.~NaOH][cold] CH3CH(OH)CH2CHO}",
+//       "\\\\text{(Aldol = }\\\\beta\\\\text{-hydroxy aldehyde)}",
+//       "\\\\ce{CH3CH(OH)CH2CHO ->[\\\\Delta] CH3CH=CHCHO + H2O}"
+//     ]
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Most students blank on Aldol steps. You won't.",
+//   "hook_text": "A·alu B·heja, L·o D·aal gaya",
+//   "word_chips": [
+//     { "letter": "A", "rest": "alu",  "maps_to": "Alpha-H removed by base" },
+//     { "letter": "B", "rest": "heja", "maps_to": "Beta-hydroxy aldehyde forms" },
+//     { "letter": "L", "rest": "o",    "maps_to": "Loss of water on heating" },
+//     { "letter": "D", "rest": "aal",  "maps_to": "Double bond appears" }
+//   ],
+//   "acronym_key": "ABLD",
+//   "hook_subtext": "Aalu = Alpha-H snatched by base. Bheja = beta-hydroxy Aldol forms. Lo = water lost on heating. Daal = double bond appears. Picture aalu-bheja in a pan, daal gaya.",
+//   "source_matrix": [{ "title": "NCERT Class 12 Ch.12 — Aldehydes, Ketones", "match_percentage": "97% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Aldol Reaction" }
 // }
-
-// console.log("modelConfig :", modelConfig) ; 
-
-// const model = genAI.getGenerativeModel(modelConfig);
-// // ---calling gemini ----
-
-// const result = await model.generateContent(
-//     {
-//         contents : [
-//             {
-//             role : "user" , 
-//             parts : [
-//                 {text : systemprompt} , 
-//                 {text : `Question : ${question}`}
-//                     ]
-//             }
-//         ], 
-
-//         generationConfig : {
-//             temperature : 1 , 
-//             // responseMimeType : "application/json"
-//             ...((!deepScan) && { responseMimeType: 'application/json' })
-//         }
-
-//     }) ;
-
-//     const textResponse = result.response.text() ; 
-
-
-// // pasre in JSON format 
-
-// // let parsed ;
-
-// let parsedResponse;
-// try {
-//   // When deepScan is ON, Gemini returns text with JSON embedded
-//   // strip markdown fences defensively in both cases
-//   const cleaned = rawText
-//     .replace(/^```json\s*/im, '')
-//     .replace(/^```\s*/im, '')
-//     .replace(/```\s*$/im, '')
-//     .trim();
-
-//   // If deepScan, the model might wrap JSON in explanation text
-//   // Extract just the JSON array/object using regex
-//   if (deepScan) {
-//     const jsonMatch = cleaned.match(/(\[[\s\S]*\]|\{[\s\S]*\})/);
-//     if (!jsonMatch) throw new Error('No JSON found in deep scan response');
-//     parsedResponse = JSON.parse(jsonMatch[0]);
-//   } else {
-//     parsedResponse = JSON.parse(cleaned);
+// `.trim();
 //   }
-// console.log(parsedResponse)  ; 
-// } 
 
-// catch (parseError) {
-//   console.error('JSON parse failed. Raw response was:\n', rawText); 
-//   return res.status(500).json({ error: 'AI returned malformed response. Please retry.' });
-// }
-
-// // ---time taken ---
-// const endTime = Date.now() ; 
-// const timeTaken = endTime - startTime ; 
-
-
-// // save 
-
-// await interaction.findByIdAndUpdate(newLI._id , 
-//     {
-//        initial_ai_response : parsedResponse , 
-//        time_taken_ms : timeTaken 
-//     }
-// ) ;
-
-
-// //  --- send to frontend 
-
-// // res.json(parsed) ; 
-// return res.status(200).json({
-//       _id:                 newLI._id,
-//       initial_ai_response: parsedResponse,
-//       generation_mode:     mode,
-//       deep_scan_enabled:   Boolean(deepScan),
-//       time_taken_ms:       timeTaken,
-//     });
-
-
-// }
-
-
-// catch (error)
+//   // physics / laws / Newton
+//   if (/newton|law|force|motion|physics|momentum/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// EXAMPLE OUTPUT (Physics Law — match this quality)
+// ════════════════════════════════════════
 // {
-//     res.send("AI is unable to generate at this time",Date.now()) ;
-//     console.log("\n Date :", Date.now()) ; 
-//     console.log("\n GEMINI ERROR : ", error )  ;
+//   "title": "Newton's First Law",
+//   "definition": "A body at rest stays at rest and a body in motion stays in motion at constant velocity unless acted upon by an external force.",
+//   "concept_content": {
+//     "type": "statement",
+//     "content": "Every object continues in its state of rest or uniform motion in a straight line unless compelled by an external force to change that state.",
+//     "latex_content": null
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Toppers clear this in 3 seconds. Now you too.",
+//   "hook_text": "A·aaram B·haari C·hhodo mat",
+//   "word_chips": [
+//     { "letter": "A", "rest": "aaram", "maps_to": "Object at rest stays at rest" },
+//     { "letter": "B", "rest": "haari", "maps_to": "Body in motion stays in motion" },
+//     { "letter": "C", "rest": "hhodo mat", "maps_to": "Unless external force acts" }
+//   ],
+//   "acronym_key": "ABC",
+//   "hook_subtext": "Aaram = stay at rest. Bhaari = keep moving if already moving. Chhodo mat = don't disturb it (external force). Ek chhota phone call ne sab badal diya.",
+//   "source_matrix": [{ "title": "NCERT Class 9 Ch.9 — Force and Laws of Motion", "match_percentage": "98% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Newton's First Law" }
+// }
+// `.trim();
+//   }
+
+//   // maths / trig / formula
+//   if (/trig|sin|cos|tan|formula|integral|differentiat|math/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// EXAMPLE OUTPUT (Math Formula — match this quality)
+// ════════════════════════════════════════
+// {
+//   "title": "Trigonometric Ratios",
+//   "definition": "Ratios of sides of a right-angled triangle defining sine, cosine, and tangent of an angle.",
+//   "concept_content": {
+//     "type": "formula",
+//     "content": "sin θ = Opposite / Hypotenuse\\ncos θ = Adjacent / Hypotenuse\\ntan θ = Opposite / Adjacent",
+//     "latex_content": [
+//       "\\\\sin\\\\theta = \\\\dfrac{\\\\text{Opposite}}{\\\\text{Hypotenuse}}",
+//       "\\\\cos\\\\theta = \\\\dfrac{\\\\text{Adjacent}}{\\\\text{Hypotenuse}}",
+//       "\\\\tan\\\\theta = \\\\dfrac{\\\\text{Opposite}}{\\\\text{Adjacent}}"
+//     ]
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Learn once. Never re-learn.",
+//   "hook_text": "S·amosa O·ver H·ot, C·hair A·cross H·all, T·eacher O·n A·ttendance",
+//   "word_chips": [
+//     { "letter": "S", "rest": "amosa",      "maps_to": "Sine = Opp/Hyp" },
+//     { "letter": "O", "rest": "ver",        "maps_to": "Opposite (numerator)" },
+//     { "letter": "H", "rest": "ot",         "maps_to": "Hypotenuse (denominator)" },
+//     { "letter": "C", "rest": "hair",       "maps_to": "Cosine = Adj/Hyp" },
+//     { "letter": "A", "rest": "cross",      "maps_to": "Adjacent (numerator)" },
+//     { "letter": "H", "rest": "all",        "maps_to": "Hypotenuse (denominator)" },
+//     { "letter": "T", "rest": "eacher",     "maps_to": "Tangent = Opp/Adj" },
+//     { "letter": "O", "rest": "n",          "maps_to": "Opposite (numerator)" },
+//     { "letter": "A", "rest": "ttendance",  "maps_to": "Adjacent (denominator)" }
+//   ],
+//   "acronym_key": "SOH-CAH-TOA",
+//   "hook_subtext": "SOH: Samosa Over Hot = Sin Opp/Hyp. CAH: Chair Across Hall = Cos Adj/Hyp. TOA: Teacher On Attendance = Tan Opp/Adj.",
+//   "source_matrix": [{ "title": "NCERT Class 10 Ch.8 — Introduction to Trigonometry", "match_percentage": "99% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Trig Ratios" }
+// }
+// `.trim();
+//   }
+
+//   // default generic example (no topic match)
+//   return `
+// ════════════════════════════════════════
+// EXAMPLE OUTPUT (General — match this quality)
+// ════════════════════════════════════════
+// {
+//   "title": "Group 2 Elements",
+//   "definition": "Alkaline earth metals: Beryllium, Magnesium, Calcium, Strontium, Barium, Radium — all form +2 ions.",
+//   "concept_content": {
+//     "type": "list",
+//     "content": "Be — Beryllium\\nMg — Magnesium\\nCa — Calcium\\nSr — Strontium\\nBa — Barium\\nRa — Radium",
+//     "latex_content": null
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Every 95-percenter has this cold.",
+//   "hook_text": "B·eta M·aange C·ar, S·cooter B·aad R·akh",
+//   "word_chips": [
+//     { "letter": "B", "rest": "eta",    "maps_to": "Beryllium (Be)" },
+//     { "letter": "M", "rest": "aange",  "maps_to": "Magnesium (Mg)" },
+//     { "letter": "C", "rest": "ar",     "maps_to": "Calcium (Ca)" },
+//     { "letter": "S", "rest": "cooter", "maps_to": "Strontium (Sr)" },
+//     { "letter": "B", "rest": "aad",    "maps_to": "Barium (Ba)" },
+//     { "letter": "R", "rest": "akh",    "maps_to": "Radium (Ra)" }
+//   ],
+//   "acronym_key": "BMCSBR",
+//   "hook_subtext": "Beta = Beryllium. Maange = Magnesium. Car = Calcium. Scooter = Strontium. Baad = Barium. Rakh = Radium. Picture your beta asking for a car, then settling for a scooter.",
+//   "source_matrix": [{ "title": "NCERT Class 11 Ch.10 — s-Block Elements", "match_percentage": "98% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Group 2" }
+// }
+// `.trim();
 // }
 
-// }
-// )
+// // ── Block 9: Self-Check (static, always last) ─────────────────────────────────
+// function blockSelfCheck() {
+//   return `
+// ════════════════════════════════════════
+// SELF-CHECK — run on EVERY object before writing it to output
+// ════════════════════════════════════════
+// □ 1.  hook_text words → Class 10 student says to a friend? No → rewrite.
+// □ 2.  Every chip word → does it appear in concept_content or definition? YES → REWRITE.
+// □ 3.  Every maps_to → filled, useful, non-circular, max 5 words? No → fix.
+// □ 4.  hook_subtext → non-empty, shows [mnemonic word] → [concept]? No → write it.
+// □ 5.  hook_context ≠ hook_text (different content)? Same → separate them.
+// □ 6.  concept_content → present, correct type, non-empty content? No → add it.
+// □ 7.  Multi-part → latex_content = null on ALL objects? → confirm.
+// □ 8.  Any **, *, #, backtick in any string? → delete all.
+// □ 9.  Element series → ZERO element names or symbols as chip words? → confirm.
+// □ 10. hook_context opens with dopamine motivator + closes with ego motivator? → confirm.
+// □ 11. MEMORY_DECAY directive applied? (serial=image-anchor, jumble=order, vocab=keyword, wall=list) → confirm.
+// □ 12. CORTISOL directive applied? (audio=rhythm, visual=location, chunk=acronym, algo=derivation) → confirm.
 
+// OUTPUT: RAW JSON ARRAY ONLY — nothing before [, nothing after ].
+// `.trim();
+// }
 
 // // ─────────────────────────────────────────────────────────────────────────────
-// // BoardAlgo — /api/generate-mnemonic
-// // Drop this entire file in. No fragments, no "replace this section".
+// // PROMPT ASSEMBLER — joins all blocks in correct order
 // // ─────────────────────────────────────────────────────────────────────────────
-
-
-// // ══════════════════════════════════════════════════════════════════════════════
-// // HELPER: safeExtractText
-// // Never throws. Logs finish reason so you always know WHY a response is empty.
-// // ══════════════════════════════════════════════════════════════════════════════
-// function safeExtractText(response) {
-//   try {
-//     const candidate    = response?.candidates?.[0];
-//     const finishReason = candidate?.finishReason;
-
-//     if (finishReason && finishReason !== 'STOP') {
-//       console.warn(`[safeExtractText] Non-STOP finish: ${finishReason}`);
-//       const ratings = candidate?.safetyRatings;
-//       if (ratings) console.warn('[safeExtractText] Safety ratings:', JSON.stringify(ratings));
-//     }
-
-//     const blockReason = response?.promptFeedback?.blockReason;
-//     if (blockReason) {
-//       console.error(`[safeExtractText] Prompt blocked: ${blockReason}`);
-//       return '';
-//     }
-
-//     const parts = candidate?.content?.parts;
-//     if (!parts || parts.length === 0) {
-//       console.warn('[safeExtractText] No parts in response');
-//       return '';
-//     }
-
-//     return parts.filter(p => typeof p.text === 'string').map(p => p.text).join('').trim();
-
-//   } catch (err) {
-//     console.error('[safeExtractText] threw:', err.message);
-//     return '';
-//   }
+// function buildSystemPrompt(user, ctx, mode, language, deepScan, question, dopamineMotivator, egoMotivator) {
+//   return [
+//     blockSystem(),
+//     blockProfile(user, ctx, mode, language),
+//     blockPsychographic(ctx, dopamineMotivator, egoMotivator),
+//     blockRules(ctx),
+//     blockLanguage(language),
+//     blockMode(mode),
+//     blockDeepScan(deepScan),
+//     blockExamples(question),   // topic-aware shot selection
+//     blockSelfCheck(),
+//   ].join('\n\n');
 // }
 
-
-// // ══════════════════════════════════════════════════════════════════════════════
-// // HELPER: robustJSONParse
-// // 4-layer extraction. Handles complete JSON, backtick-wrapped, truncated arrays.
-// // recoverTruncatedArray is the key fix for MAX_TOKENS cutoffs.
-// // ══════════════════════════════════════════════════════════════════════════════
-// function robustJSONParse(raw) {
-//   if (!raw || typeof raw !== 'string') throw new Error('Empty response from model');
-
-//   const cleaned = raw.trim()
-//     .replace(/^```json\s*/im, '')
-//     .replace(/^```\s*/im, '')
-//     .replace(/```\s*$/im, '')
-//     .trim();
-
-//   // Attempt 1: direct parse (works when responseMimeType did its job cleanly)
-//   try {
-//     const p = JSON.parse(cleaned);
-//     return Array.isArray(p) ? p : [p];
-//   } catch (_) {}
-
-//   // Attempt 2: recover complete objects from a truncated response
-//   // This is the primary fix for MAX_TOKENS — extracts every fully-closed { }
-//   // block, ignores the trailing incomplete fragment
-//   const recovered = recoverTruncatedArray(cleaned);
-//   if (recovered.length > 0) {
-//     console.log(`[robustJSONParse] Recovered ${recovered.length} object(s) from truncated response`);
-//     return recovered;
-//   }
-
-//   // Attempt 3: pull first [...] block (handles minor prose wrapping)
-//   const arrMatch = cleaned.match(/(\[[\s\S]*\])/);
-//   if (arrMatch) {
-//     try {
-//       const p = JSON.parse(arrMatch[1]);
-//       return Array.isArray(p) ? p : [p];
-//     } catch (_) {}
-//   }
-
-//   // Attempt 4: pull first complete { } block
-//   const objStr = extractFirstCompleteObject(cleaned);
-//   if (objStr) {
-//     try { return [JSON.parse(objStr)]; } catch (_) {}
-//   }
-
-//   throw new Error(`No parseable JSON. Response starts with: "${raw.slice(0, 120)}"`);
+// // ─────────────────────────────────────────────────────────────────────────────
+// // MOTIVATOR RESOLVERS (reused by both prompt builder and response)
+// // ─────────────────────────────────────────────────────────────────────────────
+// function resolveDopamineMotivator(schema) {
+//   return {
+//     curiosity_driven: "Most students mix this. You won't after this.",
+//     reward_oriented:  'Learn once. Never re-learn.',
+//     thrill_seeker:    'Toppers clear this in 3 seconds. Now you too.',
+//     social_proof:     'Every 95-percenter has this cold.',
+//   }[schema] || "Most students mix this. You won't after this.";
 // }
 
-// function recoverTruncatedArray(str) {
-//   const results = [];
-//   let depth = 0, start = -1, inString = false, escape = false;
-//   for (let i = 0; i < str.length; i++) {
-//     const ch = str[i];
-//     if (escape)                    { escape = false; continue; }
-//     if (ch === '\\' && inString)   { escape = true;  continue; }
-//     if (ch === '"')                { inString = !inString; continue; }
-//     if (inString)                  continue;
-//     if (ch === '{') { if (depth === 0) start = i; depth++; }
-//     else if (ch === '}') {
-//       depth--;
-//       if (depth === 0 && start !== -1) {
-//         try { results.push(JSON.parse(str.slice(start, i + 1))); } catch (_) {}
-//         start = -1;
-//       }
-//     }
-//   }
-//   return results;
+// function resolveEgoMotivator(ego) {
+//   return {
+//     competitive:   "Most students blank here. You won't.",
+//     collaborative: 'Share this with your group tonight.',
+//     self_improver: 'One minute to learn. Yours forever.',
+//   }[ego] || 'One minute to learn. Yours forever.';
 // }
 
-// function extractFirstCompleteObject(str) {
-//   let depth = 0, start = -1, inString = false, escape = false;
-//   for (let i = 0; i < str.length; i++) {
-//     const ch = str[i];
-//     if (escape)                    { escape = false; continue; }
-//     if (ch === '\\' && inString)   { escape = true;  continue; }
-//     if (ch === '"')                { inString = !inString; continue; }
-//     if (inString)                  continue;
-//     if (ch === '{') { if (depth === 0) start = i; depth++; }
-//     else if (ch === '}') {
-//       depth--;
-//       if (depth === 0 && start !== -1) return str.slice(start, i + 1);
-//     }
-//   }
-//   return null;
-// }
+// // ─────────────────────────────────────────────────────────────────────────────
+// // FALLBACK PROFILE (legacy users who skipped onboarding)
+// // ─────────────────────────────────────────────────────────────────────────────
+// const FALLBACK_PROFILE_CTX = {
+//   class_level:       '12',
+//   language:          'english',
+//   dopamine_schema:   'curiosity_driven',
+//   cortisol_response: 'chunking',
+//   von_restorff:      'grounded',
+//   memory_decay:      'vocab_block',
+//   social_ego:        'self_improver',
+//   frustration_level: 0,
+// };
 
-
-// // ══════════════════════════════════════════════════════════════════════════════
-// // ROUTE
-// // ══════════════════════════════════════════════════════════════════════════════
+// // ─────────────────────────────────────────────────────────────────────────────
+// // THE ROUTE
+// // ─────────────────────────────────────────────────────────────────────────────
 // app.post('/api/generate-mnemonic', isLoggedIn, async function (req, res) {
 
-//   // ── 1. Inputs ─────────────────────────────────────────────────────────────
 //   const question = (req.body.question || '').trim();
-//   const mode     = req.body.mode     || 'lore';
-//   const language = req.body.language || 'hinglish';
-//   const deepScan = req.body.deepScan === true || req.body.deepScan === 'true';
+//   const mode     = ['lore', 'hack'].includes(req.body.mode) ? req.body.mode : 'lore';
+//   let   deepScan = req.body.deepScan === true || req.body.deepScan === 'true';
 
 //   if (!question || question.length < 3) {
 //     return res.status(400).json({ error: 'Please enter a valid question.' });
 //   }
 
 //   try {
+//     // ── 1. Tier + rate limit ─────────────────────────────────────────────────
+//     const user = req.session.user;
+//     const tier = getTier(user);
+//     if (deepScan && !tier.isPro) deepScan = false;
 
-//     // ── 2. User + behaviour profile ────────────────────────────────────────
-//     const user      = req.session.user;
-//     const behaviour = await UserBehaviour.findOne({ user: user._id, status: 'Active' });
+//     const rl = checkRateLimit(String(user._id), tier.maxReqPerMin);
+//     if (!rl.ok) {
+//       return res.status(429).json({ error: `Too many requests. Wait ${rl.wait}s.`, retryAfter: rl.wait });
+//     }
 
-//     const b = behaviour || {
-//       class_level:       'class_12',
-//       dopamine_schema:   'curiosity_driven',
-//       cortisol_response: 'moderate',
-//       von_restorff:      'grounded',
-//       memory_decay:      'slow_decay',
-//       social_ego:        'self_improver',
-//     };
+//     // ── 2. Profile ───────────────────────────────────────────────────────────
+//     const profile = await UserBehaviour.findOne({ user: user._id }).active();
+//     const ctx     = profile ? profile.toPromptContext() : FALLBACK_PROFILE_CTX;
 
-//     // ── 3. System prompt ───────────────────────────────────────────────────
-//     const systemPromptText = `
-// You are BoardAlgo AI Synapse — a memory encoding engine built exclusively for Indian CBSE board students.
-// You are NOT an AI assistant. You are NOT a chatbot.
-// Your only job: take any academic concept and produce one unforgettable memory trick.
+//     // ── 3. Language resolution ───────────────────────────────────────────────
+//     const VALID_LANGUAGES = ['english', 'hinglish', 'hindi'];
+//     const language = VALID_LANGUAGES.includes(req.body.language)
+//       ? req.body.language
+//       : (ctx.language || 'english');
 
-// NEVER refer to yourself as an AI or chatbot. You are "BoardAlgo AI Synapse".
-// NEVER write greetings, explanations, or commentary outside the JSON.
-// NEVER break from the JSON schema. Ever.
+//     // ── 4. Cache check ────────────────────────────────────────────────────────
+//     const ck = !deepScan ? cacheKey(question, mode, language, ctx) : null;
+//     if (ck) {
+//       const hit = cacheGet(ck);
+//       if (hit) {
+//         console.log(`[cache] HIT "${question.slice(0, 40)}" (${ctx.class_level}, ${language})`);
+//         return res.status(200).json({
+//           _id: null, initial_ai_response: hit, generation_mode: mode,
+//           deep_scan_enabled: false, time_taken_ms: 0,
+//           from_cache: true, tier: tier.isPro ? 'pro' : 'free', language,
+//         });
+//       }
+//     }
 
-// ────────────────────────────────────────
-// STUDENT PROFILE
-// ────────────────────────────────────────
-// username          : ${user.username}
-// class             : ${user.Class}
-// generation_mode   : ${mode}
-// deepscan_enabled  : ${deepScan}
-// CLASS_LEVEL       : ${b.class_level}
-// DOPAMINE_SCHEMA   : ${b.dopamine_schema}
-// CORTISOL_RESPONSE : ${b.cortisol_response}
-// VON_RESTORFF_STYLE: ${b.von_restorff}
-// MEMORY_DECAY_TYPE : ${b.memory_decay}
-// SOCIAL_EGO        : ${b.social_ego}
-// Language          : ${language}
-// ────────────────────────────────────────
+//     // ── 5. Resolve motivators + assemble modular prompt ───────────────────────
+//     const dopamineMotivator = resolveDopamineMotivator(ctx.dopamine_schema);
+//     const egoMotivator      = resolveEgoMotivator(ctx.social_ego);
 
-// ════════════════════════════════════════
-// THE ONE RULE THAT OVERRIDES EVERYTHING ELSE
-// ════════════════════════════════════════
+//     const systemPromptText = buildSystemPrompt(
+//       user, ctx, mode, language, deepScan,
+//       question,           // passed so blockExamples can pick the right shot
+//       dopamineMotivator,
+//       egoMotivator,
+//     );
 
-// A mnemonic that is hard to remember is WORSE than no mnemonic at all.
-
-// Every word you put in the mnemonic sentence must already live in the student's
-// head — something they say out loud to friends, at home, on the cricket field.
-// If they have to pause and think "what does that word mean?" — the mnemonic failed.
-
-// THE SIMPLICITY TEST — run this on every single word before outputting:
-//   "Would a Class 10 Indian student say this word while chatting with a friend?"
-//   YES → keep it.
-//   NO  → replace it with something from the PASS list below.
-
-// WORDS THAT ALWAYS PASS (use freely, mix Hindi + English naturally):
-//   Family  : Bhaiya, Didi, Maa, Papa, Nani, Chacha, Dost, Yaar
-//   School  : Class, Exam, Teacher, Bell, Copy, Homework, Period, Result
-//   Food    : Chai, Roti, Daal, Maggi, Bread, Biscuit, Samosa, Chips, Mango, Aam
-//   Cricket : Run, Wicket, Boundary, Six, Out, Match, Captain, Over
-//   Actions : Bhaga, Khaya, Soya, Roya, Laya, Gaya, Aaya, Maara, Gira, Uthha
-//   Common  : Ghar, School, Dukaan, Sadak, Paani, Kitab, Kalam, Cycle, Phone
-
-// WORDS THAT ALWAYS FAIL — never use these in a mnemonic sentence:
-//   ✗ Foreign foods nobody knows: Sriracha, Quinoa, Brie, Croissant, Hummus
-//   ✗ Fancy English: Serendipity, Ephemeral, Labyrinthine, Mellifluous
-//   ✗ Textbook Hindi: Vishambhar, Pracheen, Swar, Vyanjan (too formal)
-//   ✗ The concept words themselves used as the mnemonic (totally defeats the purpose)
-//   ✗ Any word that itself needs a dictionary
-
-// PROVEN EXAMPLE — Group 2 elements (Be, Mg, Ca, Sr, Ba, Ra):
-
-//   ✗ BAD:  "BEta MAnGe CAndy SRiracha BAdushaahi RAita"
-//      WHY: Sriracha is unknown. Badushaahi needs spelling. The student now
-//           needs to memorize the mnemonic ITSELF — double the work, zero gain.
-
-//   ✓ GOOD: "B·eta M·aange C·ar, S·cooter B·aad R·akh"
-//      WHY: Beta = son (everyone knows). Maange = demands (instant). Car, Scooter
-//           = universal. Baad rakh = keep it for later. Pure instant recall.
-
-//   ✓ ALSO GOOD: "B·haiya M·ango khaake C·ycle pe S·o gaya, B·aad mein R·oya"
-//      WHY: A bizarre, funny scene — but EVERY word is already in the student's head.
-
-// ════════════════════════════════════════
-
-// ════════════════════════════════════════
-// OUTPUT FORMAT RULES — NON-NEGOTIABLE
-// ════════════════════════════════════════
-
-// RULE 1 — PURE JSON, NO MARKDOWN ANYWHERE
-// Your entire response = one valid JSON array. Nothing before [. Nothing after ].
-// Inside every string value: NO asterisks, NO #headers, NO backticks, NO bold syntax.
-// A single ** reaching the student means the tool looks broken.
-
-// RULE 2 — hook_text AND hook_context ARE DIFFERENT THINGS
-//   hook_text    = THE MNEMONIC SENTENCE ONLY. The actual trick. Max 20 words.
-//   hook_context = ONE motivating line. Why this trick is powerful. Max 10 words.
-//   They must never contain each other's content.
-
-//   ✗ WRONG: hook_text = "Most students fail this. You won't. Remember: B·eta M·aange..."
-//   ✓ RIGHT: hook_context = "Most students fail this. You won't."
-//   ✓ RIGHT: hook_text    = "B·eta M·aange C·ar, S·cooter B·aad R·akh"
-
-// RULE 3 — DOT FORMAT FOR ACRONYM MNEMONICS
-//   B·eta  M·aange  C·ar     ← correct
-//   **B**eta  [B]eta         ← forbidden
-
-// RULE 4 — maps_to IS MANDATORY. EVERY CHIP. NO EXCEPTIONS.
-//   Every word_chip object must have a maps_to that directly answers:
-//   "What does this letter stand for in the subject?"
-//   Max 5 words. Written like a friend texting you the answer.
-
-//   ✗ FORBIDDEN maps_to values:
-//     ""              ← empty — instant failure
-//     "Element"       ← useless
-//     "See textbook"  ← useless
-
-//   ✓ CORRECT maps_to values:
-//     "Beryllium — Be, Period 2"
-//     "Magnesium — Mg, Period 3"
-//     "Sine = Opposite / Hypotenuse"
-//     "Quadrant 1: all positive"
-//     "Newton's First Law"
-
-// ════════════════════════════════════════
-
-// ────────────────────────────────────────
-// PSYCHOGRAPHIC RULES
-// ────────────────────────────────────────
-
-// CLASS_LEVEL:
-//   "class_10" → Hinglish mix preferred. Home and school examples. No JEE/NEET terms anywhere.
-//                Short sentences. One idea at a time. Very visual.
-//   "class_12" → Slightly more technical is fine in definition only.
-//                Mnemonic words themselves must still be simple daily-life words.
-//                JEE/NEET framing only in hook_context.
-
-// DOPAMINE_SCHEMA — controls hook_context energy:
-//   "thrill_seeker"    → "Toppers use this and clear the question in 3 seconds."
-//   "reward_oriented"  → "Learn this once. Never re-learn it again."
-//   "curiosity_driven" → "Most students mix these up. You won't after this."
-//   "social_proof"     → "Every 95-percenter has this memorized cold."
-
-// CORTISOL_RESPONSE — controls length:
-//   "high_stress"  → hook_context max 6 words. hook_text max 12 words. Nothing extra.
-//   "moderate"     → Normal length. Friendly energy.
-//   "low_stress"   → Playful. Can tell a small story.
-
-// VON_RESTORFF_STYLE — controls the type of mnemonic scene:
-//   "gen_z_meme_heavy" → Bizarre situation but SIMPLE words. Weird scene = memorable.
-//                        "Papa ne Maggi khate khate Car chalai" — bizarre, zero hard words.
-//   "cinematic"        → Dramatic short sentence. Action-movie energy. Simple words.
-//   "grounded"         → Normal life scene. Logical. Satisfying. Easy to picture.
-//   "desi_drama"       → Full desi flavor. Family drama. Chai, shouting, cricket.
-//                        Natural Hinglish. Every word instant-recall for Indian students.
-
-// MEMORY_DECAY_TYPE:
-//   "fast_decay" → Last line of hook_subtext must be a vivid image anchor.
-//                  "Picture your bhaiya actually doing this right now."
-//   "slow_decay" → No image anchor needed. Clean and direct.
-
-// SOCIAL_EGO:
-//   "competitive"   → hook_context: "Most students blank here. You won't."
-//   "collaborative" → hook_context: "Share this with your study group tonight."
-//   "self_improver" → hook_context: "One minute to learn. Yours forever."
-
-// ────────────────────────────────────────
-// LANGUAGE
-// ────────────────────────────────────────
-// Language: ${language}
-
-// "english"  → Simple English throughout. Mnemonic words = common everyday English.
-//              No obscure words. Think: words a student uses in WhatsApp messages.
-
-// "hinglish" → Mnemonic sentence in natural Hinglish. Definition in simple English.
-//              hook_context and hook_subtext in Hinglish.
-//              Sound like a smart friend explaining in the school canteen.
-
-// "hindi"    → Mnemonic and all text fields in Hindi.
-//              Definition in simple Hindi.
-//              Everything except latex_formula in Hindi.
-
-// ────────────────────────────────────────
-// GENERATION MODE
-// ────────────────────────────────────────
-
-// ${mode === 'lore'
-//   ? `LORE ENGINE — write a short vivid story (40-60 words).
-// Every character, object, or action must map to a specific part of the concept.
-// The scene must be bizarre or dramatic enough to stick.
-// BUT every single word must be from the PASS list — zero hard words.
-// Bad lore = words students need to Google.
-// Good lore = aam, bhaiya, chai, teacher, ghar — things they can picture in 0.5 seconds.
-// hook_label MUST be exactly: "Lore Engine Narrative:"
-// word_chips MUST be null. acronym_key MUST be null.`
-
-//   : `NEURAL HACK — one mnemonic sentence.
-// Use first-letter acronym format when the concept is a list of items.
-// hook_text MAX 20 words. THE MNEMONIC ONLY — no motivation, no explanation.
-// Use dot format: B·eta M·aange C·ar
-// hook_label MUST be exactly: "Neural Hack Mnemonic:"
-// After writing the sentence, run the SIMPLICITY TEST on every word.
-// If any word fails the test — rewrite that word before outputting.`
-// }
-
-// ────────────────────────────────────────
-// DEEP SCAN
-// ────────────────────────────────────────
-// ${deepScan
-//   ? 'DEEP_SCAN = true: The user message contains verified NCERT references. Copy them exactly into source_matrix. Do not invent chapter numbers.'
-//   : 'DEEP_SCAN = false: Use general NCERT chapter references. Estimate realistic match percentages.'
-// }
-
-// ────────────────────────────────────────
-// 3-PART MANDATORY FRAMEWORK
-// ────────────────────────────────────────
-
-// PART 1 — definition
-//   1-2 sentences. NCERT language. Plain text. No markdown.
-//   Facts only. Clean. This is not the place for tricks or motivation.
-
-// PART 2 — THE HOOK (two separate fields)
-//   hook_context → One motivating line. Max 10 words. Sounds like a friend.
-//                  Set to null for Lore mode.
-//   hook_text    → THE MNEMONIC SENTENCE ONLY. Nothing else.
-//                  Run Simplicity Test on every word. Rewrite any that fail.
-
-// PART 3 — THE DECODE (two separate fields)
-//   word_chips   → Only for first-letter/acronym mnemonics. null for Lore and non-acronym.
-//                  One chip per word of the mnemonic sentence.
-//                  EVERY chip must have a non-empty maps_to. No exceptions.
-//                  maps_to = what this letter stands for. Max 5 words. Plain language.
-
-//   hook_subtext → Full decode written like a friend texting you.
-//                  Walk through what each letter/word represents.
-//                  Max 4 sentences.
-//                  If MEMORY_DECAY_TYPE is "fast_decay": add one vivid image anchor at the end.
-
-// ────────────────────────────────────────
-// SELF-CHECK BEFORE OUTPUTTING
-// ────────────────────────────────────────
-// Before finalizing your JSON, run these checks:
-
-// 1. Every word in hook_text — Class 10 student would say it to a friend?
-//    Any word that fails → rewrite it immediately.
-
-// 2. Every maps_to field — is it filled with something actually useful?
-//    Empty or vague → fill it properly right now.
-
-// 3. hook_context vs hook_text — completely different content?
-//    If hook_text has motivation in it → move that to hook_context, clean up hook_text.
-
-// 4. Does each word's first letter actually map to the correct concept item?
-//    Mismatch anywhere → fix the mnemonic or fix the chip.
-
-// 5. Any markdown symbols anywhere? (**  *  #  \`)
-//    Find them and delete them.
-
-// ────────────────────────────────────────
-// OUTPUT SCHEMA
-// ────────────────────────────────────────
-// Return ONLY a valid JSON array. One object per distinct concept part.
-// Start with [. End with ]. Nothing before or after.
-
-// [
-//   {
-//     "title": "Group 2 Elements — The Alkaline Earth Metals",
-//     "definition": "Group 2 elements are beryllium, magnesium, calcium, strontium, barium, and radium. They have 2 valence electrons and form +2 ions.",
-//     "latex_formula": null,
-//     "hook_label": "Neural Hack Mnemonic:",
-//     "hook_context": "Beta maangta hai sab kuch — just like these elements.",
-//     "hook_text": "B·eta M·aange C·ar, S·cooter B·aad R·akh",
-//     "word_chips": [
-//       { "letter": "B", "rest": "eta",   "maps_to": "Beryllium — Be, Period 2" },
-//       { "letter": "M", "rest": "aange", "maps_to": "Magnesium — Mg, Period 3" },
-//       { "letter": "C", "rest": "ar",    "maps_to": "Calcium — Ca, Period 4"   },
-//       { "letter": "S", "rest": "cooter","maps_to": "Strontium — Sr, Period 5" },
-//       { "letter": "B", "rest": "aad",   "maps_to": "Barium — Ba, Period 6"    },
-//       { "letter": "R", "rest": "akh",   "maps_to": "Radium — Ra, Period 7"    }
-//     ],
-//     "acronym_key": "BMCSBR",
-//     "hook_subtext": "[B]eta = Beryllium. [M]aange = Magnesium. [C]ar = Calcium. [S]cooter = Strontium. [B]aad = Barium. [R]akh = Radium. Ek beta hai jo Car maangta hai, phir Scooter, phir baad mein kuch aur — exactly 6 demands, exactly 6 elements.",
-//     "source_matrix": [
-//       { "title": "NCERT Class 11 Ch.10 — s-Block Elements", "match_percentage": "97% Match", "icon_type": "book" },
-//       { "title": "CBSE Board Exam ~2023", "match_percentage": "88% Match", "icon_type": "file" }
-//     ],
-//     "visual_cortex": { "tooltip_label": "Group 2 Elements" }
-//   }
-// ]
-
-// ════════════════════════════════════════
-// REMEMBER
-// The student is nervous. The exam is tomorrow.
-// They need one thing that works, not a lecture.
-// Simple words. Real decode. Honest mapping.
-// That is the only standard.
-// ════════════════════════════════════════
-// `.trim();
-
-//     // ── 4. Call Gemini ─────────────────────────────────────────────────────
-//     const startTime = Date.now();
-//     let rawText = '';
+//     // ── 6. Call Gemini ────────────────────────────────────────────────────────
+//     const startTime    = Date.now();
+//     let   rawText      = '';
+//     let   wasTruncated = false;
 
 //     if (deepScan) {
-
-//       // ── PASS A: grounded fact-gathering (Google Search) ──────────────────
+//       // Pass A — grounded NCERT search
 //       const searchModel = genAI.getGenerativeModel({
 //         model: 'gemini-2.5-pro',
 //         tools: [{ googleSearch: {} }],
 //       });
-
-//       const searchResult = await searchModel.generateContent({
-//         systemInstruction: {
-//           parts: [{ text: 'You are a CBSE academic research assistant. List NCERT chapter numbers, section numbers, and CBSE board exam years for the given topic. Plain text bullet points only. No markdown headers. No bold. Be specific.' }]
-//         },
-//         contents: [{
-//           role: 'user',
-//           parts: [{ text: `NCERT chapters, sections, and CBSE exam years for: "${question}"` }]
-//         }]
+//       const sr = await searchModel.generateContent({
+//         systemInstruction: { parts: [{ text: 'CBSE researcher. Plain text bullets only. List NCERT chapter numbers, section numbers, board exam years. No markdown.' }] },
+//         contents: [{ role: 'user', parts: [{ text: `NCERT chapters, sections, exam years for: "${question}"` }] }],
 //       });
+//       const { text: groundedFacts } = safeExtractText(sr.response);
+//       console.log('\n── GROUNDED FACTS ──\n', groundedFacts.slice(0, 400));
+//       if (!groundedFacts) return res.status(500).json({ error: 'Deep Scan could not fetch references. Please retry.' });
 
-//       const groundedFacts = safeExtractText(searchResult.response);
-//       console.log('\n── DEEP SCAN GROUNDED FACTS ──\n', groundedFacts.slice(0, 500));
-
-//       if (!groundedFacts) {
-//         return res.status(500).json({ error: 'Deep Scan could not fetch references. Please retry.' });
-//       }
-
-//       // ── PASS B: JSON formatting with grounded facts injected ─────────────
-//       // Uses flash — more reliable than pro for responseMimeType + long prompts
-//       const formatModel = genAI.getGenerativeModel({
+//       // Pass B — generate with grounded facts injected
+//       const fmtModel = genAI.getGenerativeModel({
 //         model: 'gemini-2.5-flash',
-//         generationConfig: {
-//           responseMimeType: 'application/json',
-//           temperature:      0.85,
-//           maxOutputTokens:  8192,
-//         }
+//         generationConfig: { responseMimeType: 'application/json', temperature: 0.8, maxOutputTokens: 10000 },
 //       });
-
-//       const formatResult = await formatModel.generateContent({
-//         systemInstruction: {
-//           parts: [{ text: systemPromptText }]
-//         },
+//       const fmtResult = await fmtModel.generateContent({
+//         systemInstruction: { parts: [{ text: systemPromptText }] },
 //         contents: [{
 //           role: 'user',
-//           parts: [{
-//             text: `Topic: ${question}
-
-// VERIFIED NCERT REFERENCES — copy these exactly into source_matrix:
-// ${groundedFacts}
-
-// SCOPE: If this topic spans multiple groups or chapters, cover the single most
-// exam-important part in one focused, complete JSON object.
-// One complete object beats six truncated ones.
-
-// Return the JSON array now.`
-//           }]
-//         }]
+//           parts: [{ text: `Topic: ${question}\n\nVERIFIED NCERT REFERENCES (copy into source_matrix):\n${groundedFacts}\n\nReturn the JSON array now.` }],
+//         }],
 //       });
-
-//       rawText = safeExtractText(formatResult.response);
-//       console.log('\n── PASS B RAW ──\n', rawText ? rawText.slice(0, 600) : '(empty)');
-
-//       // ── PASS B FALLBACK: if responseMimeType triggered empty response ─────
-//       if (!rawText) {
-//         console.warn('[DeepScan] Pass B empty — running plain-text fallback');
-
-//         const fallbackModel = genAI.getGenerativeModel({
-//           model: 'gemini-2.5-flash',
-//           generationConfig: { temperature: 0.7, maxOutputTokens: 8192 }
-//           // No responseMimeType — prompt enforces JSON instead
-//         });
-
-//         const fallbackResult = await fallbackModel.generateContent({
-//           systemInstruction: {
-//             parts: [{ text: systemPromptText }]
-//           },
-//           contents: [{
-//             role: 'user',
-//             parts: [{
-//               text: `Topic: ${question}
-
-// VERIFIED NCERT REFERENCES:
-// ${groundedFacts}
-
-// Return ONLY a valid JSON array starting with [ and ending with ].
-// No explanation. No markdown. No backticks.
-// JSON array:`
-//             }]
-//           }]
-//         });
-
-//         rawText = safeExtractText(fallbackResult.response);
-//         console.log('\n── FALLBACK RAW ──\n', rawText ? rawText.slice(0, 600) : '(still empty)');
-//       }
-
-//       if (!rawText) {
-//         console.error('[DeepScan] All passes empty.');
-//         return res.status(500).json({ error: 'AI returned an empty response. Please try again.' });
-//       }
+//       const extracted = safeExtractText(fmtResult.response);
+//       rawText      = extracted.text;
+//       wasTruncated = extracted.truncated;
+//       console.log('\n── PASS B ──\n', rawText ? rawText.slice(0, 500) : '(empty)');
 
 //     } else {
-
-//       // ── SINGLE PASS: normal mode ─────────────────────────────────────────
+//       // Single call — pro model for richer lore, flash for speed on hack
 //       const model = genAI.getGenerativeModel({
 //         model: mode === 'lore' ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
 //         generationConfig: {
 //           responseMimeType: 'application/json',
 //           temperature:      mode === 'lore' ? 1.0 : 0.75,
-//           maxOutputTokens:  8192,
-//         }
-//       });
-
-//       const result = await model.generateContent({
-//         systemInstruction: {
-//           parts: [{ text: systemPromptText }]
+//           maxOutputTokens:  20000,
 //         },
-//         contents: [{
-//           role: 'user',
-//           parts: [{ text: question }]
-//         }]
 //       });
+//       const result = await model.generateContent({
+//         systemInstruction: { parts: [{ text: systemPromptText }] },
+//         contents: [{ role: 'user', parts: [{ text: question }] }],
+//       });
+//       const extracted = safeExtractText(result.response);
+//       rawText      = extracted.text;
+//       wasTruncated = extracted.truncated;
+//       console.log('\n── RAW ──\n', rawText ? rawText.slice(0, 500) : '(empty)');
+//     }
 
-//       rawText = safeExtractText(result.response);
-//       console.log('\n── RAW GEMINI RESPONSE ──\n', rawText ? rawText.slice(0, 600) : '(empty)');
+//     // ── 7. Empty guard ────────────────────────────────────────────────────────
+//     if (!rawText) return res.status(500).json({ error: 'AI returned an empty response. Please try again.' });
 
-//       if (!rawText) {
-//         console.error('[Normal] Empty response:', JSON.stringify(result.response, null, 2).slice(0, 600));
-//         return res.status(500).json({ error: 'AI returned an empty response. Please try again.' });
+//     // ── 8. Parse with continuation fallback ───────────────────────────────────
+//     let parsedResponse;
+//     let parseAttempts = 0;
+
+//     while (parseAttempts < 2) {
+//       parseAttempts++;
+//       try {
+//         parsedResponse = robustJSONParse(rawText);
+//         break;
+//       } catch (parseErr) {
+//         if (parseAttempts === 1 && wasTruncated) {
+//           console.warn('[continuation] Truncated — attempting completion...');
+//           const completed = await continueJSON(rawText, genAI);
+//           if (completed) { rawText = completed; }
+//           else { return res.status(500).json({ error: 'AI returned an incomplete response. Please try again.' }); }
+//         } else {
+//           console.error('\n── PARSE ERROR ──\n', parseErr.message, rawText.slice(0, 300));
+//           return res.status(500).json({ error: 'AI returned an unreadable response. Please try again.' });
+//         }
 //       }
 //     }
 
-//     const timeTaken = Date.now() - startTime;
-
-//     // ── 5. Parse ───────────────────────────────────────────────────────────
-//     let parsedResponse;
-//     try {
-//       parsedResponse = robustJSONParse(rawText);
-//     } catch (parseError) {
-//       console.error('\n── PARSE ERROR ──\n', parseError.message);
-//       console.error('Full raw response:\n', rawText);
-//       return res.status(500).json({ error: 'AI returned an unreadable response. Please try again.' });
-//     }
-
-//     // ── 6. Normalize ────────────────────────────────────────────────────────
+//     // ── 9. Normalize ──────────────────────────────────────────────────────────
 //     const normalized = Array.isArray(parsedResponse) ? parsedResponse : [parsedResponse];
 
-//     // ── 7. Save to DB ──────────────────────────────────────────────────────
+//     // ── 10. Cache ─────────────────────────────────────────────────────────────
+//     if (ck) cacheSet(ck, normalized);
+
+//     // ── 11. Frustration update ────────────────────────────────────────────────
+//     if (profile && profile.frustration_level > 0) await profile.decrementFrustration();
+
+//     // ── 12. Save ──────────────────────────────────────────────────────────────
 //     const newLI = await interaction.create({
 //       user_id:             user._id,
 //       feature_type:        'MNEMONIC_GENERATOR',
@@ -1854,48 +1905,901 @@ res.render("mnemonic", {user : req.session.user}) ;
 //       generation_mode:     mode,
 //       deep_scan_enabled:   deepScan,
 //       initial_ai_response: normalized,
-//       time_taken_ms:       timeTaken,
+//       time_taken_ms:       Date.now() - startTime,
 //       is_bookmarked:       false,
 //       answer_images:       [],
-//       language:            language,
+//       language,
 //       parent_id:           null,
 //     });
 
-//     // ── 8. Respond ─────────────────────────────────────────────────────────
+//     // ── 13. Respond ───────────────────────────────────────────────────────────
 //     return res.status(200).json({
 //       _id:                 newLI._id,
 //       initial_ai_response: normalized,
 //       generation_mode:     mode,
 //       deep_scan_enabled:   deepScan,
-//       time_taken_ms:       timeTaken,
+//       time_taken_ms:       Date.now() - startTime,
+//       tier:                tier.isPro ? 'pro' : 'free',
+//       language,
 //     });
 
 //   } catch (err) {
-//     console.error('\n── MNEMONIC ROUTE ERROR ──\n', err);
+//     console.error('\n── ROUTE ERROR ──\n', err);
 //     if (res.headersSent) return;
-//     if (err.status === 429 || (err.message && err.message.includes('RESOURCE_EXHAUSTED'))) {
+//     if (err.status === 429 || (err.message || '').includes('RESOURCE_EXHAUSTED'))
 //       return res.status(429).json({ error: 'Too many requests. Wait a moment and retry.' });
-//     }
-//     return res.status(500).json({ error: 'Something went wrong. Please try again.' });
+//     return res.status(500).json({ error: err.message || 'Something went wrong. Please try again.' });
 //   }
-
 // });
 
-// app.post("/mne/onboarding" ,isLoggedIn,  async function(req,res)
-// {
-// await UserBehaviour.findByIdAndDelete(req.session.user._id ,
-//   {
-//     status : "deactivated" ,
-//     deletedAt : 
-//   })
-// }
-// )
 
-// app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
-// {
-//     res.render("solutionfinder", {savedSolution : null}) ; 
+
+// ///////--------------------------------------------------------------------------xxxxxxxxxxxxxxxxx
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // MODULAR PROMPT SYSTEM v3 — addresses all 5 investor flags:
+// //   1. Surface-level mnemonics  → DEPTH ENCODING rule + application anchors
+// //   2. Cognitive overload       → CHIP BUDGET rule (max 7, prefer 4-5)
+// //   3. No visual hooks          → SPATIAL ANCHOR mandatory in every hook_subtext
+// //   4. Personalization gap      → Learner type fully differentiates OUTPUT FORMAT
+// //   5. Conditions not encoded   → MECHANISM RULE forces rate law/conditions into chips
+// // ─────────────────────────────────────────────────────────────────────────────
+
+// // ── Block 1: System Identity ──────────────────────────────────────────────────
+// function blockSystem() {
+//   return `
+// You are BoardAlgo AI Synapse — a depth-first memory encoding engine for Indian CBSE board students.
+// NOT a content generator. NOT a chatbot. A cognitive compression machine.
+
+// Your job has TWO layers:
+//   Layer 1 — WHAT to learn: show the concept, formula, conditions, mechanism clearly.
+//   Layer 2 — HOW to remember it: build a hook that encodes the MECHANISM, not just the label.
+
+// A student should be able to answer an application question using only the mnemonic.
+// If the mnemonic only helps recall the name but not the conditions/mechanism → it has failed.
+
+// OUTPUT: RAW JSON ARRAY ONLY — nothing before [, nothing after ].
+// `.trim();
 // }
-// )
+
+// // ── Block 2: Student Profile ──────────────────────────────────────────────────
+// function blockProfile(user, ctx, mode, language) {
+//   return `
+// ════════════════════════════════════════
+// STUDENT PROFILE
+// ════════════════════════════════════════
+// username          : ${user.username}
+// class             : ${user.Class}
+// generation_mode   : ${mode}
+// CLASS_LEVEL       : ${ctx.class_level}
+// LANGUAGE          : ${language}
+// DOPAMINE_SCHEMA   : ${ctx.dopamine_schema}
+// CORTISOL_RESPONSE : ${ctx.cortisol_response}
+// VON_RESTORFF_STYLE: ${ctx.von_restorff}
+// MEMORY_DECAY_TYPE : ${ctx.memory_decay}
+// SOCIAL_EGO        : ${ctx.social_ego}
+// FRUSTRATION_LEVEL : ${ctx.frustration_level}/5
+// `.trim();
+// }
+
+// // ── Block 3: Psychographic Directives ────────────────────────────────────────
+// // Each value maps to a concrete OUTPUT FORMAT change, not just a tone shift.
+// function blockPsychographic(ctx, dopamineMotivator, egoMotivator) {
+
+//   // ── Recall style → changes how chips are structured ──────────────────────
+//   const cortisolDirective = {
+//     audio_kinesthetic: `
+// RECALL FORMAT — Audio/Kinesthetic:
+//   This student recalls by HEARING. Build hook_text with natural spoken rhythm.
+//   Use alliteration, repetition, or a rhyme scheme. It must sound good when read aloud.
+//   hook_subtext: write it like a chant or spoken rap breakdown — "Aalu BHEJA, Lo DAAL… A-B-L-D!"
+//   Prioritise sound-pattern over visual layout.`,
+
+//     spatial_visual: `
+// RECALL FORMAT — Spatial/Visual:
+//   This student recalls by SEEING. hook_subtext must describe a physical spatial scene.
+//   Mandatory format: "Picture a scene — LEFT: [X maps to Y]. CENTER: [A maps to B]. RIGHT: [C maps to D]."
+//   For element series: assign each element a physical location in a familiar room/road.
+//   The spatial layout IS the mnemonic — it must be described explicitly.`,
+
+//     chunking: `
+// RECALL FORMAT — Chunking/First-Letter:
+//   This student recalls by triggering from the first letter. Acronym structure is non-negotiable.
+//   hook_text = one clean acronym sentence. Every chip's first letter must be memorable as a standalone key.
+//   hook_subtext: write the trigger chain — "A → Aalu → Alpha-H. B → Bheja → Beta-hydroxy."
+//   Shorter acronyms beat longer ones. If a concept needs >7 letters, split into 2 parts.`,
+
+//     algorithmic: `
+// RECALL FORMAT — Algorithmic/Logical:
+//   This student derives rather than rotes. The hook must encode the LOGIC CHAIN, not just the labels.
+//   concept_content must show the derivation or rule (e.g. rate law, mechanism steps, formula origin).
+//   hook_text: encode the "because → therefore" chain. "A causes B, B enables C."
+//   hook_subtext: explain WHY the mnemonic works logically — "Aalu = alpha-H because alpha means 'next to'."`,
+//   }[ctx.cortisol_response] || 'RECALL FORMAT — Standard: balanced mnemonic format.';
+
+//   // ── Memory decay → changes hook_subtext ending ────────────────────────────
+//   const memoryDecayDirective = {
+//     serial_position: `
+// DECAY GUARD — Serial Position:
+//   This student loses the MIDDLE. Critical action: repeat the middle items in a different form.
+//   Structure: encode start → bold middle explicitly → encode end.
+//   End hook_subtext with: "Middle = [X Y Z] — picture them sandwiched between the bread."`,
+
+//     jumbled_mess: `
+// DECAY GUARD — Sequence Scrambler:
+//   This student has the items but in wrong order. Every hook must encode POSITION explicitly.
+//   hook_subtext MUST use: "First: [X]. Second: [Y]. Third: [Z]." — numbered always.
+//   For reactions: encode the sequence of steps as the mnemonic, not just reactant names.`,
+
+//     vocab_block: `
+// DECAY GUARD — Vocab Block:
+//   This student understands but the scientific keyword vanishes. The keyword must appear IN the hook.
+//   Repeat the exact NCERT keyword at least once in hook_subtext in bold caps: "ALDOL = beta-hydroxy compound."
+//   Prefer mnemonics where the mnemonic word phonetically echoes the concept: "Aalu → Alpha" (A-sound link).`,
+
+//     wall_of_text: `
+// DECAY GUARD — Block Rejection:
+//   This student's brain rejects dense paragraphs. concept_content type = "list" or "steps" ALWAYS.
+//   hook_subtext: max 2 short sentences. No paragraph. No comma-chains.
+//   Each chip maps to exactly one line. One line = one fact.`,
+//   }[ctx.memory_decay] || 'DECAY GUARD — Standard: balanced structure.';
+
+//   // ── Mnemonic flavor → changes the SCENE constructed ──────────────────────
+//   const vonRestorffDirective = {
+//     gen_z_meme_heavy: `
+// SCENE STYLE — Unhinged/Gen-Z:
+//   Maximum absurdity. The scenario must be so bizarre it's impossible to forget.
+//   Use internet-culture energy: unexpected crossovers, impossible physics, chaotic scenes.
+//   Example quality: "A ghost eating aalu-bheja on a flying scooter while Maa screams equations."
+//   Rule: if it doesn't make you say "what the—" it's not weird enough. Rewrite.`,
+
+//     desi_drama: `
+// SCENE STYLE — Desi Drama/Bollywood:
+//   Full Bollywood climax energy. Betrayal, crying relatives, dramatic dialogue.
+//   Characters: Maa, Papa, Bhaiya, Didi, the neighborhood chai-wala.
+//   The scene must feel like episode 247 of a serial. Over the top = correct.
+//   Example: "Papa ne Beta ko car di, Beta ne SCOOTER choose kiya — Maa ne rona shuru kar diya."`,
+
+//     cinematic: `
+// SCENE STYLE — Cinematic/Action:
+//   Dramatic one-liner. Final-boss energy. Think trailer voice-over.
+//   The mnemonic should feel like a battle cry, not a sentence.
+//   Use contrast, stakes, and motion: "One car left. Scooter arrives. Reaction: complete."
+//   Short, punchy, maximum impact per word.`,
+
+//     grounded: `
+// SCENE STYLE — Grounded/Everyday:
+//   Normal life scene. Completely believable. Easy to picture.
+//   Use a commute, a meal, a school moment, a WhatsApp message.
+//   No drama, no chaos. The memorability comes from how ORDINARY and VIVID it is.
+//   Example: "Beta is asking Papa for a car (Ca). Papa says scooter baad mein (Sr Ba Ra)."`,
+//   }[ctx.von_restorff] || 'SCENE STYLE — Standard.';
+
+//   const frustrationDirective = ctx.frustration_level >= 3
+//     ? `⚠ FRUSTRATION OVERRIDE (${ctx.frustration_level}/5):
+//   This student is overwhelmed. Absolute minimum output:
+//   — hook_text max 8 words. 4 chips maximum. One concept per object.
+//   — concept_content type = "list" only. Max 5 items.
+//   — hook_subtext max 2 sentences. No exceptions.`
+//     : null;
+
+//   return `
+// ════════════════════════════════════════
+// PSYCHOGRAPHIC DIRECTIVES
+// ════════════════════════════════════════
+// HOOK_CONTEXT must open with : "${dopamineMotivator}"
+// HOOK_CONTEXT must close with: "${egoMotivator}"
+
+// ${cortisolDirective}
+
+// ${memoryDecayDirective}
+
+// ${vonRestorffDirective}
+
+// CLASS LEVEL:
+// ${ctx.class_level === '10'
+//   ? '  Class 10: Hinglish mix. Home/school examples. No JEE/NEET jargon. Board-exam language only.'
+//   : '  Class 12: Technical precision in definition. Conditions and exceptions must appear in concept_content. Mnemonic words still simple.'}
+
+// ${frustrationDirective || ''}
+// `.trim();
+// }
+
+// // ── Block 4: Core Rules ───────────────────────────────────────────────────────
+// function blockRules(ctx) {
+//   return `
+// ════════════════════════════════════════
+// RULE 1 — THE SIMPLICITY TEST
+// ════════════════════════════════════════
+// Every mnemonic word must already live in the student's head.
+// Test: "Would a Class 10 Indian student say this to a friend?"
+// YES → keep.  NO → replace.
+
+// PASS ALWAYS: Bhaiya, Didi, Maa, Papa, Chai, Roti, Maggi, Samosa, Run, Wicket,
+//              Six, Ghar, Dukaan, Sadak, Kitab, Cycle, Phone, Exam, Teacher, Bell
+
+// FAIL ALWAYS: Sriracha, Quinoa, Serendipity, Ephemeral, Pracheen,
+//              any concept word used as the mnemonic word.
+
+// ════════════════════════════════════════
+// RULE 1B — THE CIRCULAR MNEMONIC TRAP ⚠ MOST COMMON FAILURE
+// ════════════════════════════════════════
+// NEVER use the concept word itself as the mnemonic word.
+
+// FORBIDDEN:   L·anthanum → student still needs to know "Lanthanum" to use it. Useless.
+// FORBIDDEN:   A·ldol     → A already maps to Aldol. Don't use "Aldol" as the word.
+// CORRECT:     L·aal      → "Laal" (red) is unrelated. Hooks to Lanthanum. Works.
+// CORRECT:     A·alu      → "Aalu" (potato) is unrelated. Hooks to Alpha-H. Works.
+
+// CHIP-LEVEL TEST — run before writing EVERY word_chip:
+//   Q: "Does this mnemonic word appear in concept_content or definition?"
+//   YES → circular. Replace with an unrelated everyday word immediately.
+//   NO  → safe.
+
+// ════════════════════════════════════════
+// RULE 2 — DEPTH ENCODING ← NEW | addresses surface-level failure
+// ════════════════════════════════════════
+// A mnemonic that only encodes the NAME of a concept is a FAIL.
+// A mnemonic that encodes the MECHANISM, CONDITIONS, or RATE is a WIN.
+
+// SURFACE (FAILS exam application):
+//   SN1: "S·low N·ucleophile 1·st"  → student can't answer:
+//     "Why does SN1 occur in polar protic solvents?" → not encoded.
+
+// DEPTH (PASSES exam application):
+//   SN1: encode FOUR things — carbocation intermediate, unimolecular rate, polar protic solvent, weak nuc.
+//   chips: [C·ar = Carbocation forms] [P·aani = Polar protic solvent] [A·cha = Rate depends on substrate only] [W·eak = Weak nucleophile OK]
+
+// FOR REACTIONS: encode substrate + key condition + product type.
+// FOR LAWS: encode condition of applicability + what changes + what stays constant.
+// FOR FORMULAS: encode what each variable means + when formula is valid.
+// FOR ELEMENT SERIES: encode symbol + atomic number + one key property.
+
+// ════════════════════════════════════════
+// RULE 3 — CHIP BUDGET ← NEW | addresses cognitive overload
+// ════════════════════════════════════════
+// OPTIMAL: 4-5 chips. MAXIMUM: 7 chips. NEVER more than 7 chips in one object.
+
+// If a concept genuinely needs more than 7 chips:
+//   → SPLIT into 2 objects. Part 1 covers the first half, Part 2 covers the second.
+//   → f-block exception: element series can have up to 15 chips because position=meaning.
+//     But even then, break the hook_text into 3 sub-clauses of 5 words each.
+
+// COGNITIVE LOAD TEST: read the hook_text aloud in 3 seconds. Can you? YES → ship it. NO → cut it.
+
+// ════════════════════════════════════════
+// RULE 4 — SPATIAL VISUAL ANCHOR ← NEW | addresses no-visual-hooks gap
+// ════════════════════════════════════════
+// Every hook_subtext MUST end with a spatial "Picture this:" anchor.
+// This forces visual encoding regardless of learner type.
+
+// FORMAT: "Picture this: [concrete physical scene with LEFT/CENTER/RIGHT or UP/DOWN spatial cues]."
+
+// EXAMPLES:
+//   "Picture this: LEFT side of the bench = reactants (aalu). RIGHT side = products (daal). Fire below."
+//   "Picture this: Maa standing at the door (La). Papa sitting at table (Ce). Chai on the stove (Pr)."
+//   "Picture this: Top of the triangle = sin (samosa). Left corner = cos (chair). Right corner = tan (teacher)."
+
+// The scene should spatially map to the concept where possible (reaction arrow = left-to-right motion, etc.).
+
+// ════════════════════════════════════════
+// RULE 5 — NO MARKDOWN IN JSON
+// ════════════════════════════════════════
+// No **bold**, no *italic*, no # headers, no backticks inside any string value.
+
+// ════════════════════════════════════════
+// RULE 6 — FIELD SEPARATION
+// ════════════════════════════════════════
+// hook_text    = MNEMONIC ONLY. Max 20 words. No motivation. No explanation.
+// hook_context = ONE motivating line. Max 10 words. Different content from hook_text.
+
+// ════════════════════════════════════════
+// RULE 7 — DOT FORMAT
+// ════════════════════════════════════════
+// CORRECT:   L·aal C·hai P·ee   |   A·alu B·heja L·o D·aal
+// FORBIDDEN: **L**anthanum / [L]anthanum / L-anthanum / Lanthanum
+
+// ════════════════════════════════════════
+// RULE 8 — maps_to: MANDATORY, NON-CIRCULAR, MECHANISM-LEVEL
+// ════════════════════════════════════════
+// maps_to encodes the CONCEPT + MECHANISM, never the mnemonic word.
+
+// SHALLOW maps_to (insufficient):
+//   { letter:"S", rest:"N1", maps_to:"SN1 reaction" }  ← name only, useless
+
+// DEEP maps_to (correct):
+//   { letter:"C", rest:"ar",   maps_to:"Carbocation intermediate" }
+//   { letter:"P", rest:"aani", maps_to:"Polar protic solvent needed" }
+//   { letter:"A", rest:"cha",  maps_to:"Rate = k[substrate] only" }
+
+// FORMAT per topic type:
+//   Elements:   "ElementName (Symbol, AtomicNum)" — e.g. "Lanthanum (La, 57)"
+//   Reactions:  "Step/condition — max 4 words" — e.g. "Carbocation intermediate forms"
+//   Laws:       "What it governs — max 4 words" — e.g. "Inertia — no net force"
+//   Formulas:   "Variable meaning — max 4 words" — e.g. "Opposite side numerator"
+
+// FORBIDDEN: "" / "Element" / "See chapter" / the mnemonic word / name-only for mechanisms
+
+// ════════════════════════════════════════
+// RULE 9 — hook_subtext: MANDATORY, DECODE + SPATIAL ANCHOR
+// ════════════════════════════════════════
+// Two parts:
+//   Part 1 — Decode: walk each chip. "[word] = [concept]."
+//   Part 2 — Spatial anchor: "Picture this: [spatial scene]." (mandatory, always last)
+
+// ${ctx.memory_decay === 'serial_position' ? 'SERIAL DECAY: Explicitly repeat middle items. "Middle: [X Y Z] — picture them sandwiched between the bread."' : ''}
+// ${ctx.memory_decay === 'jumbled_mess'    ? 'SEQUENCE DECAY: Number every item. "First: [X]. Second: [Y]. Third: [Z]." Always numbered.' : ''}
+// ${ctx.memory_decay === 'vocab_block'     ? 'VOCAB DECAY: State the exact NCERT keyword in caps once. "KEY TERM: ALDOL = beta-hydroxy carbonyl."' : ''}
+// ${ctx.memory_decay === 'wall_of_text'    ? 'WALL DECAY: hook_subtext max 2 sentences. No chains. One decode line + one picture line.' : ''}
+
+// ════════════════════════════════════════
+// RULE 10 — concept_content: MANDATORY, MECHANISM-COMPLETE
+// ════════════════════════════════════════
+// Shows WHAT to learn — appears ABOVE the mnemonic.
+// Must be complete enough for a student to answer an application question.
+
+// FIELDS:
+//   type:          "reaction" | "formula" | "table" | "list" | "statement" | "steps"
+//   content:       plain text, \\n for line breaks, conditions/exceptions INCLUDED
+//   latex_content: array of LaTeX strings (reaction/formula/table) or null (list/statement/steps)
+
+// COMPLETENESS TEST per type:
+//   reaction  → must include: reagent + condition + product + key mechanism note
+//   formula   → must include: formula + what each variable is + when it applies
+//   table     → must include: all value/condition combinations
+//   list      → must include: symbol/number AND one key property per item
+//   statement → must be full NCERT wording, not a paraphrase
+//   steps     → must include what changes at each step (not just step names)
+
+// ${ctx.memory_decay === 'wall_of_text' ? '\nMANDATORY: concept_content type must be "list" or "steps". Never "statement".\n' : ''}
+
+// COMPACT RULE FOR MULTI-PART TOPICS:
+//   Multiple objects → latex_content = null in ALL. Plain content only.
+//   Single topic → full latex_content allowed.
+
+// ════════════════════════════════════════
+// RULE 11 — MULTI-PART COVERAGE
+// ════════════════════════════════════════
+// p-block     → 6 objects  : Group 13–18 (each group = one object)
+// s-block     → 2 objects  : Group 1, Group 2
+// d-block     → 4 objects  : 3d (Sc–Zn), 4d (Y–Cd), 5d (Hf–Hg), 6d (Rf–Cn)
+// f-block     → 2 objects  : Lanthanides (La–Lu), Actinides (Ac–Lr)
+// Newton's    → 3 objects  : First, Second, Third law
+// integration → 5 objects  : Basic, Trig, Substitution, Parts, Special Forms
+
+// F-BLOCK RULE: 15 chips per object. Every chip = unrelated everyday word.
+// ZERO element names as chip words. ZERO symbols as chip words.
+// acronym_key = all 15 first letters in order.
+// `.trim();
+// }
+
+// // ── Block 5: Language Directive ───────────────────────────────────────────────
+// function blockLanguage(language) {
+//   const map = {
+//     english: `
+// LANGUAGE — English:
+//   Simple English throughout. WhatsApp-level vocabulary in mnemonic fields.
+//   Spatial anchor in hook_subtext: written in English with Hindi proper nouns allowed (Maa, Papa, Chai).
+// `,
+//     hinglish: `
+// LANGUAGE — Hinglish (STRICT):
+//   hook_text, hook_context, hook_subtext: EVERY sentence mixes Hindi + English.
+//   Pattern: Hindi nouns/verbs + English connectors/technical terms.
+//   "Beta ne CAR li, SCOOTER baad mein." ← this is the register. Lock it.
+//   NEVER full Hindi sentence. NEVER full English sentence in mnemonic fields.
+//   definition: plain English only.
+//   Spatial anchor in hook_subtext: Hinglish scene — "LEFT mein Maa chai bana rahi hai (La)."
+// `,
+//     hindi: `
+// LANGUAGE — Hindi:
+//   All mnemonic fields in Hindi. definition in plain English.
+//   latex_content always in LaTeX regardless.
+//   Spatial anchor in hook_subtext: Hindi scene description.
+// `,
+//   };
+//   return (map[language] || map.english).trim();
+// }
+
+// // ── Block 6: Mode Directive ───────────────────────────────────────────────────
+// function blockMode(mode) {
+//   if (mode === 'lore') {
+//     return `
+// ════════════════════════════════════════
+// GENERATION MODE — LORE ENGINE
+// ════════════════════════════════════════
+// Write a 40-60 word cinematic story. Every character or object maps to exactly one
+// concept element, condition, or mechanism step.
+
+// DEPTH RULE FOR LORE: The story must encode the MECHANISM, not just the name.
+//   WRONG: "Lanthanum the warrior fought Cerium" → name-only encoding.
+//   RIGHT:  "A red tea-seller (La, 57) chased a crying man (Ce, 58)…" → symbol + number encoded in story.
+
+// CIRCULAR LORE RULE: Character/object names must NOT be the concept names.
+//   WRONG: "Lanthanum the warrior…" — concept word in story.
+//   RIGHT:  "The red-clothed man (L)…" — initial maps to element, name is unrelated.
+
+// hook_label  = "Lore Engine Narrative:"
+// word_chips  = null
+// acronym_key = null
+
+// Spatial anchor in hook_subtext still mandatory:
+//   "Picture this: LEFT of the scene = first 5 elements. RIGHT = last 5."
+// `.trim();
+//   }
+
+//   return `
+// ════════════════════════════════════════
+// GENERATION MODE — NEURAL HACK
+// ════════════════════════════════════════
+// One first-letter acronym sentence. Dot format: A·alu B·heja L·o D·aal.
+// hook_text MAX 20 words. Mnemonic only.
+// hook_label = "Neural Hack Mnemonic:"
+
+// MANDATORY BEFORE EACH CHIP:
+//   □ Simplicity Test: Class 10 student says this word? No → replace.
+//   □ Circular Test: word appears in concept_content? Yes → replace.
+//   □ Depth Test: maps_to encodes mechanism/condition, not just name? No → rewrite maps_to.
+//   □ Budget Test: chip count ≤ 7 (except f-block series)? No → split.
+// `.trim();
+// }
+
+// // ── Block 7: Deep Scan Directive ──────────────────────────────────────────────
+// function blockDeepScan(deepScan) {
+//   return deepScan
+//     ? `DEEP SCAN: ON — verified NCERT references in user message. Copy exactly into source_matrix.`
+//     : `DEEP SCAN: OFF — generate general NCERT references. Realistic chapter numbers and match percentages.`;
+// }
+
+// // ── Block 8: Topic-Aware Shot Examples ───────────────────────────────────────
+// // Each example demonstrates: depth encoding, chip budget, spatial anchor, mechanism maps_to
+// function blockExamples(question) {
+//   const q = (question || '').toLowerCase();
+
+//   // ── f-block / lanthanide / actinide ────────────────────────────────────────
+//   if (/lanthanide|lanthanum|actinide|f[\s.-]?block/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// GOLD STANDARD EXAMPLE — Lanthanides
+// (match this depth and non-circular pattern exactly)
+// ════════════════════════════════════════
+// {
+//   "title": "Lanthanides (La–Lu)",
+//   "definition": "15 f-block elements La(57)–Lu(71). Fill 4f orbitals. Similar +3 oxidation states, used in magnets, lasers, phosphors. Lanthanide contraction causes decreasing radius.",
+//   "concept_content": {
+//     "type": "list",
+//     "content": "La (57) — Lanthanum — 4f0\\nCe (58) — Cerium — 4f1, strongest oxidiser\\nPr (59) — Praseodymium — 4f2\\nNd (60) — Neodymium — 4f3, used in magnets\\nPm (61) — Promethium — 4f4, radioactive\\nSm (62) — Samarium — 4f5\\nEu (63) — Europium — 4f6, +2 also stable\\nGd (64) — Gadolinium — 4f7, half-filled\\nTb (65) — Terbium — 4f8\\nDy (66) — Dysprosium — 4f9\\nHo (67) — Holmium — 4f10\\nEr (68) — Erbium — 4f11\\nTm (69) — Thulium — 4f12\\nYb (70) — Ytterbium — 4f13, +2 also stable\\nLu (71) — Lutetium — 4f14, fully filled",
+//     "latex_content": null
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Most students mix up these 15. You won't after this.",
+//   "hook_text": "L·aal C·hai P·ee, N·a P·apa S·o E·k G·adi T·aang D·aude H·ai, E·k T·opi Y·aad L·o",
+//   "word_chips": [
+//     { "letter": "L", "rest": "aal",  "maps_to": "Lanthanum (La, 57) — 4f0" },
+//     { "letter": "C", "rest": "hai",  "maps_to": "Cerium (Ce, 58) — 4f1, strongest ox." },
+//     { "letter": "P", "rest": "ee",   "maps_to": "Praseodymium (Pr, 59) — 4f2" },
+//     { "letter": "N", "rest": "a",    "maps_to": "Neodymium (Nd, 60) — magnets" },
+//     { "letter": "P", "rest": "apa",  "maps_to": "Promethium (Pm, 61) — radioactive" },
+//     { "letter": "S", "rest": "o",    "maps_to": "Samarium (Sm, 62) — 4f5" },
+//     { "letter": "E", "rest": "k",    "maps_to": "Europium (Eu, 63) — +2 stable too" },
+//     { "letter": "G", "rest": "adi",  "maps_to": "Gadolinium (Gd, 64) — half-filled 4f7" },
+//     { "letter": "T", "rest": "aang", "maps_to": "Terbium (Tb, 65) — 4f8" },
+//     { "letter": "D", "rest": "aude", "maps_to": "Dysprosium (Dy, 66) — 4f9" },
+//     { "letter": "H", "rest": "ai",   "maps_to": "Holmium (Ho, 67) — 4f10" },
+//     { "letter": "E", "rest": "k",    "maps_to": "Erbium (Er, 68) — 4f11" },
+//     { "letter": "T", "rest": "opi",  "maps_to": "Thulium (Tm, 69) — 4f12" },
+//     { "letter": "Y", "rest": "aad",  "maps_to": "Ytterbium (Yb, 70) — +2 stable too" },
+//     { "letter": "L", "rest": "o",    "maps_to": "Lutetium (Lu, 71) — 4f14 fully filled" }
+//   ],
+//   "acronym_key": "LCPNPSEGTDHETYL",
+//   "hook_subtext": "Laal chai pee = La Ce Pr. Na papa so = Nd Pm Sm (note: Pm is radioactive — papa glows!). Ek gadi taang daude hai = Eu Gd Tb Dy Ho (Gd is half-filled 4f7 — peak stability). Ek topi yaad lo = Er Tm Yb Lu. Picture this: LEFT row of tea stalls (La–Sm), CENTER street with a glowing car on legs (Eu–Ho), RIGHT corner with a man in a cap waving (Er–Lu).",
+//   "source_matrix": [{ "title": "NCERT Class 12 Ch.8 — d and f Block Elements", "match_percentage": "96% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Lanthanides" }
+// }
+
+// FORBIDDEN PATTERN (what you must NOT generate):
+//   word_chips: [{ "letter":"L", "rest":"anthanum", "maps_to":"Lanthanum" }]  ← CIRCULAR. FORBIDDEN.
+// `.trim();
+//   }
+
+//   // ── SN1/SN2 / organic mechanism ───────────────────────────────────────────
+//   if (/sn1|sn2|nucleophilic|substitution|elimination|e1|e2/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// GOLD STANDARD EXAMPLE — SN1 Reaction (Depth Encoding)
+// ════════════════════════════════════════
+// {
+//   "title": "SN1 Reaction",
+//   "definition": "Unimolecular nucleophilic substitution. Rate = k[substrate] only. Carbocation intermediate. Occurs with 3° substrate, polar protic solvent, weak nucleophile. Racemisation product.",
+//   "concept_content": {
+//     "type": "steps",
+//     "content": "Step 1: Substrate ionises → carbocation (rate-determining step)\\nStep 2: Nucleophile attacks carbocation from both faces\\nProduct: Racemic mixture (inversion + retention)\\nConditions: 3° substrate, polar protic solvent (water/alcohol), weak nucleophile\\nRate law: Rate = k[R-X] — unimolecular",
+//     "latex_content": null
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Most students confuse SN1 and SN2 conditions. You won't.",
+//   "hook_text": "C·ar P·aani A·cha R·akh",
+//   "word_chips": [
+//     { "letter": "C", "rest": "ar",   "maps_to": "Carbocation intermediate (step 1)" },
+//     { "letter": "P", "rest": "aani", "maps_to": "Polar Protic solvent required" },
+//     { "letter": "A", "rest": "cha",  "maps_to": "Rate depends on substrate Alone (unimolecular)" },
+//     { "letter": "R", "rest": "akh",  "maps_to": "Racemic mixture — both faces attacked" }
+//   ],
+//   "acronym_key": "CPAR",
+//   "hook_subtext": "Car = Carbocation forms first (slow step). Paani = polar protic solvent stabilises it. Acha = rate law has substrate ALONE (unimolecular). Rakh = Racemic product (both sides attacked). Picture this: Car parked in paani (water), passenger exits from BOTH sides — that is racemisation.",
+//   "source_matrix": [{ "title": "NCERT Class 12 Ch.10 — Haloalkanes and Haloarenes", "match_percentage": "95% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "SN1 Reaction" }
+// }
+// `.trim();
+//   }
+
+//   // ── Organic reaction (aldol, esterification, etc.) ────────────────────────
+//   if (/aldol|reaction|organic|carbonyl|ester|alcohol|acid|cannizzaro|wittig/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// GOLD STANDARD EXAMPLE — Organic Reaction (Depth Encoding)
+// ════════════════════════════════════════
+// {
+//   "title": "Aldol Reaction",
+//   "definition": "Alpha-hydrogen compound + dilute alkali (cold) → beta-hydroxy carbonyl (Aldol). On heating → dehydration → alpha-beta unsaturated compound (Aldol Condensation).",
+//   "concept_content": {
+//     "type": "reaction",
+//     "content": "Condition: alpha-H must be present. Reagent: dil. NaOH, cold\\n2 CH3CHO + dil. NaOH (cold) → CH3CH(OH)CH2CHO (Aldol = beta-hydroxy aldehyde)\\nHeating: → CH3CH=CHCHO + H2O (Aldol Condensation = dehydration)\\nKey: no alpha-H = no reaction (Cannizzaro instead)",
+//     "latex_content": [
+//       "\\\\ce{2CH3CHO ->[dil.~NaOH][cold] CH3CH(OH)CH2CHO}",
+//       "\\\\text{Aldol = } \\\\beta\\\\text{-hydroxy carbonyl compound}",
+//       "\\\\ce{CH3CH(OH)CH2CHO ->[\\\\Delta] CH3CH=CHCHO + H2O}",
+//       "\\\\text{No alpha-H} \\\\Rightarrow \\\\text{Cannizzaro, not Aldol}"
+//     ]
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Most students blank on Aldol conditions. You won't.",
+//   "hook_text": "A·alu B·heja L·o D·aal",
+//   "word_chips": [
+//     { "letter": "A", "rest": "alu",  "maps_to": "Alpha-H removed by base (condition)" },
+//     { "letter": "B", "rest": "heja", "maps_to": "Beta-hydroxy carbonyl (Aldol) forms" },
+//     { "letter": "L", "rest": "o",    "maps_to": "Loss of water on heating (condensation)" },
+//     { "letter": "D", "rest": "aal",  "maps_to": "Double bond appears (alpha-beta unsaturated)" }
+//   ],
+//   "acronym_key": "ABLD",
+//   "hook_subtext": "Aalu = Alpha-H snatched. Bheja = Beta-hydroxy Aldol forms (cold). Lo = Loss of water on heating. Daal = Double bond appears. KEY TERM: ALDOL = beta-hydroxy carbonyl. Picture this: LEFT pan = aalu-bheja cold (Aldol). RIGHT pan on fire = daal gaya (double bond formed).",
+//   "source_matrix": [{ "title": "NCERT Class 12 Ch.12 — Aldehydes, Ketones", "match_percentage": "97% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Aldol Reaction" }
+// }
+// `.trim();
+//   }
+
+//   // ── Physics / Maxwell / electromagnetism ──────────────────────────────────
+//   if (/maxwell|gauss|faraday|ampere|electro|magnetic|flux|curl/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// GOLD STANDARD EXAMPLE — Maxwell's Equations (Depth Encoding, Budget-Aware)
+// ════════════════════════════════════════
+// Rule: 4 equations = 4 objects. Each object gets 3-4 chips MAX. No overloading.
+// Each chip encodes what the equation MEANS physically, not just its name.
+
+// {
+//   "title": "Gauss's Law for Electricity (Maxwell Eq. 1)",
+//   "definition": "Total electric flux through a closed surface equals enclosed charge divided by epsilon-0. Applies to any closed surface (Gaussian surface).",
+//   "concept_content": {
+//     "type": "formula",
+//     "content": "Flux = Q_enclosed / epsilon-0\\nApplication: find E for symmetric charge distributions\\nCondition: closed surface required (Gaussian surface)",
+//     "latex_content": [
+//       "\\\\oint \\\\vec{E} \\\\cdot d\\\\vec{A} = \\\\dfrac{Q_{enc}}{\\\\varepsilon_0}"
+//     ]
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Learn once. Never re-learn.",
+//   "hook_text": "F·lux C·losed Q·ta",
+//   "word_chips": [
+//     { "letter": "F", "rest": "lux",    "maps_to": "Electric flux through closed surface" },
+//     { "letter": "C", "rest": "losed",  "maps_to": "Closed Gaussian surface required" },
+//     { "letter": "Q", "rest": "ta",     "maps_to": "Q_enclosed / epsilon-0 = result" }
+//   ],
+//   "acronym_key": "FCQ",
+//   "hook_subtext": "Flux = all E-field lines escaping a box. Closed = you must draw a closed surface first. Qta = enclosed charge divided by epsilon-0 gives you the answer. Picture this: a closed glass box (Gaussian surface) — all arrows (E) piercing out = total flux.",
+//   "source_matrix": [{ "title": "NCERT Class 12 Ch.1 — Electric Charges and Fields", "match_percentage": "94% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Gauss Law" }
+// }
+
+// COGNITIVE LOAD RULE APPLIED: 3 chips only. "Curl Bhayanak Mu Jalebi" style = overload = FORBIDDEN.
+// `.trim();
+//   }
+
+//   // ── Newton's laws / physics laws ──────────────────────────────────────────
+//   if (/newton|law|force|motion|physics|momentum|inertia/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// GOLD STANDARD EXAMPLE — Physics Law (Depth Encoding)
+// ════════════════════════════════════════
+// {
+//   "title": "Newton's First Law",
+//   "definition": "An object continues in its state of rest or uniform motion in a straight line unless compelled by a net external force. Quantifies inertia. Defines the concept of an inertial frame.",
+//   "concept_content": {
+//     "type": "statement",
+//     "content": "Every object continues in its state of rest or of uniform motion in a straight line unless acted upon by a net external force.\\nKey: Net force = 0 → no change in velocity (not no motion!).\\nInertial frame = frame where this law holds.\\nInertia ∝ mass",
+//     "latex_content": null
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Toppers answer the inertial frame question. Now you too.",
+//   "hook_text": "A·aaram B·haari C·hhodo mat",
+//   "word_chips": [
+//     { "letter": "A", "rest": "aaram", "maps_to": "At rest stays at rest (net F = 0)" },
+//     { "letter": "B", "rest": "haari", "maps_to": "Body in motion stays in motion" },
+//     { "letter": "C", "rest": "hhodo mat", "maps_to": "Change only if net external force acts" }
+//   ],
+//   "acronym_key": "ABC",
+//   "hook_subtext": "Aaram = rest state (inertia of rest). Bhaari = moving state continues (inertia of motion). Chhodo mat = DO NOT DISTURB without a net force. Key: net force 0, not force 0 — even two equal opposite forces count as chhodo mat. Picture this: LEFT = object at rest on table. CENTER = object sliding on ice. RIGHT = hand pushing (external force enters).",
+//   "source_matrix": [{ "title": "NCERT Class 9 Ch.9 — Laws of Motion", "match_percentage": "98% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Newton's First Law" }
+// }
+// `.trim();
+//   }
+
+//   // ── Maths / trig / formula ────────────────────────────────────────────────
+//   if (/trig|sin|cos|tan|formula|integral|differentiat|math|calculus/.test(q)) {
+//     return `
+// ════════════════════════════════════════
+// GOLD STANDARD EXAMPLE — Math Formula (Depth Encoding)
+// ════════════════════════════════════════
+// {
+//   "title": "Trigonometric Ratios",
+//   "definition": "Ratios of sides of a right triangle for angle theta. sin=Opp/Hyp, cos=Adj/Hyp, tan=Opp/Adj. Valid only for right triangles. Hypotenuse is always the side opposite the right angle.",
+//   "concept_content": {
+//     "type": "formula",
+//     "content": "sin θ = Opposite / Hypotenuse (side facing the angle / longest side)\\ncos θ = Adjacent / Hypotenuse (side next to angle / longest side)\\ntan θ = Opposite / Adjacent = sin θ / cos θ\\nMemory aid: Hypotenuse = always opposite the 90° angle",
+//     "latex_content": [
+//       "\\\\sin\\\\theta = \\\\dfrac{\\\\text{Opposite}}{\\\\text{Hypotenuse}}",
+//       "\\\\cos\\\\theta = \\\\dfrac{\\\\text{Adjacent}}{\\\\text{Hypotenuse}}",
+//       "\\\\tan\\\\theta = \\\\dfrac{\\\\text{Opposite}}{\\\\text{Adjacent}} = \\\\dfrac{\\\\sin\\\\theta}{\\\\cos\\\\theta}"
+//     ]
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Learn once. Never re-learn.",
+//   "hook_text": "S·amosa O·ver H·ot, C·hair A·cross H·all, T·eacher O·n A·ttendance",
+//   "word_chips": [
+//     { "letter": "S", "rest": "amosa", "maps_to": "Sine = Opposite / Hypotenuse" },
+//     { "letter": "O", "rest": "ver",   "maps_to": "Opposite side (numerator for sin)" },
+//     { "letter": "H", "rest": "ot",    "maps_to": "Hypotenuse (denominator for sin/cos)" },
+//     { "letter": "C", "rest": "hair",  "maps_to": "Cosine = Adjacent / Hypotenuse" },
+//     { "letter": "A", "rest": "cross", "maps_to": "Adjacent side (numerator for cos)" },
+//     { "letter": "T", "rest": "eacher","maps_to": "Tangent = Opposite / Adjacent" }
+//   ],
+//   "acronym_key": "SOH-CAH-TOA",
+//   "hook_subtext": "SOH: Samosa Over Hot = sin(Opp/Hyp). CAH: Chair Across Hall = cos(Adj/Hyp). TOA: Teacher On Attendance = tan(Opp/Adj). Remember: Hyp is ALWAYS the longest side (opposite 90°) — never a numerator. Picture this: RIGHT TRIANGLE — TOP vertex = sin's Opposite (samosa). BOTTOM LEFT = Adjacent (chair). BOTTOM RIGHT = the right angle (90°). Hyp = the slope side connecting top to bottom-right.",
+//   "source_matrix": [{ "title": "NCERT Class 10 Ch.8 — Trigonometry", "match_percentage": "99% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Trig Ratios" }
+// }
+// `.trim();
+//   }
+
+//   // ── Default / general ─────────────────────────────────────────────────────
+//   return `
+// ════════════════════════════════════════
+// GOLD STANDARD EXAMPLE — Group 2 Elements
+// ════════════════════════════════════════
+// {
+//   "title": "Group 2 — Alkaline Earth Metals",
+//   "definition": "Be Mg Ca Sr Ba Ra. All form +2 ions. Reactivity increases down the group. Ca, Sr, Ba react with water. Be and Mg do not react with cold water. Used in fireworks (Sr=red, Ba=green).",
+//   "concept_content": {
+//     "type": "list",
+//     "content": "Be (4) — Beryllium — does NOT react with water\\nMg (12) — Magnesium — reacts with hot water/steam\\nCa (20) — Calcium — reacts with cold water\\nSr (38) — Strontium — reacts, red flame test\\nBa (56) — Barium — reacts, green flame test\\nRa (88) — Radium — radioactive",
+//     "latex_content": null
+//   },
+//   "hook_label": "Neural Hack Mnemonic:",
+//   "hook_context": "Every 95-percenter has this cold.",
+//   "hook_text": "B·eta M·aange C·ar, S·cooter B·aad R·akh",
+//   "word_chips": [
+//     { "letter": "B", "rest": "eta",    "maps_to": "Beryllium (Be, 4) — no water reaction" },
+//     { "letter": "M", "rest": "aange",  "maps_to": "Magnesium (Mg, 12) — hot water only" },
+//     { "letter": "C", "rest": "ar",     "maps_to": "Calcium (Ca, 20) — cold water reaction" },
+//     { "letter": "S", "rest": "cooter", "maps_to": "Strontium (Sr, 38) — red flame" },
+//     { "letter": "B", "rest": "aad",    "maps_to": "Barium (Ba, 56) — green flame" },
+//     { "letter": "R", "rest": "akh",    "maps_to": "Radium (Ra, 88) — radioactive" }
+//   ],
+//   "acronym_key": "BMCSBR",
+//   "hook_subtext": "Beta = Be (no water). Maange = Mg (begs hot water). Car = Ca (gets cold water, most reactive of the three above). Scooter = Sr (red flame — scooter is hot red). Baad = Ba (green flame — baad mein green signal). Rakh = Ra (radioactive — rakh ke dekho, glows!). Picture this: LEFT driveway = Be Mg Ca arguing about water. RIGHT garage = Sr Ba shining as coloured flames. Corner = Ra glowing alone, radioactive.",
+//   "source_matrix": [{ "title": "NCERT Class 11 Ch.10 — s-Block Elements", "match_percentage": "98% Match", "icon_type": "book" }],
+//   "visual_cortex": { "tooltip_label": "Group 2" }
+// }
+// `.trim();
+// }
+
+// // ── Block 9: Self-Check ───────────────────────────────────────────────────────
+// function blockSelfCheck() {
+//   return `
+// ════════════════════════════════════════
+// SELF-CHECK — run on EVERY object before writing output
+// ════════════════════════════════════════
+// □ 1.  mnemonic words → Class 10 student says to friend? No → rewrite.
+// □ 2.  every chip word → appears in concept_content/definition? YES → REWRITE.
+// □ 3.  maps_to → encodes mechanism/condition, not just name? No → deepen.
+// □ 4.  maps_to → filled, max 5 words, non-circular? No → fix.
+// □ 5.  chip count ≤ 7 (except f-block 15)? No → split object.
+// □ 6.  hook_subtext ends with "Picture this: [spatial scene]"? No → add it.
+// □ 7.  hook_context ≠ hook_text? Same → separate them.
+// □ 8.  concept_content complete? (conditions, rate law, exceptions included?) No → add.
+// □ 9.  multi-part → latex_content = null on ALL? → confirm.
+// □ 10. any **, *, #, backtick? → delete all.
+// □ 11. f-block → ZERO element names/symbols as chip words? → confirm.
+// □ 12. MEMORY_DECAY directive applied? → confirm.
+// □ 13. CORTISOL format applied? → confirm.
+// □ 14. hook_context opens with dopamine motivator and closes with ego motivator? → confirm.
+
+// OUTPUT: RAW JSON ARRAY ONLY — nothing before [, nothing after ].
+// `.trim();
+// }
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // PROMPT ASSEMBLER
+// // ─────────────────────────────────────────────────────────────────────────────
+// function buildSystemPrompt(user, ctx, mode, language, deepScan, question, dopamineMotivator, egoMotivator) {
+//   return [
+//     blockSystem(),
+//     blockProfile(user, ctx, mode, language),
+//     blockPsychographic(ctx, dopamineMotivator, egoMotivator),
+//     blockRules(ctx),
+//     blockLanguage(language),
+//     blockMode(mode),
+//     blockDeepScan(deepScan),
+//     blockExamples(question),
+//     blockSelfCheck(),
+//   ].join('\n\n');
+// }
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // MOTIVATOR RESOLVERS
+// // ─────────────────────────────────────────────────────────────────────────────
+// function resolveDopamineMotivator(schema) {
+//   return {
+//     curiosity_driven: "Most students mix this. You won't after this.",
+//     reward_oriented:  'Learn once. Never re-learn.',
+//     thrill_seeker:    'Toppers clear this in 3 seconds. Now you too.',
+//     social_proof:     'Every 95-percenter has this cold.',
+//   }[schema] || "Most students mix this. You won't after this.";
+// }
+
+// function resolveEgoMotivator(ego) {
+//   return {
+//     competitive:   "Most students blank here. You won't.",
+//     collaborative: 'Share this with your group tonight.',
+//     self_improver: 'One minute to learn. Yours forever.',
+//   }[ego] || 'One minute to learn. Yours forever.';
+// }
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // FALLBACK PROFILE
+// // ─────────────────────────────────────────────────────────────────────────────
+// const FALLBACK_PROFILE_CTX = {
+//   class_level:       '12',
+//   language:          'english',
+//   dopamine_schema:   'curiosity_driven',
+//   cortisol_response: 'chunking',
+//   von_restorff:      'grounded',
+//   memory_decay:      'vocab_block',
+//   social_ego:        'self_improver',
+//   frustration_level: 0,
+// };
+
+// // ─────────────────────────────────────────────────────────────────────────────
+// // ROUTE
+// // ─────────────────────────────────────────────────────────────────────────────
+// app.post('/api/generate-mnemonic', isLoggedIn, async function (req, res) {
+
+//   const question = (req.body.question || '').trim();
+//   const mode     = ['lore', 'hack'].includes(req.body.mode) ? req.body.mode : 'lore';
+//   let   deepScan = req.body.deepScan === true || req.body.deepScan === 'true';
+
+//   if (!question || question.length < 3) {
+//     return res.status(400).json({ error: 'Please enter a valid question.' });
+//   }
+
+//   try {
+//     // 1. Tier + rate limit
+//     const user = req.session.user;
+//     const tier = getTier(user);
+//     if (deepScan && !tier.isPro) deepScan = false;
+
+//     const rl = checkRateLimit(String(user._id), tier.maxReqPerMin);
+//     if (!rl.ok) return res.status(429).json({ error: `Too many requests. Wait ${rl.wait}s.`, retryAfter: rl.wait });
+
+//     // 2. Profile
+//     const profile = await UserBehaviour.findOne({ user: user._id }).active();
+//     const ctx     = profile ? profile.toPromptContext() : FALLBACK_PROFILE_CTX;
+
+//     // 3. Language resolution
+//     const VALID_LANGUAGES = ['english', 'hinglish', 'hindi'];
+//     const language = VALID_LANGUAGES.includes(req.body.language)
+//       ? req.body.language
+//       : (ctx.language || 'english');
+
+//     // 4. Cache
+//     const ck = !deepScan ? cacheKey(question, mode, language, ctx) : null;
+//     if (ck) {
+//       const hit = cacheGet(ck);
+//       if (hit) {
+//         console.log(`[cache] HIT "${question.slice(0, 40)}" (${ctx.class_level}, ${language})`);
+//         return res.status(200).json({ _id: null, initial_ai_response: hit, generation_mode: mode, deep_scan_enabled: false, time_taken_ms: 0, from_cache: true, tier: tier.isPro ? 'pro' : 'free', language });
+//       }
+//     }
+
+//     // 5. Build modular prompt
+//     const dopamineMotivator = resolveDopamineMotivator(ctx.dopamine_schema);
+//     const egoMotivator      = resolveEgoMotivator(ctx.social_ego);
+//     const systemPromptText  = buildSystemPrompt(user, ctx, mode, language, deepScan, question, dopamineMotivator, egoMotivator);
+
+//     // 6. Call Gemini
+//     const startTime = Date.now();
+//     let rawText = '', wasTruncated = false;
+
+//     if (deepScan) {
+//       const searchModel = genAI.getGenerativeModel({ model: 'gemini-2.5-pro', tools: [{ googleSearch: {} }] });
+//       const sr = await searchModel.generateContent({
+//         systemInstruction: { parts: [{ text: 'CBSE researcher. Plain text bullets only. List NCERT chapter numbers, section numbers, board exam years. No markdown.' }] },
+//         contents: [{ role: 'user', parts: [{ text: `NCERT chapters, sections, exam years for: "${question}"` }] }],
+//       });
+//       const { text: groundedFacts } = safeExtractText(sr.response);
+//       if (!groundedFacts) return res.status(500).json({ error: 'Deep Scan could not fetch references. Please retry.' });
+
+//       const fmtModel = genAI.getGenerativeModel({ model: 'gemini-2.5-flash', generationConfig: { responseMimeType: 'application/json', temperature: 0.8, maxOutputTokens: 10000 } });
+//       const fmtResult = await fmtModel.generateContent({
+//         systemInstruction: { parts: [{ text: systemPromptText }] },
+//         contents: [{ role: 'user', parts: [{ text: `Topic: ${question}\n\nVERIFIED NCERT REFERENCES (copy into source_matrix):\n${groundedFacts}\n\nReturn the JSON array now.` }] }],
+//       });
+//       ({ text: rawText, truncated: wasTruncated } = safeExtractText(fmtResult.response));
+//     } else {
+//       const model = genAI.getGenerativeModel({
+//         model: mode === 'lore' ? 'gemini-2.5-pro' : 'gemini-2.5-flash',
+//         generationConfig: { responseMimeType: 'application/json', temperature: mode === 'lore' ? 1.0 : 0.75, maxOutputTokens: 20000 },
+//       });
+//       const result = await model.generateContent({
+//         systemInstruction: { parts: [{ text: systemPromptText }] },
+//         contents: [{ role: 'user', parts: [{ text: question }] }],
+//       });
+//       ({ text: rawText, truncated: wasTruncated } = safeExtractText(result.response));
+//     }
+
+//     if (!rawText) return res.status(500).json({ error: 'AI returned an empty response. Please try again.' });
+
+//     // 7. Parse
+//     let parsedResponse, parseAttempts = 0;
+//     while (parseAttempts < 2) {
+//       parseAttempts++;
+//       try { parsedResponse = robustJSONParse(rawText); break; }
+//       catch (parseErr) {
+//         if (parseAttempts === 1 && wasTruncated) {
+//           const completed = await continueJSON(rawText, genAI);
+//           if (completed) { rawText = completed; } else return res.status(500).json({ error: 'AI returned an incomplete response. Please try again.' });
+//         } else return res.status(500).json({ error: 'AI returned an unreadable response. Please try again.' });
+//       }
+//     }
+
+//     const normalized = Array.isArray(parsedResponse) ? parsedResponse : [parsedResponse];
+
+//     // 8. Cache + frustration + save
+//     if (ck) cacheSet(ck, normalized);
+//     if (profile && profile.frustration_level > 0) await profile.decrementFrustration();
+
+//     const newLI = await interaction.create({
+//       user_id: user._id, feature_type: 'MNEMONIC_GENERATOR', user_query_text: question,
+//       generation_mode: mode, deep_scan_enabled: deepScan, initial_ai_response: normalized,
+//       time_taken_ms: Date.now() - startTime, is_bookmarked: false, answer_images: [], language, parent_id: null,
+//     });
+
+//     return res.status(200).json({ _id: newLI._id, initial_ai_response: normalized, generation_mode: mode, deep_scan_enabled: deepScan, time_taken_ms: Date.now() - startTime, tier: tier.isPro ? 'pro' : 'free', language });
+
+//   } catch (err) {
+//     console.error('\n── ROUTE ERROR ──\n', err);
+//     if (res.headersSent) return;
+//     if (err.status === 429 || (err.message || '').includes('RESOURCE_EXHAUSTED'))
+//       return res.status(429).json({ error: 'Too many requests. Wait a moment and retry.' });
+//     return res.status(500).json({ error: err.message || 'Something went wrong. Please try again.' });
+//   }
+// });
+
+// ///////////--------------------------------------------------------------------xxxxxxxxxxxxxxxxxx
+
+
+///////////////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=/above one is best based on gemini and below one is best according to chatgpt and me 
 
 
 function safeExtractText(response) {
@@ -2298,8 +3202,100 @@ Nothing before [. Nothing after ].
 });
 
 
-// solution finder 
 
+
+
+
+///////////////+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++=/above one is best based on gemini and below one is best according to chatgpt and me 
+
+// delete the saved personna of the user
+
+app.post("/api/user/reset-behaviour" ,isLoggedIn,  async function(req,res)
+{
+await UserBehaviour.findOneAndUpdate({user : req.session.user._id} ,
+  {
+    status : "deactivated" ,
+    deletedAt : new Date() 
+  })
+
+  res.render("mnemonic", {user : req.session.user});
+}
+)
+
+//feedback route : 
+app.post('/api/feedback/mnemonic', isLoggedIn, async (req, res) => {
+  try {
+    const sessionUser = req.session.user;
+    const { interaction_id, rating, disliked, comment, question, mode, action_type } = req.body;
+
+    if (!interaction_id) return res.status(400).json({ error: 'interaction_id required' });
+
+    // 1. Determine the action type for analytics
+    let determinedAction = action_type || 'UPDATE';
+    if (comment) determinedAction = 'COMMENT_SUBMIT';
+    else if (disliked === true) determinedAction = 'DISLIKE';
+    else if (disliked === false) determinedAction = 'LIKE';
+    else if (typeof rating === 'number') determinedAction = 'RATING';
+
+    // 2. ALWAYS create a new record (Append-only logging)
+    const fb = new MnemonicFeedback({
+      user_id: sessionUser._id,
+      interaction_id,
+      action_type: determinedAction,
+      question,
+      mode,
+      rating: typeof rating === 'number' ? rating : null,
+      disliked: typeof disliked === 'boolean' ? disliked : false,
+      comment: typeof comment === 'string' ? comment.trim().slice(0, 500) : ''
+    });
+
+    await fb.save();
+
+    // 3. Save it to the user's side
+    // Make sure you require the User model at the top of this file: const User = require('../models/User');
+    await user.findByIdAndUpdate(sessionUser._id, {
+      $push: { mnemonic_feedbacks: fb._id }
+    });
+
+    // 4. Calculate Rewards Safely
+    // Use 'distinct' so if they submit 5 comments on the SAME interaction, it only counts as 1 report
+    const uniqueReportedInteractions = await MnemonicFeedback.distinct('interaction_id', {
+      user_id: sessionUser._id,
+      disliked: true,
+      comment: { $exists: true, $ne: '' }
+    });
+
+    const genuineCount = uniqueReportedInteractions.length;
+
+    // Check if they already got the reward from any previous feedback
+    const hasBeenRewarded = await MnemonicFeedback.exists({ user_id: sessionUser._id, rewarded: true });
+
+    return res.status(200).json({
+      success: true,
+      genuineCount,
+      rewardEligible: genuineCount >= 4 && !hasBeenRewarded
+    });
+
+  } catch (err) {
+    console.error('[feedback]', err);
+    return res.status(500).json({ error: 'Could not save feedback.' });
+  }
+});
+
+// ── GET /api/feedback/mnemonic/:interactionId (user can check own feedback) ───
+app.get('/api/feedback/mnemonic/:id', isLoggedIn, async (req, res) => {
+  try {
+    const fb = await MnemonicFeedback.findOne({
+      user_id: req.session.user._id,
+      interaction_id: req.params.id,
+    });
+    res.status(200).json({ feedback: fb || null });
+  } catch (err) {
+    res.status(500).json({ error: 'Could not fetch feedback.' });
+  }
+});
+
+//feedbackroute ended 
 
 app.post("/api/generate-solution", isLoggedIn , async function (req,res)
 {
@@ -2856,4 +3852,3 @@ app.use(function (req, res) {
 app.listen(PORT, function () {
     console.log(`Server is running on port ${PORT}`);
 });
-

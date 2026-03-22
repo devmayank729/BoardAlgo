@@ -27,6 +27,12 @@ const UserSchema = new Schema({
 
   photoURL : {type : String} , 
 
+  // Add this inside your User Schema
+  mnemonic_feedbacks: [{ 
+    type: Schema.Types.ObjectId, 
+    ref: 'MnemonicFeedback' 
+  }],
+  
   // Subscription Logic
   subscription_status: {
     type: String,

@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 const { Schema } = mongoose;
 
 const MasterContentSchema = new Schema({
-  // Hierarchy
+  // Hierarchya
   subject: { type: String, required: true, index: true }, // e.g., Physics
   chapter: { type: String, required: true, index: true }, // e.g., Optics
   concept_topic: { type: String, required: true, index: true }, // e.g., TIR

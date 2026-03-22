@@ -1,0 +1,72 @@
+// ─────────────────────────────────────────────────────────────────────────────
+// D-BLOCK FIX — two changes in route_final.js
+// ─────────────────────────────────────────────────────────────────────────────
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHANGE 1 — planTopic system instruction
+// Find the planner system instruction text inside planTopic().
+// It currently says:
+//
+//   "d-block elements"    → 1 object covering the key pattern
+//
+// REPLACE that one line with:
+//
+//   "d-block elements"    → {"parts":["3d Transition Series (Sc–Zn)","4d Transition Series (Y–Cd)","5d Transition Series (Hf–Hg)","6d Transition Series (Rf–Cn)"]}
+//
+// This tells the planner that d-block = 4 series, not 1 object.
+// Free user sees series 1+2 (2 parts capped). Pro user sees all 4.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Full updated planner system instruction — paste this as the text value:
+const PLANNER_INSTRUCTION = `CBSE curriculum analyst. Decide if a question needs multiple separate memory hooks.
+Return JSON: {"parts": ["Part 1","Part 2",...]} or {"parts": null}
+
+Multi-part examples:
+"p-block elements"    → {"parts":["Group 13 — Boron Family","Group 14 — Carbon Family","Group 15 — Nitrogen Family","Group 16 — Oxygen Family","Group 17 — Halogens","Group 18 — Noble Gases"]}
+"s-block elements"    → {"parts":["Group 1 — Alkali Metals","Group 2 — Alkaline Earth Metals"]}
+"d-block elements"    → {"parts":["3d Transition Series (Sc–Zn)","4d Transition Series (Y–Cd)","5d Transition Series (Hf–Hg)","6d Transition Series (Rf–Cn)"]}
+"f-block elements"    → {"parts":["Lanthanides (Ce–Lu)","Actinides (Th–Lr)"]}
+"integration formulas"→ {"parts":["Basic Algebraic & Exponential Integrals","Trigonometric Integrals","Integration by Substitution","Integration by Parts","Integration of Special Forms"]}
+"Newton's laws"       → {"parts":["Newton's First Law — Inertia","Newton's Second Law — F=ma","Newton's Third Law — Action-Reaction"]}
+"all trig identities" → {"parts":["Pythagorean Identities","Compound Angle Formulas","Double Angle Formulas","Sum-to-Product Formulas"]}
+"thermodynamics laws" → {"parts":["Zeroth Law — Thermal Equilibrium","First Law — Conservation of Energy","Second Law — Entropy","Third Law — Absolute Zero"]}
+"organic name reactions" → {"parts":["Aldol Reaction","Cannizzaro Reaction","Clemmensen Reduction","Wolff-Kishner Reduction","Reimer-Tiemann Reaction","Friedel-Crafts Reaction"]}
+
+Single-topic examples (return null):
+"Aldol reaction"      → {"parts":null}
+"3d transition series"→ {"parts":null}
+"Newton's second law" → {"parts":null}
+"photosynthesis"      → {"parts":null}
+"sin 30 degrees"      → {"parts":null}
+"what is entropy"     → {"parts":null}
+
+Return ONLY the JSON object. Nothing else.`;
+
+
+// ══════════════════════════════════════════════════════════════════════════════
+// CHANGE 2 — System prompt RULE 7 coverage table
+// Find this in the system prompt string:
+//
+//   "d-block elements"  → 1 object covering the key pattern
+//
+// REPLACE with:
+//
+//   "d-block elements"  → 4 objects: 3d, 4d, 5d, 6d transition series
+//   "f-block elements"  → 2 objects: Lanthanides, Actinides
+//
+// This ensures when the model is asked to generate a d-block part,
+// it knows each series is a focused single object, not "all of d-block".
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Full updated RULE 7 coverage table — paste inside systemPromptText:
+const RULE_7_COVERAGE = `RULE 7 — ONE COMPACT OBJECT PER PART for multi-part topics.
+  definition: 1 sentence. hook_subtext: 2 sentences. maps_to: 3 words max.
+
+  Required coverage examples:
+    "p-block elements"       → 6 objects: Group 13, 14, 15, 16, 17, 18
+    "s-block elements"       → 2 objects: Group 1, Group 2
+    "d-block elements"       → 4 objects: 3d, 4d, 5d, 6d transition series
+    "f-block elements"       → 2 objects: Lanthanides, Actinides
+    "Newton's laws"          → 3 objects: First, Second, Third
+    "integration formulas"   → 5 objects: one per integration method
+    "thermodynamics laws"    → 4 objects: Zeroth, First, Second, Third`;

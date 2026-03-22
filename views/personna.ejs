@@ -1,491 +1,958 @@
 <!DOCTYPE html>
 <html lang="en" class="scroll-smooth">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Board Algo | Neural Calibration</title>
-    
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Outfit:wght@500;700;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>BoardAlgo | Neural Calibration</title>
 
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@600;700;800&family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
 
-    <script>
-        tailwind.config = {
-            darkMode: 'class',
-            theme: {
-                extend: {
-                    colors: {
-                        brand: {
-                            black: '#020617',
-                            surface: '#0f172a',
-                            border: '#1e293b',
-                            primary: '#6366f1',
-                            accent: '#8b5cf6',
-                        }
-                    },
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                        display: ['Outfit', 'sans-serif'],
-                    },
-                    backgroundImage: {
-                        'gradient-glow': 'radial-gradient(circle at center, rgba(99, 102, 241, 0.15) 0%, rgba(2, 6, 23, 0) 70%)',
-                    }
-                }
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              black:   '#020617',
+              surface: '#0f172a',
+              border:  '#1e293b',
+              primary: '#6C2BD9',
+              accent:  '#16A34A',
             }
+          },
+          fontFamily: {
+            sans:    ['Inter', 'sans-serif'],
+            display: ['Poppins', 'sans-serif'],
+            mono:    ['Space Mono', 'monospace'],
+          }
         }
-    </script>
+      }
+    }
+  </script>
 
-    <style>
-        body {
-            background-color: #020617;
-            color: #f8fafc;
-            overflow-x: hidden;
-        }
+  <style>
+    /* ── Base ─────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; }
+    body {
+      background-color: #020617;
+      background-image:
+        radial-gradient(ellipse 70% 60% at 50% -10%, rgba(108,43,217,0.18) 0%, transparent 60%),
+        radial-gradient(ellipse 50% 40% at 80% 110%, rgba(22,163,74,0.07) 0%, transparent 60%);
+      color: #f8fafc;
+      overflow-x: hidden;
+      font-family: 'Inter', sans-serif;
+    }
 
-        /* Glassmorphism */
-        .glass {
-            background: rgba(15, 23, 42, 0.4);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-        }
+    /* ── Scrollbar ────────────────────────────────────────────────────── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(108,43,217,0.3); border-radius: 3px; }
 
-        /* Hide standard radio buttons */
-        input[type="radio"] {
-            display: none;
-        }
+    /* ── Progress bar ─────────────────────────────────────────────────── */
+    #progress-bar {
+      background: linear-gradient(90deg, #6C2BD9, #a855f7, #16A34A);
+      background-size: 200% 100%;
+      animation: barShift 3s linear infinite;
+      transition: width 0.55s cubic-bezier(0.34, 1.3, 0.64, 1);
+    }
+    @keyframes barShift { 0%{background-position:0 0}100%{background-position:-200% 0} }
 
-        /* Custom Card Styling */
-        .selection-card {
-            cursor: pointer;
-            display: block;
-            width: 100%;
-        }
+    /* ── Step animation ───────────────────────────────────────────────── */
+    .step-container {
+      display: none;
+      opacity: 0;
+      transform: translateY(22px) scale(0.99);
+    }
+    .step-container.active {
+      display: block;
+      animation: stepIn 0.42s cubic-bezier(0.34, 1.3, 0.64, 1) forwards;
+    }
+    .step-container.leaving {
+      animation: stepOut 0.22s ease forwards;
+    }
+    @keyframes stepIn  { to { opacity:1; transform:translateY(0) scale(1); } }
+    @keyframes stepOut { to { opacity:0; transform:translateY(-16px) scale(0.98); } }
 
-        .card-content {
-            position: relative;
-            overflow: hidden;
-        }
+    /* ── Hide native radio ────────────────────────────────────────────── */
+    input[type="radio"] { position: absolute; opacity: 0; width: 0; height: 0; }
 
-        /* Active State / Selected State */
-        input[type="radio"]:checked + .card-content {
-            border-color: #6366f1;
-            background: rgba(99, 102, 241, 0.1);
-            transform: scale(1.02) translateY(-2px);
-            box-shadow: 0 10px 30px -10px rgba(99, 102, 241, 0.5);
-        }
+    /* ── Selection card ───────────────────────────────────────────────── */
+    .sel-card {
+      display: block; cursor: pointer; position: relative;
+      border-radius: 16px; overflow: hidden;
+      border: 1.5px solid rgba(255,255,255,0.07);
+      background: rgba(15,23,42,0.55);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      transition: border-color .25s, background .25s, transform .2s, box-shadow .25s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .sel-card:hover {
+      border-color: rgba(108,43,217,0.4);
+      background: rgba(108,43,217,0.06);
+      transform: translateY(-2px);
+    }
+    .sel-card:active { transform: scale(0.98); }
 
-        input[type="radio"]:checked + .card-content .icon-container {
-            background: #6366f1;
-            color: #ffffff;
-        }
+    /* Selected state */
+    input[type="radio"]:checked ~ .sel-inner {
+      border-color: rgba(108,43,217,0.65) !important;
+      background: rgba(108,43,217,0.14) !important;
+      box-shadow: 0 0 0 3px rgba(108,43,217,0.18), 0 10px 30px rgba(108,43,217,0.25) !important;
+    }
+    /* Trick: use sibling selector via label wrapping */
+    .opt-label {
+      display: block; cursor: pointer; position: relative;
+      border-radius: 16px; overflow: hidden;
+      border: 1.5px solid rgba(255,255,255,0.07);
+      background: rgba(15,23,42,0.55);
+      backdrop-filter: blur(12px);
+      transition: border-color .25s, background .25s, transform .2s, box-shadow .25s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .opt-label:hover {
+      border-color: rgba(108,43,217,0.4);
+      background: rgba(108,43,217,0.06);
+      transform: translateY(-2px);
+    }
+    .opt-label:active { transform: scale(0.98); }
+    .opt-label.selected {
+      border-color: rgba(108,43,217,0.65) !important;
+      background: rgba(108,43,217,0.14) !important;
+      box-shadow: 0 0 0 3px rgba(108,43,217,0.18), 0 10px 30px rgba(108,43,217,0.25) !important;
+      transform: translateY(-2px);
+    }
+    /* Accent overrides for specific steps */
+    .opt-label.selected.acc-green {
+      border-color: rgba(22,163,74,0.6) !important;
+      background: rgba(22,163,74,0.1) !important;
+      box-shadow: 0 0 0 3px rgba(22,163,74,0.15), 0 10px 30px rgba(22,163,74,0.2) !important;
+    }
+    .opt-label.selected.acc-blue {
+      border-color: rgba(59,130,246,0.6) !important;
+      background: rgba(59,130,246,0.1) !important;
+      box-shadow: 0 0 0 3px rgba(59,130,246,0.15), 0 10px 30px rgba(59,130,246,0.2) !important;
+    }
+    .opt-label.selected.acc-amber {
+      border-color: rgba(245,158,11,0.6) !important;
+      background: rgba(245,158,11,0.08) !important;
+      box-shadow: 0 0 0 3px rgba(245,158,11,0.12), 0 10px 30px rgba(245,158,11,0.15) !important;
+    }
 
-        input[type="radio"]:checked + .card-content::after {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: radial-gradient(circle at top right, rgba(139, 92, 246, 0.2), transparent 60%);
-            pointer-events: none;
-        }
+    /* Check badge (appears on selected) */
+    .check-badge {
+      position: absolute; top: 10px; right: 10px;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: #6C2BD9;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transform: scale(0.5);
+      transition: opacity .2s, transform .25s cubic-bezier(0.34,1.56,0.64,1);
+      flex-shrink: 0;
+    }
+    .opt-label.selected .check-badge { opacity: 1; transform: scale(1); }
+    .check-badge svg { width: 12px; height: 12px; stroke: #fff; stroke-width: 2.5; fill: none; }
 
-        /* Step Transitions */
-        .step-container {
-            opacity: 0;
-            transform: translateY(20px);
-            display: none;
-            transition: opacity 0.4s ease, transform 0.4s ease;
-        }
+    /* ── Pill tag ─────────────────────────────────────────────────────── */
+    .step-tag {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 12px; border-radius: 99px;
+      font-family: 'Space Mono', monospace; font-size: 10px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: .1em;
+      border: 1px solid rgba(108,43,217,0.3);
+      background: rgba(108,43,217,0.1); color: #a78bfa;
+      margin-bottom: 16px;
+    }
 
-        .step-container.active {
-            opacity: 1;
-            transform: translateY(0);
-            display: block;
-        }
+    /* ── Step heading ─────────────────────────────────────────────────── */
+    .step-heading {
+      font-family: 'Poppins', sans-serif; font-weight: 800;
+      font-size: clamp(1.5rem, 4vw, 2.4rem);
+      line-height: 1.18; letter-spacing: -0.02em;
+      color: #f8fafc; margin-bottom: 8px;
+    }
+    .step-sub {
+      font-size: .88rem; color: #64748b; line-height: 1.6; margin-bottom: 28px;
+    }
 
-        /* Custom Scrollbar */
-        ::-webkit-scrollbar { width: 6px; }
-        ::-webkit-scrollbar-track { background: #020617; }
-        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 4px; }
-    </style>
+    /* ── Option content ───────────────────────────────────────────────── */
+    .opt-icon {
+      width: 44px; height: 44px; border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0; font-size: 20px;
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      transition: background .2s, border-color .2s;
+    }
+    .opt-label.selected .opt-icon {
+      background: rgba(108,43,217,0.2);
+      border-color: rgba(108,43,217,0.4);
+    }
+    .opt-label.selected.acc-green .opt-icon { background:rgba(22,163,74,0.18); border-color:rgba(22,163,74,0.4); }
+    .opt-label.selected.acc-blue  .opt-icon { background:rgba(59,130,246,0.18); border-color:rgba(59,130,246,0.4); }
+    .opt-label.selected.acc-amber .opt-icon { background:rgba(245,158,11,0.18); border-color:rgba(245,158,11,0.4); }
+
+    .opt-title { font-family:'Poppins',sans-serif; font-weight:700; font-size:.95rem; color:#f1f5f9; line-height:1.3; }
+    .opt-desc  { font-size:.78rem; color:#64748b; margin-top:3px; line-height:1.5; }
+    .opt-label:hover .opt-title { color:#fff; }
+    .opt-label.selected .opt-title { color:#c4b5fd; }
+    .opt-label.selected.acc-green .opt-title { color:#86efac; }
+    .opt-label.selected.acc-blue  .opt-title { color:#93c5fd; }
+    .opt-label.selected.acc-amber .opt-title { color:#fcd34d; }
+
+    /* ── Class level cards (big centered) ────────────────────────────── */
+    .class-card {
+      display: block; cursor: pointer; position: relative;
+      border-radius: 20px; padding: 28px 20px;
+      text-align: center;
+      border: 1.5px solid rgba(255,255,255,0.07);
+      background: rgba(15,23,42,0.55); backdrop-filter: blur(12px);
+      transition: all .25s; -webkit-tap-highlight-color: transparent;
+    }
+    .class-card:hover { border-color:rgba(108,43,217,0.4); background:rgba(108,43,217,0.06); transform:translateY(-3px); }
+    .class-card.selected {
+      border-color:rgba(108,43,217,0.7) !important;
+      background:rgba(108,43,217,0.14) !important;
+      box-shadow: 0 0 0 3px rgba(108,43,217,0.2), 0 16px 40px rgba(108,43,217,0.3);
+      transform: translateY(-4px);
+    }
+    .class-num {
+      font-family:'Poppins',sans-serif; font-weight:800; font-size:3.5rem; line-height:1;
+      background:linear-gradient(135deg,#a78bfa,#6C2BD9); -webkit-background-clip:text; -webkit-text-fill-color:transparent;
+      margin-bottom:12px;
+    }
+    .class-card.selected .class-num { background:linear-gradient(135deg,#c4b5fd,#a78bfa); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    .class-label { font-family:'Poppins',sans-serif; font-weight:700; font-size:1rem; color:#e2e8f0; margin-bottom:4px; }
+    .class-sub   { font-size:.75rem; color:#475569; font-family:'Space Mono',monospace; }
+    .class-check {
+      position:absolute; top:12px; right:12px; width:24px; height:24px; border-radius:50%;
+      background:#6C2BD9; display:flex; align-items:center; justify-content:center;
+      opacity:0; transform:scale(0.4); transition:all .25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .class-card.selected .class-check { opacity:1; transform:scale(1); }
+
+    /* ── Language card ────────────────────────────────────────────────── */
+    .lang-card {
+      display:block; cursor:pointer; position:relative;
+      border-radius:16px; padding:18px 20px;
+      border:1.5px solid rgba(255,255,255,0.07);
+      background:rgba(15,23,42,0.55); backdrop-filter:blur(12px);
+      transition:all .25s; -webkit-tap-highlight-color:transparent;
+    }
+    .lang-card:hover { border-color:rgba(59,130,246,0.4); background:rgba(59,130,246,0.06); transform:translateY(-2px); }
+    .lang-card.selected {
+      border-color:rgba(59,130,246,0.65) !important;
+      background:rgba(59,130,246,0.12) !important;
+      box-shadow:0 0 0 3px rgba(59,130,246,0.15), 0 10px 28px rgba(59,130,246,0.2);
+      transform:translateY(-2px);
+    }
+    .lang-flag { font-size:26px; margin-bottom:8px; display:block; }
+    .lang-name { font-family:'Poppins',sans-serif; font-weight:700; font-size:.95rem; color:#e2e8f0; }
+    .lang-desc { font-size:.75rem; color:#475569; margin-top:3px; line-height:1.4; }
+    .lang-card.selected .lang-name { color:#93c5fd; }
+    .lang-check {
+      position:absolute; top:10px; right:10px; width:20px; height:20px; border-radius:50%;
+      background:#2563eb; display:flex; align-items:center; justify-content:center;
+      opacity:0; transform:scale(0.4); transition:all .25s cubic-bezier(0.34,1.56,0.64,1);
+    }
+    .lang-card.selected .lang-check { opacity:1; transform:scale(1); }
+
+    /* ── Submit button ────────────────────────────────────────────────── */
+    .submit-btn {
+      background: linear-gradient(135deg, #6C2BD9, #7c3aed);
+      box-shadow: 0 6px 24px rgba(108,43,217,0.45);
+      transition: all .3s cubic-bezier(0.34,1.3,0.64,1);
+      position: relative; overflow: hidden;
+    }
+    .submit-btn::before {
+      content: ''; position: absolute; inset:0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.12), transparent);
+    }
+    .submit-btn:hover:not(:disabled) { transform: translateY(-3px); box-shadow: 0 10px 32px rgba(108,43,217,0.55); }
+    .submit-btn:active:not(:disabled) { transform: scale(0.97); }
+    .submit-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+    /* ── Back button ─────────────────────────────────────────────────── */
+    .back-btn {
+      display:flex; align-items:center; gap:6px;
+      font-size:.8rem; font-weight:600; color:#475569;
+      transition:color .2s; cursor:pointer; border:none; background:none; padding:4px;
+    }
+    .back-btn:hover { color:#a78bfa; }
+
+    /* ── Step counter dots ────────────────────────────────────────────── */
+    .step-dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: rgba(255,255,255,0.12);
+      transition: all .35s cubic-bezier(0.34,1.3,0.64,1);
+    }
+    .step-dot.done  { background: rgba(108,43,217,0.6); }
+    .step-dot.current { background: #a78bfa; width: 20px; border-radius: 3px; }
+
+    /* ── Persona preview pill ─────────────────────────────────────────── */
+    .persona-tag {
+      display:inline-flex; align-items:center; gap:5px;
+      padding:3px 10px; border-radius:99px;
+      font-family:'Space Mono',monospace; font-size:9px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.08em;
+      background:rgba(108,43,217,0.12); color:#a78bfa;
+      border:1px solid rgba(108,43,217,0.25);
+      transition:all .3s ease;
+    }
+    .persona-tag.green { background:rgba(22,163,74,0.1); color:#4ade80; border-color:rgba(22,163,74,0.25); }
+    .persona-tag.blue  { background:rgba(59,130,246,0.1); color:#60a5fa; border-color:rgba(59,130,246,0.25); }
+    .persona-tag.amber { background:rgba(245,158,11,0.1); color:#fbbf24; border-color:rgba(245,158,11,0.25); }
+
+    /* ── Glow dot ─────────────────────────────────────────────────────── */
+    .glow-dot { width:7px; height:7px; border-radius:50%; background:#16A34A; box-shadow:0 0 6px #16A34A; display:inline-block; animation:dp 2s ease-in-out infinite; }
+    @keyframes dp { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:.5;transform:scale(.8);} }
+
+    /* ── XP Pop ───────────────────────────────────────────────────────── */
+    .xp-pop {
+      position:fixed; bottom:24px; right:20px; z-index:100;
+      background:rgba(108,43,217,0.92); color:#fff; padding:10px 16px;
+      border-radius:12px; font-family:'Space Mono',monospace; font-size:12px; font-weight:700;
+      border:1px solid rgba(255,255,255,0.15); backdrop-filter:blur(10px);
+      box-shadow:0 8px 28px rgba(108,43,217,0.45);
+      animation:xpIn .4s cubic-bezier(0.34,1.56,0.64,1) forwards;
+    }
+    @keyframes xpIn { from{opacity:0;transform:translateY(16px) scale(.9);}to{opacity:1;transform:translateY(0) scale(1);} }
+
+    /* ── Nav glass ─────────────────────────────────────────────────────── */
+    nav { background:rgba(2,6,23,0.8); backdrop-filter:blur(16px); }
+
+    /* ── Responsive tweaks ────────────────────────────────────────────── */
+    @media (max-width:480px) {
+      .step-heading { font-size:1.5rem; }
+      .class-num { font-size:2.8rem; }
+    }
+  </style>
 </head>
-<body class="selection:bg-brand-primary selection:text-white min-h-screen flex flex-col relative">
 
-    <div class="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-gradient-glow rounded-full pointer-events-none z-0"></div>
+<body class="min-h-screen flex flex-col">
 
-    <nav class="fixed top-0 w-full z-50 border-b border-white/5 bg-brand-black/80 backdrop-blur-md">
-        <div class="max-w-3xl mx-auto px-6 h-16 flex items-center justify-between">
-            <button id="btn-back" class="text-slate-400 hover:text-white transition-colors flex items-center gap-2 text-sm font-medium opacity-0 pointer-events-none">
-                <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
-            </button>
-            <div class="text-sm font-mono text-brand-primary font-bold tracking-widest uppercase">
-                Phase <span id="current-step-display">1</span>/6
-            </div>
+  <!-- ══════ NAV ══════ -->
+  <nav class="fixed top-0 w-full z-50 border-b border-white/5">
+    <div class="max-w-2xl mx-auto px-5 h-14 flex items-center justify-between gap-4">
+      <button id="btn-back" class="back-btn opacity-0 pointer-events-none" aria-label="Go back">
+        <i data-lucide="arrow-left" class="w-4 h-4"></i> Back
+      </button>
+      <div class="flex items-center gap-3">
+        <!-- Dot indicator -->
+        <div class="flex items-center gap-1.5" id="step-dots"></div>
+      </div>
+      <div class="text-right min-w-[60px]">
+        <span class="font-mono text-[10px] font-bold tracking-widest text-slate-500 uppercase">Phase</span>
+        <span id="step-counter" class="font-display font-bold text-sm text-brand-primary ml-1">1/7</span>
+      </div>
+    </div>
+    <!-- Progress bar -->
+    <div class="h-0.5 w-full" style="background:rgba(255,255,255,0.05);">
+      <div id="progress-bar" class="h-full" style="width:14.28%;"></div>
+    </div>
+  </nav>
+
+  <!-- ══════ MAIN ══════ -->
+  <main class="flex-grow flex items-start justify-center pt-24 pb-16 px-4">
+    <form method="POST" action="/api/onboard" id="onboard-form" class="w-full max-w-xl">
+
+      <!-- ═══ STEP 1: Class Level ═══ -->
+      <div class="step-container active" data-step="1">
+        <div class="mb-8">
+          <div class="step-tag"><span class="glow-dot"></span> Step 1 of 7</div>
+          <h2 class="step-heading">Which board exam are<br>you preparing for?</h2>
+          <p class="step-sub">This sets the language level and complexity of your mnemonics.</p>
         </div>
-        <div class="h-1 w-full bg-brand-surface">
-            <div id="progress-bar" class="h-full bg-brand-primary transition-all duration-500 shadow-[0_0_10px_rgba(99,102,241,0.8)]" style="width: 16.66%;"></div>
+        <div class="grid grid-cols-2 gap-4">
+          <label class="class-card" data-field="class_level" data-value="10">
+            <input type="radio" name="class_level" value="10" required>
+            <div class="class-check">
+              <svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
+            </div>
+            <div class="class-num">10</div>
+            <div class="class-label">Class 10 Boards</div>
+            <div class="class-sub">SST · Science · Maths</div>
+          </label>
+          <label class="class-card" data-field="class_level" data-value="12">
+            <input type="radio" name="class_level" value="12">
+            <div class="class-check">
+              <svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
+            </div>
+            <div class="class-num">12</div>
+            <div class="class-label">Class 12 Boards</div>
+            <div class="class-sub">PCM · PCB · Commerce</div>
+          </label>
         </div>
-    </nav>
+      </div>
 
-    <main class="flex-grow flex items-center justify-center relative z-10 px-4 pt-24 pb-12">
-        <form method="POST" action="/api/onboard" id="onboard-form" class="w-full max-w-2xl">
-
-            <div class="step-container active" data-step="1">
-                <div class="text-center mb-10">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
-                        <i data-lucide="swords" class="w-4 h-4 text-brand-accent"></i>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Level Select</span>
-                    </div>
-                    <h2 class="text-3xl md:text-5xl font-display font-bold text-white mb-3">Which battlefield are you entering?</h2>
-                    <p class="text-slate-400">Select your current academic tier.</p>
-                </div>
-                <div class="grid sm:grid-cols-2 gap-4">
-                    <label class="selection-card">
-                        <input type="radio" name="class_level" value="10" required>
-                        <div class="card-content glass p-6 rounded-2xl flex flex-col items-center text-center gap-4 hover:bg-white/5">
-                            <div class="icon-container w-16 h-16 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center transition-colors">
-                                <span class="font-display font-bold text-2xl">10</span>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-lg text-white">Class 10th Boards</h3>
-                                <p class="text-xs text-slate-400 mt-1">The First Checkpoint</p>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="class_level" value="12">
-                        <div class="card-content glass p-6 rounded-2xl flex flex-col items-center text-center gap-4 hover:bg-white/5">
-                            <div class="icon-container w-16 h-16 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center transition-colors">
-                                <span class="font-display font-bold text-2xl">12</span>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-lg text-white">Class 12th Boards</h3>
-                                <p class="text-xs text-slate-400 mt-1">The Final Boss</p>
-                            </div>
-                        </div>
-                    </label>
-                </div>
+      <!-- ═══ STEP 2: Language ═══ -->
+      <div class="step-container" data-step="2">
+        <div class="mb-8">
+          <div class="step-tag" style="border-color:rgba(59,130,246,0.3);background:rgba(59,130,246,0.1);color:#60a5fa;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#60a5fa;box-shadow:0 0 6px #60a5fa;display:inline-block;"></span> Step 2 of 7
+          </div>
+          <h2 class="step-heading">Which language feels<br>most natural to you?</h2>
+          <p class="step-sub">Your mnemonics will be generated in this exact style. Pick the one you actually think in.</p>
+        </div>
+        <div class="grid grid-cols-3 gap-3">
+          <label class="lang-card" data-field="language" data-value="english">
+            <input type="radio" name="language" value="english" required>
+            <div class="lang-check">
+              <svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
             </div>
-
-            <div class="step-container" data-step="2">
-                <div class="text-center mb-10">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
-                        <i data-lucide="smartphone" class="w-4 h-4 text-brand-primary"></i>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Attention Mapping</span>
-                    </div>
-                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">When you have 0% energy at 2 AM, what keeps you awake?</h2>
-                </div>
-                <div class="grid sm:grid-cols-2 gap-4">
-                    <label class="selection-card">
-                        <input type="radio" name="dopamine_schema" value="system_builder" required>
-                        <div class="card-content glass p-5 rounded-2xl flex items-start gap-4 hover:bg-white/5">
-                            <div class="icon-container w-10 h-10 rounded-lg bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
-                                <i data-lucide="book-open" class="w-5 h-5"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white">Deep-Lore Rabbit Holes</h3>
-                                <p class="text-xs text-slate-400 mt-1">Anime arcs, MCU theories, gaming meta breakdowns.</p>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="dopamine_schema" value="emotional_coder">
-                        <div class="card-content glass p-5 rounded-2xl flex items-start gap-4 hover:bg-white/5">
-                            <div class="icon-container w-10 h-10 rounded-lg bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
-                                <i data-lucide="flame" class="w-5 h-5"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white">High-Stakes Drama</h3>
-                                <p class="text-xs text-slate-400 mt-1">Bigg Boss fights, gossip, toxic relationship reels.</p>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="dopamine_schema" value="competitor">
-                        <div class="card-content glass p-5 rounded-2xl flex items-start gap-4 hover:bg-white/5">
-                            <div class="icon-container w-10 h-10 rounded-lg bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
-                                <i data-lucide="bar-chart-2" class="w-5 h-5"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white">Aggressive Stats & Debates</h3>
-                                <p class="text-xs text-slate-400 mt-1">Virat vs Rohit, football stats, sigma edits.</p>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="dopamine_schema" value="absurdist">
-                        <div class="card-content glass p-5 rounded-2xl flex items-start gap-4 hover:bg-white/5">
-                            <div class="icon-container w-10 h-10 rounded-lg bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
-                                <i data-lucide="zap" class="w-5 h-5"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white">Pure Brain-Rot</h3>
-                                <p class="text-xs text-slate-400 mt-1">3-second absurd memes, shitposting, roasting.</p>
-                            </div>
-                        </div>
-                    </label>
-                </div>
+            <span class="lang-flag">🇬🇧</span>
+            <div class="lang-name">English</div>
+            <div class="lang-desc">Clean, precise, board-exam ready</div>
+          </label>
+          <label class="lang-card" data-field="language" data-value="hinglish">
+            <input type="radio" name="language" value="hinglish">
+            <div class="lang-check">
+              <svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
             </div>
-
-            <div class="step-container" data-step="3">
-                <div class="text-center mb-10">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
-                        <i data-lucide="brain-circuit" class="w-4 h-4 text-red-400"></i>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Panic Mechanics</span>
-                    </div>
-                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">Exam hall panic. 5-mark question. Your mind goes blank. What do you do?</h2>
-                </div>
-                <div class="grid sm:grid-cols-2 gap-4">
-                    <label class="selection-card">
-                        <input type="radio" name="cortisol_response" value="audio_kinesthetic" required>
-                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
-                            <h3 class="font-bold text-white mb-2"><i data-lucide="headphones" class="w-4 h-4 inline mr-2 text-brand-primary"></i>The Echo Chamber</h3>
-                            <p class="text-sm text-slate-400">I pace around in my mind, trying to hear the teacher's voice or my own voice explaining it.</p>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="cortisol_response" value="spatial_visual">
-                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
-                            <h3 class="font-bold text-white mb-2"><i data-lucide="eye" class="w-4 h-4 inline mr-2 text-brand-accent"></i>The Scanner</h3>
-                            <p class="text-sm text-slate-400">I try to 'see' the textbook page, my messy handwriting, or where I highlighted it.</p>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="cortisol_response" value="chunking">
-                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
-                            <h3 class="font-bold text-white mb-2"><i data-lucide="link" class="w-4 h-4 inline mr-2 text-green-400"></i>The Chain Reaction</h3>
-                            <p class="text-sm text-slate-400">I desperately try to remember the first letter of the first word to trigger the rest.</p>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="cortisol_response" value="algorithmic">
-                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
-                            <h3 class="font-bold text-white mb-2"><i data-lucide="binary" class="w-4 h-4 inline mr-2 text-blue-400"></i>The Engineer</h3>
-                            <p class="text-sm text-slate-400">I try to remember the logical formula or the 'cheat code' to derive the answer from scratch.</p>
-                        </div>
-                    </label>
-                </div>
+            <span class="lang-flag">🔀</span>
+            <div class="lang-name">Hinglish</div>
+            <div class="lang-desc">How toppers actually talk to each other</div>
+          </label>
+          <label class="lang-card" data-field="language" data-value="hindi">
+            <input type="radio" name="language" value="hindi">
+            <div class="lang-check">
+              <svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg>
             </div>
+            <span class="lang-flag">🇮🇳</span>
+            <div class="lang-name">Hindi</div>
+            <div class="lang-desc">Pure Hindi throughout</div>
+          </label>
+        </div>
+      </div>
 
-            <div class="step-container" data-step="4">
-                <div class="text-center mb-10">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
-                        <i data-lucide="sparkles" class="w-4 h-4 text-yellow-400"></i>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Memory Anomalies</span>
-                    </div>
-                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">How bizarre and 'unhinged' should we make your memory tricks?</h2>
-                </div>
-                <div class="grid grid-cols-1 gap-4">
-                    <label class="selection-card">
-                        <input type="radio" name="von_restorff" value="unhinged" required>
-                        <div class="card-content glass p-5 rounded-2xl flex items-center justify-between hover:bg-white/5">
-                            <div>
-                                <h3 class="font-bold text-white">Completely Unhinged</h3>
-                                <p class="text-sm text-slate-400 mt-1">Dark humor, savage insults, absolute absurdity.</p>
-                            </div>
-                            <div class="text-2xl opacity-50">💀</div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="von_restorff" value="melodramatic">
-                        <div class="card-content glass p-5 rounded-2xl flex items-center justify-between hover:bg-white/5">
-                            <div>
-                                <h3 class="font-bold text-white">Filmy & Melodramatic</h3>
-                                <p class="text-sm text-slate-400 mt-1">Bollywood climax, betrayal, heavy dialogues.</p>
-                            </div>
-                            <div class="text-2xl opacity-50">🎬</div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="von_restorff" value="heroic">
-                        <div class="card-content glass p-5 rounded-2xl flex items-center justify-between hover:bg-white/5">
-                            <div>
-                                <h3 class="font-bold text-white">Epic & Heroic</h3>
-                                <p class="text-sm text-slate-400 mt-1">Video game final boss fight, intense sports final.</p>
-                            </div>
-                            <div class="text-2xl opacity-50">⚔️</div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="von_restorff" value="grounded">
-                        <div class="card-content glass p-5 rounded-2xl flex items-center justify-between hover:bg-white/5">
-                            <div>
-                                <h3 class="font-bold text-white">Clever but Grounded</h3>
-                                <p class="text-sm text-slate-400 mt-1">Strictly logical, clean, academically safe.</p>
-                            </div>
-                            <div class="text-2xl opacity-50">📐</div>
-                        </div>
-                    </label>
-                </div>
+      <!-- ═══ STEP 3: Attention trigger (DOPAMINE_SCHEMA) ═══ -->
+      <!-- Maps to: curiosity_driven, reward_oriented, thrill_seeker, social_proof -->
+      <div class="step-container" data-step="3">
+        <div class="mb-8">
+          <div class="step-tag"><span class="glow-dot"></span> Step 3 of 7</div>
+          <h2 class="step-heading">What actually makes<br>your brain switch ON?</h2>
+          <p class="step-sub">Not what should — what actually does. Be honest, your mnemonics depend on it.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3">
+          <label class="opt-label" data-field="dopamine_schema" data-value="curiosity_driven">
+            <input type="radio" name="dopamine_schema" value="curiosity_driven" required>
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-center gap-4">
+              <div class="opt-icon">🧩</div>
+              <div>
+                <div class="opt-title">When someone says "most students get this wrong"</div>
+                <div class="opt-desc">You immediately want to prove you're the exception. Puzzle energy.</div>
+              </div>
             </div>
-
-            <div class="step-container" data-step="5">
-                <div class="text-center mb-10">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
-                        <i data-lucide="hourglass" class="w-4 h-4 text-orange-400"></i>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Data Loss Profile</span>
-                    </div>
-                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">When you forget a 10-point answer the next day, what went wrong?</h2>
-                </div>
-                <div class="grid sm:grid-cols-2 gap-4">
-                    <label class="selection-card">
-                        <input type="radio" name="memory_decay" value="serial_position" required>
-                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
-                            <h3 class="font-bold text-white mb-2">The Serial Position Trap</h3>
-                            <p class="text-sm text-slate-400">I remember the start and end, but the middle is an absolute black hole.</p>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="memory_decay" value="jumbled_mess">
-                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
-                            <h3 class="font-bold text-white mb-2">The Jumbled Mess</h3>
-                            <p class="text-sm text-slate-400">I remember the points, but I totally mix up the exact chronological order.</p>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="memory_decay" value="vocab_block">
-                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
-                            <h3 class="font-bold text-white mb-2">The Vocabulary Block</h3>
-                            <p class="text-sm text-slate-400">I understand the core concept, but my brain deletes the exact scientific keywords.</p>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="memory_decay" value="wall_of_text">
-                        <div class="card-content glass p-5 rounded-2xl hover:bg-white/5">
-                            <h3 class="font-bold text-white mb-2">The Wall of Text</h3>
-                            <p class="text-sm text-slate-400">It all looks exactly the same. My brain just refuses to absorb a giant paragraph.</p>
-                        </div>
-                    </label>
-                </div>
+          </label>
+          <label class="opt-label" data-field="dopamine_schema" data-value="reward_oriented">
+            <input type="radio" name="dopamine_schema" value="reward_oriented">
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-center gap-4">
+              <div class="opt-icon">🎯</div>
+              <div>
+                <div class="opt-title">When the exact marks value is right in front of you</div>
+                <div class="opt-desc">5 marks = 5 minutes of focus. You only work when the ROI is clear.</div>
+              </div>
             </div>
-
-            <div class="step-container" data-step="6">
-                <div class="text-center mb-10">
-                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-brand-border bg-brand-surface/50 mb-4">
-                        <i data-lucide="target" class="w-4 h-4 text-pink-400"></i>
-                        <span class="text-xs font-bold uppercase tracking-wider text-slate-300">Final Motivation</span>
-                    </div>
-                    <h2 class="text-3xl md:text-4xl font-display font-bold text-white mb-3">If you memorized the whole syllabus today, what's your drive?</h2>
-                </div>
-                <div class="grid grid-cols-1 gap-4 mb-10">
-                    <label class="selection-card">
-                        <input type="radio" name="social_ego" value="teacher" required>
-                        <div class="card-content glass p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5">
-                            <div class="icon-container w-12 h-12 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
-                                <i data-lucide="graduation-cap" class="w-6 h-6"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-lg">The Teacher</h3>
-                                <p class="text-sm text-slate-400">I want to be the smartest person in the room and explain it to my friends.</p>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="social_ego" value="hacker">
-                        <div class="card-content glass p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5">
-                            <div class="icon-container w-12 h-12 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
-                                <i data-lucide="terminal" class="w-6 h-6"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-lg">The Hacker</h3>
-                                <p class="text-sm text-slate-400">I want to secretly know all the answers while pretending I didn't study at all.</p>
-                            </div>
-                        </div>
-                    </label>
-                    <label class="selection-card">
-                        <input type="radio" name="social_ego" value="survivor">
-                        <div class="card-content glass p-5 rounded-2xl flex items-center gap-4 hover:bg-white/5">
-                            <div class="icon-container w-12 h-12 rounded-full bg-brand-surface border border-white/10 flex items-center justify-center shrink-0">
-                                <i data-lucide="shield-alert" class="w-6 h-6"></i>
-                            </div>
-                            <div>
-                                <h3 class="font-bold text-white text-lg">The Survivor</h3>
-                                <p class="text-sm text-slate-400">I literally just want to pass the passing marks and get this over with.</p>
-                            </div>
-                        </div>
-                    </label>
-                </div>
-                
-                <div class="text-center">
-                    <button type="submit" class="w-full sm:w-auto px-10 py-5 rounded-xl bg-white text-brand-black font-bold text-lg hover:scale-[1.02] transition-transform flex items-center justify-center gap-3 shadow-[0_0_30px_rgba(255,255,255,0.3)] mx-auto disabled:opacity-50 disabled:cursor-not-allowed" id="btn-submit" disabled>
-                        <i data-lucide="cpu" class="w-6 h-6"></i>
-                        Generate My Algorithm
-                    </button>
-                    <p class="text-xs text-slate-500 mt-4">By continuing, you agree to optimize your neural pathways.</p>
-                </div>
+          </label>
+          <label class="opt-label" data-field="dopamine_schema" data-value="thrill_seeker">
+            <input type="radio" name="dopamine_schema" value="thrill_seeker">
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-center gap-4">
+              <div class="opt-icon">⚡</div>
+              <div>
+                <div class="opt-title">Under pressure — last night before the exam</div>
+                <div class="opt-desc">Panic unlocks a focus that regular studying never does for you.</div>
+              </div>
             </div>
+          </label>
+          <label class="opt-label" data-field="dopamine_schema" data-value="social_proof">
+            <input type="radio" name="dopamine_schema" value="social_proof">
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-center gap-4">
+              <div class="opt-icon">👥</div>
+              <div>
+                <div class="opt-title">When everyone around you is studying the same thing</div>
+                <div class="opt-desc">Group energy. Alone you drift. With peers you can go for hours.</div>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
 
-        </form>
-    </main>
+      <!-- ═══ STEP 4: Recall style (CORTISOL_RESPONSE) ═══ -->
+      <!-- Maps to: audio_kinesthetic, spatial_visual, chunking, algorithmic -->
+      <div class="step-container" data-step="4">
+        <div class="mb-8">
+          <div class="step-tag" style="border-color:rgba(239,68,68,0.3);background:rgba(239,68,68,0.08);color:#f87171;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#ef4444;box-shadow:0 0 6px #ef4444;display:inline-block;"></span> Step 4 of 7
+          </div>
+          <h2 class="step-heading">You're in the exam. Brain blank. 5 marks on the line.</h2>
+          <p class="step-sub">Your mind goes into "find something, anything" mode. What does it actually try first?</p>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="opt-label acc-amber" data-field="cortisol_response" data-value="audio_kinesthetic">
+            <input type="radio" name="cortisol_response" value="audio_kinesthetic" required>
+            <div class="check-badge" style="background:#d97706;"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-5">
+              <div class="opt-icon mb-3">🎧</div>
+              <div class="opt-title">Replay the teacher's voice in my head</div>
+              <div class="opt-desc mt-2">Trying to literally "hear" how it was explained in class.</div>
+            </div>
+          </label>
+          <label class="opt-label acc-amber" data-field="cortisol_response" data-value="spatial_visual">
+            <input type="radio" name="cortisol_response" value="spatial_visual">
+            <div class="check-badge" style="background:#d97706;"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-5">
+              <div class="opt-icon mb-3">📄</div>
+              <div class="opt-title">Picture the textbook page or my notes</div>
+              <div class="opt-desc mt-2">Trying to "see" where on the page the answer was written.</div>
+            </div>
+          </label>
+          <label class="opt-label acc-amber" data-field="cortisol_response" data-value="chunking">
+            <input type="radio" name="cortisol_response" value="chunking">
+            <div class="check-badge" style="background:#d97706;"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-5">
+              <div class="opt-icon mb-3">🔑</div>
+              <div class="opt-title">Try to remember the first letter or keyword</div>
+              <div class="opt-desc mt-2">One trigger word is all you need — the rest should follow.</div>
+            </div>
+          </label>
+          <label class="opt-label acc-amber" data-field="cortisol_response" data-value="algorithmic">
+            <input type="radio" name="cortisol_response" value="algorithmic">
+            <div class="check-badge" style="background:#d97706;"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-5">
+              <div class="opt-icon mb-3">⚙️</div>
+              <div class="opt-title">Derive it from a formula or logic</div>
+              <div class="opt-desc mt-2">If you know the "why", you can re-build the "what" from scratch.</div>
+            </div>
+          </label>
+        </div>
+      </div>
 
-    <script>
-        // Initialize Icons
-        lucide.createIcons();
+      <!-- ═══ STEP 5: Mnemonic flavor (VON_RESTORFF) ═══ -->
+      <!-- Maps to: gen_z_meme_heavy, desi_drama, cinematic, grounded -->
+      <div class="step-container" data-step="5">
+        <div class="mb-8">
+          <div class="step-tag" style="border-color:rgba(168,85,247,0.3);background:rgba(168,85,247,0.1);color:#c4b5fd;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#c4b5fd;box-shadow:0 0 6px #c4b5fd;display:inline-block;"></span> Step 5 of 7
+          </div>
+          <h2 class="step-heading">Pick the memory trick<br>that would actually stick for you.</h2>
+          <p class="step-sub">All four will memorize the same fact. One will feel like yours.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3">
+          <!-- Option A: gen_z_meme_heavy -->
+          <label class="opt-label" data-field="von_restorff" data-value="gen_z_meme_heavy">
+            <input type="radio" name="von_restorff" value="gen_z_meme_heavy" required>
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-start gap-4">
+              <div class="opt-icon flex-shrink-0">💀</div>
+              <div>
+                <div class="opt-title">Completely unhinged — the weirder the better</div>
+                <div class="opt-desc">"B·hoot M·aange C·ar, S·cooter B·aad R·akh" — 
+                  absurd enough that your brain can't forget it.</div>
+              </div>
+            </div>
+          </label>
+          <!-- Option B: desi_drama -->
+          <label class="opt-label" data-field="von_restorff" data-value="desi_drama">
+            <input type="radio" name="von_restorff" value="desi_drama">
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-start gap-4">
+              <div class="opt-icon flex-shrink-0">🎬</div>
+              <div>
+                <div class="opt-title">Desi / Bollywood drama — full filmy energy</div>
+                <div class="opt-desc">Heavy dialogue, betrayal subplot, Hinglish all the way. 
+                  "Yaar ne DHOKA diya, CARBON ko chhod gaya!"</div>
+              </div>
+            </div>
+          </label>
+          <!-- Option C: cinematic -->
+          <label class="opt-label" data-field="von_restorff" data-value="cinematic">
+            <input type="radio" name="von_restorff" value="cinematic">
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-start gap-4">
+              <div class="opt-icon flex-shrink-0">⚔️</div>
+              <div>
+                <div class="opt-title">Epic &amp; cinematic — action-movie energy</div>
+                <div class="opt-desc">Final boss fight vibes, intense one-liners. 
+                  The kind of hook that feels like a trailer.</div>
+              </div>
+            </div>
+          </label>
+          <!-- Option D: grounded -->
+          <label class="opt-label" data-field="von_restorff" data-value="grounded">
+            <input type="radio" name="von_restorff" value="grounded">
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-start gap-4">
+              <div class="opt-icon flex-shrink-0">📐</div>
+              <div>
+                <div class="opt-title">Clean and logical — no drama, just the pattern</div>
+                <div class="opt-desc">Everyday scene. Direct mapping. Zero fluff. 
+                  You remember by understanding, not by chaos.</div>
+              </div>
+            </div>
+          </label>
+        </div>
+      </div>
 
-        // Onboarding Logic
-        document.addEventListener('DOMContentLoaded', () => {
-            const steps = document.querySelectorAll('.step-container');
-            const btnBack = document.getElementById('btn-back');
-            const currentStepDisplay = document.getElementById('current-step-display');
-            const progressBar = document.getElementById('progressBar'); // Adjusted below
-            const totalSteps = steps.length;
-            let currentStep = 1;
+      <!-- ═══ STEP 6: Forgetting pattern (MEMORY_DECAY) ═══ -->
+      <!-- Maps to: serial_position, jumbled_mess, vocab_block, wall_of_text -->
+      <div class="step-container" data-step="6">
+        <div class="mb-8">
+          <div class="step-tag" style="border-color:rgba(22,163,74,0.3);background:rgba(22,163,74,0.1);color:#4ade80;">
+            <span style="width:7px;height:7px;border-radius:50%;background:#4ade80;box-shadow:0 0 6px #4ade80;display:inline-block;"></span> Step 6 of 7
+          </div>
+          <h2 class="step-heading">You studied it last night.<br>Today it's gone. What survived?</h2>
+          <p class="step-sub">Everyone forgets differently. This tells us where to reinforce your mnemonics.</p>
+        </div>
+        <div class="grid sm:grid-cols-2 gap-3">
+          <label class="opt-label acc-green" data-field="memory_decay" data-value="serial_position">
+            <input type="radio" name="memory_decay" value="serial_position" required>
+            <div class="check-badge" style="background:#16A34A;"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-5">
+              <div class="opt-icon mb-3" style="font-size:18px;">↕️</div>
+              <div class="opt-title">First point + last point — middle is a black hole</div>
+              <div class="opt-desc mt-2">The opening and conclusion survive. Everything between them is gone.</div>
+            </div>
+          </label>
+          <label class="opt-label acc-green" data-field="memory_decay" data-value="jumbled_mess">
+            <input type="radio" name="memory_decay" value="jumbled_mess">
+            <div class="check-badge" style="background:#16A34A;"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-5">
+              <div class="opt-icon mb-3" style="font-size:18px;">🔀</div>
+              <div class="opt-title">I remember all the points — but totally wrong order</div>
+              <div class="opt-desc mt-2">You have the ingredients, just shuffled. The sequence keeps escaping you.</div>
+            </div>
+          </label>
+          <label class="opt-label acc-green" data-field="memory_decay" data-value="vocab_block">
+            <input type="radio" name="memory_decay" value="vocab_block">
+            <div class="check-badge" style="background:#16A34A;"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-5">
+              <div class="opt-icon mb-3" style="font-size:18px;">💬</div>
+              <div class="opt-title">Concept clear — but the exact scientific words vanish</div>
+              <div class="opt-desc mt-2">You understand what happened. You just can't say "photosynthesis" when asked.</div>
+            </div>
+          </label>
+          <label class="opt-label acc-green" data-field="memory_decay" data-value="wall_of_text">
+            <input type="radio" name="memory_decay" value="wall_of_text">
+            <div class="check-badge" style="background:#16A34A;"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-5">
+              <div class="opt-icon mb-3" style="font-size:18px;">📃</div>
+              <div class="opt-title">Nothing — it was a big paragraph and my brain refused</div>
+              <div class="opt-desc mt-2">One giant block of text = complete rejection. Your brain needed structure, found none.</div>
+            </div>
+          </label>
+        </div>
+      </div>
 
-            const updateUI = () => {
-                // Hide all steps, show current
-                steps.forEach((step, index) => {
-                    if (index + 1 === currentStep) {
-                        step.classList.add('active');
-                    } else {
-                        step.classList.remove('active');
-                    }
-                });
+      <!-- ═══ STEP 7: Social ego (SOCIAL_EGO) + Submit ═══ -->
+      <!-- Maps to: competitive, collaborative, self_improver -->
+      <div class="step-container" data-step="7">
+        <div class="mb-8">
+          <div class="step-tag"><span class="glow-dot"></span> Final Step</div>
+          <h2 class="step-heading">If you aced this exam,<br>what's the actual win?</h2>
+          <p class="step-sub">Honest answer only. This shapes how your AI coach frames every hook.</p>
+        </div>
+        <div class="grid grid-cols-1 gap-3 mb-8">
+          <label class="opt-label" data-field="social_ego" data-value="competitive">
+            <input type="radio" name="social_ego" value="competitive" required>
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-center gap-4">
+              <div class="opt-icon" style="font-size:22px;">🏆</div>
+              <div>
+                <div class="opt-title">Knowing I outscored people who didn't bother</div>
+                <div class="opt-desc">The rank matters. Being in the top is the point.</div>
+              </div>
+            </div>
+          </label>
+          <label class="opt-label" data-field="social_ego" data-value="collaborative">
+            <input type="radio" name="social_ego" value="collaborative">
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-center gap-4">
+              <div class="opt-icon" style="font-size:22px;">💡</div>
+              <div>
+                <div class="opt-title">Being the one who explains it to everyone else</div>
+                <div class="opt-desc">Teaching it = you actually understood it. That's the flex.</div>
+              </div>
+            </div>
+          </label>
+          <label class="opt-label" data-field="social_ego" data-value="self_improver">
+            <input type="radio" name="social_ego" value="self_improver">
+            <div class="check-badge"><svg viewBox="0 0 14 14" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round"><polyline points="2,7 5.5,10.5 12,4"/></svg></div>
+            <div class="p-4 flex items-center gap-4">
+              <div class="opt-icon" style="font-size:22px;">🧗</div>
+              <div>
+                <div class="opt-title">Proving to myself I can actually do hard things</div>
+                <div class="opt-desc">No one else needs to know. The proof is the score.</div>
+              </div>
+            </div>
+          </label>
+        </div>
 
-                // Update Progress & Text
-                currentStepDisplay.innerText = currentStep;
-                document.getElementById('progress-bar').style.width = `${(currentStep / totalSteps) * 100}%`;
+        <!-- Persona preview -->
+        <div id="persona-preview" class="mb-6 p-4 rounded-2xl border border-white/5 bg-white/[0.03]" style="display:none;">
+          <p class="text-xs font-mono text-slate-500 uppercase tracking-widest mb-3">Your AI Profile</p>
+          <div id="persona-tags" class="flex flex-wrap gap-2"></div>
+        </div>
 
-                // Handle Back Button Visibility
-                if (currentStep > 1) {
-                    btnBack.classList.remove('opacity-0', 'pointer-events-none');
-                } else {
-                    btnBack.classList.add('opacity-0', 'pointer-events-none');
-                }
-            };
+        <!-- Submit -->
+        <button type="submit" id="btn-submit"
+          class="submit-btn w-full py-4 rounded-2xl text-white font-display font-bold text-base flex items-center justify-center gap-3 focus:outline-none disabled:opacity-40 disabled:cursor-not-allowed"
+          disabled>
+          <i data-lucide="cpu" class="w-5 h-5"></i>
+          Build My Memory Algorithm
+        </button>
+        <p class="text-center text-xs text-slate-600 mt-3 font-mono">7 questions · personalized forever · change anytime</p>
+      </div>
 
-            // Auto-advance mechanism for Gen-Z flow (tap and go)
-            steps.forEach((step, index) => {
-                const radios = step.querySelectorAll('input[type="radio"]');
-                radios.forEach(radio => {
-                    radio.addEventListener('change', () => {
-                        // If it's the last step, just enable the submit button
-                        if (currentStep === totalSteps) {
-                            document.getElementById('btn-submit').disabled = false;
-                            return;
-                        }
-                        
-                        // Add a tiny delay so the user sees the "selected/glow" state before jumping
-                        setTimeout(() => {
-                            currentStep++;
-                            updateUI();
-                        }, 400); // 400ms feels snappy but deliberate
-                    });
-                });
-            });
+    </form>
+  </main>
 
-            // Back Button Logic
-            btnBack.addEventListener('click', (e) => {
-                e.preventDefault();
-                if (currentStep > 1) {
-                    currentStep--;
-                    updateUI();
-                }
-            });
+  <!-- ══════ SCRIPTS ══════ -->
+  <script>
+    lucide.createIcons();
+
+    const TOTAL_STEPS = 7;
+    let currentStep = 1;
+
+    // Persona labels for preview
+    const PERSONA_MAP = {
+      class_level: { 10:'Class 10', 12:'Class 12' },
+      language: { english:'English', hinglish:'Hinglish', hindi:'Hindi' },
+      dopamine_schema: {
+        curiosity_driven:'Curiosity-Driven',
+        reward_oriented:'Reward-Oriented',
+        thrill_seeker:'Pressure-Activated',
+        social_proof:'Socially Motivated',
+      },
+      cortisol_response: {
+        audio_kinesthetic:'Audio Recall',
+        spatial_visual:'Visual Recall',
+        chunking:'Chunk Recall',
+        algorithmic:'Logic Recall',
+      },
+      von_restorff: {
+        gen_z_meme_heavy:'Unhinged Mode',
+        desi_drama:'Desi Drama',
+        cinematic:'Cinematic',
+        grounded:'Grounded',
+      },
+      memory_decay: {
+        serial_position:'Serial Decay',
+        jumbled_mess:'Sequence Decay',
+        vocab_block:'Vocab Decay',
+        wall_of_text:'Block Rejection',
+      },
+      social_ego: {
+        competitive:'Competitive',
+        collaborative:'Collaborative',
+        self_improver:'Self-Improver',
+      },
+    };
+
+    const PERSONA_COLOR = {
+      class_level:'', language:'blue',
+      dopamine_schema:'', cortisol_response:'amber',
+      von_restorff:'', memory_decay:'green',
+      social_ego:'',
+    };
+
+    // Collected answers
+    const answers = {};
+
+    // ── Build step dots ────────────────────────────────────────────────
+    function buildDots() {
+      const container = document.getElementById('step-dots');
+      container.innerHTML = '';
+      for (let i = 1; i <= TOTAL_STEPS; i++) {
+        const d = document.createElement('div');
+        d.className = 'step-dot' + (i === currentStep ? ' current' : (i < currentStep ? ' done' : ''));
+        container.appendChild(d);
+      }
+    }
+
+    // ── Update UI for step transition ──────────────────────────────────
+    function updateUI(newStep, direction) {
+      const steps = document.querySelectorAll('.step-container');
+      const oldContainer = steps[currentStep - 1];
+      const newContainer = steps[newStep - 1];
+
+      // Exit old
+      oldContainer.classList.remove('active');
+      oldContainer.style.display = 'none';
+
+      // Enter new
+      currentStep = newStep;
+      newContainer.style.display = 'block';
+      newContainer.style.opacity = '0';
+      newContainer.style.transform = direction === 'forward' ? 'translateY(22px) scale(0.99)' : 'translateY(-22px) scale(0.99)';
+      requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+          newContainer.style.transition = 'opacity 0.42s cubic-bezier(0.34,1.3,0.64,1), transform 0.42s cubic-bezier(0.34,1.3,0.64,1)';
+          newContainer.style.opacity = '1';
+          newContainer.style.transform = 'translateY(0) scale(1)';
+          newContainer.classList.add('active');
         });
-    </script>
-    <script src="/js/tracking.js" defer></script>
+      });
+
+      // Progress bar
+      document.getElementById('progress-bar').style.width = `${(currentStep / TOTAL_STEPS) * 100}%`;
+
+      // Step counter
+      document.getElementById('step-counter').textContent = `${currentStep}/${TOTAL_STEPS}`;
+
+      // Back button
+      const btnBack = document.getElementById('btn-back');
+      if (currentStep > 1) {
+        btnBack.classList.remove('opacity-0', 'pointer-events-none');
+      } else {
+        btnBack.classList.add('opacity-0', 'pointer-events-none');
+      }
+
+      // Dots
+      buildDots();
+
+      // Scroll top
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    // ── Advance on radio change ────────────────────────────────────────
+    function bindRadioAdvance(stepEl, stepNum) {
+      const radios = stepEl.querySelectorAll('input[type="radio"]');
+      radios.forEach(radio => {
+        radio.addEventListener('change', () => {
+          // Store answer
+          answers[radio.name] = radio.value;
+
+          // Mark label as selected
+          const allLabels = stepEl.querySelectorAll('.opt-label, .class-card, .lang-card');
+          allLabels.forEach(l => l.classList.remove('selected'));
+          const parentLabel = radio.closest('.opt-label, .class-card, .lang-card');
+          if (parentLabel) parentLabel.classList.add('selected');
+
+          // Show XP pop
+          showXP();
+
+          // If last step, enable submit and show preview
+          if (stepNum === TOTAL_STEPS) {
+            document.getElementById('btn-submit').disabled = false;
+            updatePersonaPreview();
+            return;
+          }
+
+          // Advance after brief delay (let user see selected state)
+          setTimeout(() => {
+            updateUI(currentStep + 1, 'forward');
+          }, 350);
+        });
+      });
+    }
+
+    // ── Class cards ────────────────────────────────────────────────────
+    function bindClassCards() {
+      document.querySelectorAll('.class-card').forEach(card => {
+        const radio = card.querySelector('input[type="radio"]');
+        card.addEventListener('click', () => {
+          document.querySelectorAll('.class-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          radio.checked = true;
+          answers[radio.name] = radio.value;
+          showXP();
+          setTimeout(() => updateUI(2, 'forward'), 350);
+        });
+      });
+    }
+
+    // ── Lang cards ─────────────────────────────────────────────────────
+    function bindLangCards() {
+      document.querySelectorAll('.lang-card').forEach(card => {
+        const radio = card.querySelector('input[type="radio"]');
+        card.addEventListener('click', () => {
+          document.querySelectorAll('.lang-card').forEach(c => c.classList.remove('selected'));
+          card.classList.add('selected');
+          radio.checked = true;
+          answers[radio.name] = radio.value;
+          showXP();
+          setTimeout(() => updateUI(3, 'forward'), 350);
+        });
+      });
+    }
+
+    // ── Persona preview ────────────────────────────────────────────────
+    function updatePersonaPreview() {
+      const container = document.getElementById('persona-tags');
+      const preview = document.getElementById('persona-preview');
+      container.innerHTML = '';
+      let hasAny = false;
+      Object.entries(answers).forEach(([field, value]) => {
+        if (!PERSONA_MAP[field] || !PERSONA_MAP[field][value]) return;
+        hasAny = true;
+        const tag = document.createElement('span');
+        const color = PERSONA_COLOR[field] || '';
+        tag.className = 'persona-tag' + (color ? ' ' + color : '');
+        tag.textContent = PERSONA_MAP[field][value];
+        container.appendChild(tag);
+      });
+      preview.style.display = hasAny ? 'block' : 'none';
+    }
+
+    // ── XP pop ────────────────────────────────────────────────────────
+    let xpTimer = null;
+    function showXP() {
+      if (xpTimer) { clearTimeout(xpTimer); document.querySelector('.xp-pop')?.remove(); }
+      const pop = document.createElement('div');
+      pop.className = 'xp-pop';
+      pop.textContent = '+10 XP  · Profile calibrating';
+      document.body.appendChild(pop);
+      xpTimer = setTimeout(() => {
+        pop.style.transition = 'opacity .4s';
+        pop.style.opacity = '0';
+        setTimeout(() => pop.remove(), 400);
+      }, 1800);
+    }
+
+    // ── Back button ────────────────────────────────────────────────────
+    document.getElementById('btn-back').addEventListener('click', () => {
+      if (currentStep > 1) updateUI(currentStep - 1, 'back');
+    });
+
+    // ── Form submit validation ─────────────────────────────────────────
+    document.getElementById('onboard-form').addEventListener('submit', (e) => {
+      const requiredFields = ['class_level', 'language', 'dopamine_schema', 'cortisol_response', 'von_restorff', 'memory_decay', 'social_ego'];
+      for (const field of requiredFields) {
+        if (!answers[field]) {
+          e.preventDefault();
+          alert('Please complete all steps before continuing.');
+          return;
+        }
+      }
+      // All good — let it submit
+    });
+
+    // ── Init ──────────────────────────────────────────────────────────
+    document.addEventListener('DOMContentLoaded', () => {
+      buildDots();
+      bindClassCards();
+      bindLangCards();
+
+      const steps = document.querySelectorAll('.step-container');
+      steps.forEach((stepEl, idx) => {
+        // Steps 3-7 use opt-label, step 2 uses lang-card, step 1 uses class-card
+        if (idx >= 2) {
+          bindRadioAdvance(stepEl, idx + 1);
+        }
+      });
+
+      // Re-check if coming back: restore selected states
+      // (handled by radio.checked state in re-visits)
+    });
+  </script>
+  <script src="/js/tracking.js" defer></script>
 </body>
 </html>
