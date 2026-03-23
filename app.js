@@ -944,11 +944,11 @@ res.render("mnemonic", {user : req.session.user}) ;
 })
 
 
-// app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
-// {
-//     res.render("solutionfinder", {savedSolution : null}) ; 
-// }
-// )
+app.get("/tools/solution-finder" ,isLoggedIn , function (req,res)
+{
+    res.render("solutionfinder", {savedSolution : null}) ; 
+}
+)
 
 
 // ─────────────────────────────────────────────────────────────────────────────
