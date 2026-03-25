@@ -58,7 +58,7 @@ const LearningInteractionSchema = new Schema({
   },
   student_class: { 
     type: String,
-    enum: ['9', '10', '11', '12']
+    // enum: ['9', '10', '11', '12']
   },
   exam_year: {
     type: Number,
