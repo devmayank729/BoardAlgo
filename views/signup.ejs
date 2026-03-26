@@ -165,7 +165,11 @@
                     </div>
                     <div>
                         <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Class</label>
-                        <input type="text" name="Class" placeholder="e.g. 10th, 12th" class="w-full p-3 rounded-lg glass-input text-white placeholder-slate-600 focus:text-white">
+                        <select name="Class" class="w-full p-3 rounded-lg glass-input text-white focus:text-white cursor-pointer">
+                            <option value="" disabled selected class="bg-[#0f172a] text-slate-400">Select Class</option>
+                            <option value="10th" class="bg-[#0f172a] text-white">10th</option>
+                            <option value="12th" class="bg-[#0f172a] text-white">12th</option>
+                        </select>
                     </div>
                 </div>
 
@@ -197,6 +201,11 @@
                         <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Parent's Phone</label>
                         <input type="tel" name="parent_phone_number" id="parent-phone" placeholder="Optional" class="w-full p-3 rounded-lg glass-input text-white placeholder-slate-600">
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Referral Code</label>
+                    <input type="text" name="referral_code" placeholder="Optional" class="w-full p-3 rounded-lg glass-input text-white placeholder-slate-600 focus:text-white">
                 </div>
 
                 <div class="flex items-start gap-3 p-4 rounded-xl border border-white/5 bg-white/5">
@@ -299,12 +308,6 @@
 
     </script>
 
-
-
-
-
-
-
 <script>
   window.onload = function () {
     // Initialize the Google Client to ONLY ask for basic profile info
@@ -346,9 +349,6 @@
     }
   }
 </script>
-
-
-    
 
     <script src="/js/tracking.js" defer></script>
     

@@ -1,807 +1,1884 @@
 <!DOCTYPE html>
-<html lang="en" class="dark scroll-smooth">
+<html lang="en" class="dark">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>BoardAlgo | Cognitive Ingestion Engine</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>BoardAlgo | Memory Synthesizer</title>
 
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Poppins:wght@500;600;700;800&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/mhchem.min.js"></script>
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-  <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        window.__INJECTED_RESULT__ = <%- typeof savedSolution !== "undefined" ? JSON.stringify(savedSolution) : "null" %>;
+    </script>
 
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <script defer src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-
-<script>
-window.__INJECTED_RESULT__ = <%- typeof savedSolution !== "undefined" ? JSON.stringify(savedSolution) : "null" %>;
-</script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          colors: {
-            brand: {
-              primary: '#6C2BD9',
-              accent: '#16A34A',
-              dark: '#020617',
-              surface: '#0f172a',
-              panel: 'rgba(15, 23, 42, 0.6)',
-              border: 'rgba(255, 255, 255, 0.08)',
-              lightbg: '#F9FAFB',
-              lightpanel: 'rgba(255, 255, 255, 0.8)',
-              lightborder: '#E5E7EB'
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: { brand: { black:'#020617', surface:'#0f172a', border:'#1e293b', primary:'#6C2BD9', accent:'#16A34A' } },
+                    fontFamily: { sans:['Inter','sans-serif'], display:['Poppins','sans-serif'], mono:['Space Mono','monospace'] }
+                }
             }
-          },
-          fontFamily: {
-            sans: ['Inter','sans-serif'],
-            display: ['Poppins','sans-serif'],
-            mono: ['ui-monospace','SFMono-Regular','Menlo','Monaco','Consolas','monospace']
-          },
-          boxShadow: {
-            'glow-primary': '0 0 20px rgba(108, 43, 217, 0.5)',
-            'glow-accent': '0 0 20px rgba(22, 163, 74, 0.8)'
-          }
         }
-      }
-    }
-  </script>
+    </script>
 
-  <style>
-    body { overflow-x:hidden; transition: background-color .5s ease, color .5s ease; }
-    #canvas-container { position: fixed; top:0; left:0; width:100vw; height:100vh; z-index:0; pointer-events:none; }
-    @media (prefers-reduced-motion: reduce) { #canvas-container{display:none!important} .spring-slide{transition:none!important} }
-    .hud-panel{ background: var(--panel-bg, rgba(15,23,42,.7)); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border:1px solid var(--panel-border, rgba(255,255,255,.1)); box-shadow:0 8px 32px 0 rgba(0,0,0,.3); transition:all .5s ease; }
-    html.dark .hud-panel{ --panel-bg: rgba(15,23,42,.7); --panel-border: rgba(255,255,255,.1); }
-    html:not(.dark) .hud-panel{ --panel-bg: rgba(255,255,255,.85); --panel-border: rgba(0,0,0,.1); box-shadow: 0 8px 32px 0 rgba(0,0,0,.05); }
-    .spring-slide{ transition: transform .6s cubic-bezier(.34,1.56,.64,1), background-color .3s ease; }
-    ::-webkit-scrollbar{ width:6px } ::-webkit-scrollbar-track{ background:transparent } ::-webkit-scrollbar-thumb{ background:#6C2BD9; border-radius:4px }
-    textarea:focus{ outline:none }
-    .input-wrapper:focus-within{ border-color:#6C2BD9; box-shadow: 0 0 25px rgba(108,43,217,0.2) inset, 0 0 20px rgba(108,43,217,0.3) }
-    .tooltip{ visibility:hidden; opacity:0; transition:opacity .3s ease, transform .3s ease; transform:translateY(10px); }
-    .has-tooltip:hover .tooltip, .has-tooltip:focus .tooltip{ visibility:visible; opacity:1; transform:translateY(0) }
-    .wireframe-bg{ background-image: linear-gradient(var(--grid-color) 1px, transparent 1px), linear-gradient(90deg, var(--grid-color) 1px, transparent 1px); background-size:20px 20px }
-    html.dark .wireframe-bg{ --grid-color: rgba(255,255,255,.05) } html:not(.dark) .wireframe-bg{ --grid-color: rgba(0,0,0,.05) }
-    .file-preview { max-height: 120px; object-fit:contain; border-radius:8px; }
-    .short-toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: 24px; background: rgba(0,0,0,0.8); color: white; padding: 8px 12px; border-radius: 8px; font-size: 14px; z-index: 60; }
-    /* KaTeX overrides for better dark mode contrast if needed */
-    .katex-display { margin: 1em 0; overflow-x: auto; overflow-y: hidden; padding-top: 0.5em; padding-bottom: 0.5em; }
-  </style>
+    <style>
+        /* ── Reset ───────────────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; }
+
+        /* ════════════════════════════════════════════════════════════════════
+           LIGHT MODE — Complete overhaul
+        ════════════════════════════════════════════════════════════════════ */
+        body {
+            background-color: #f0f4ff;
+            background-image:
+                radial-gradient(ellipse 70% 50% at 20% 10%, rgba(108,43,217,0.06) 0%, transparent 60%),
+                radial-gradient(ellipse 60% 40% at 80% 90%, rgba(22,163,74,0.05) 0%, transparent 60%);
+            color: #0f172a;
+            transition: background-color .3s, color .3s;
+            overflow-x: hidden;
+        }
+        .dark body {
+            background-color: #020617;
+            background-image: radial-gradient(ellipse 80% 50% at 50% -20%, rgba(108,43,217,0.12), transparent);
+            color: #f8fafc;
+        }
+
+        /* ── Glass — light mode is now a real card ────────────────────────── */
+        .glass {
+            background: #ffffff;
+            border: 1px solid rgba(108,43,217,0.1);
+            box-shadow: 0 2px 16px rgba(108,43,217,0.06), 0 1px 4px rgba(0,0,0,0.04);
+            transition: all .3s ease;
+        }
+        .dark .glass {
+            background: rgba(15,23,42,0.72);
+            border: 1px solid rgba(255,255,255,0.08);
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+            box-shadow: none;
+        }
+
+        /* ── Scrollbar ───────────────────────────────────────────────────── */
+        ::-webkit-scrollbar { width:6px; height:6px; }
+        ::-webkit-scrollbar-track { background:transparent; }
+        ::-webkit-scrollbar-thumb { background:rgba(108,43,217,0.25); border-radius:3px; }
+
+        /* ── Glow dot ────────────────────────────────────────────────────── */
+        .glow-dot { width:7px; height:7px; border-radius:50%; background:#16A34A; box-shadow:0 0 6px #16A34A; display:inline-block; animation:dotpulse 2s ease-in-out infinite; flex-shrink:0; }
+        @keyframes dotpulse { 0%,100%{opacity:1;transform:scale(1);}50%{opacity:.55;transform:scale(.82);} }
+
+        /* ── Avatar ring ─────────────────────────────────────────────────── */
+        .avatar-ring { background:conic-gradient(#6C2BD9 0%,#a78bfa 45%,#16A34A 70%,#6C2BD9 100%); border-radius:50%; padding:2px; display:inline-flex; flex-shrink:0; }
+        .avatar-inner { border-radius:50%; overflow:hidden; display:flex; align-items:center; justify-content:center; font-family:'Poppins',sans-serif; font-weight:700; }
+
+        /* ── Nav buttons ─────────────────────────────────────────────────── */
+        .logout-btn { display:flex; align-items:center; gap:6px; padding:7px 13px; border-radius:9px; border:1px solid rgba(239,68,68,0.28); background:rgba(239,68,68,0.07); color:#f87171; font-size:.8rem; font-weight:500; text-decoration:none; font-family:'Inter',sans-serif; transition:all .2s; }
+        .logout-btn:hover { background:rgba(239,68,68,0.15); border-color:rgba(239,68,68,0.45); }
+        .reconfig-btn { display:inline-flex; align-items:center; gap:5px; padding:5px 12px; border-radius:8px; font-size:.75rem; font-weight:600; border:1px solid rgba(239,68,68,0.22); background:rgba(239,68,68,0.05); color:#f87171; cursor:pointer; font-family:'Inter',sans-serif; transition:all .2s; }
+        .reconfig-btn:hover { background:rgba(239,68,68,0.12); border-color:rgba(239,68,68,0.4); }
+
+        /* ── Input ───────────────────────────────────────────────────────── */
+        #brain-dump { outline:none; resize:none; caret-color:#6C2BD9; line-height:1.6; }
+        .input-shell { border: 1.5px solid rgba(108,43,217,0.15) !important; }
+        .input-shell:focus-within { border-color:rgba(108,43,217,0.5)!important; box-shadow:0 0 0 3px rgba(108,43,217,0.1),0 0 30px rgba(108,43,217,0.08); }
+        html:not(.dark) #brain-dump { color: #1e293b; }
+        html:not(.dark) #brain-dump::placeholder { color: #94a3b8; }
+
+        /* ── Mode buttons ─────────────────────────────────────────────────── */
+        /* Light: explicit white-ish background so buttons never go transparent */
+        html:not(.dark) .mode-btn { background: #fafbff; }
+        /* Dark: glass card — must be explicit or browser renders native white button */
+        .dark .mode-btn {
+            background: rgba(255,255,255,0.04) !important;
+            border-color: rgba(255,255,255,0.09) !important;
+        }
+        /* Mode radio circle default — JS overrides on selection */
+        .mode-btn .mode-radio { border-color: rgba(0,0,0,0.2); }
+        .dark .mode-btn .mode-radio { border-color: rgba(255,255,255,0.22); }
+
+        /* ── Deep scan btn ───────────────────────────────────────────────── */
+        .deepscan-btn { border:1.5px solid rgba(108,43,217,0.12); transition:all .3s ease; }
+        .dark .deepscan-btn { border-color:rgba(255,255,255,0.1); }
+        .deepscan-btn.active { border-color:#16A34A!important; background:rgba(22,163,74,0.08)!important; box-shadow:0 0 20px rgba(22,163,74,0.2); }
+
+        /* ── Lang pill ───────────────────────────────────────────────────── */
+        .lang-track { display:flex; background:rgba(108,43,217,0.05); border:1.5px solid rgba(108,43,217,0.1); border-radius:10px; padding:3px; gap:2px; }
+        .dark .lang-track { background:rgba(255,255,255,0.05); border-color:rgba(255,255,255,0.08); }
+        .lang-btn { flex:1; padding:6px 8px; border-radius:7px; border:none; cursor:pointer; font-family:'Inter',sans-serif; font-size:.72rem; font-weight:600; transition:all .25s; white-space:nowrap; background:transparent; color:#64748b; }
+        .dark .lang-btn { color:#94a3b8; }
+        .lang-btn.active { background:#6C2BD9; color:#fff; box-shadow:0 2px 10px rgba(108,43,217,0.4); }
+        .lang-btn:not(.active):hover { background:rgba(108,43,217,0.08); color:#6C2BD9; }
+
+        /* ── Generate button ─────────────────────────────────────────────── */
+        .gen-btn { background:linear-gradient(135deg,#6C2BD9,#7c3aed); box-shadow:0 4px 20px rgba(108,43,217,0.4); transition:all .3s cubic-bezier(.34,1.56,.64,1); position:relative; overflow:hidden; }
+        .gen-btn::before { content:''; position:absolute; inset:0; background:linear-gradient(135deg,rgba(255,255,255,0.15),transparent); border-radius:inherit; }
+        .gen-btn:hover { transform:translateY(-2px); box-shadow:0 8px 30px rgba(108,43,217,0.55); }
+        .gen-btn:active { transform:scale(.97); }
+
+        /* ── Processing rings ────────────────────────────────────────────── */
+        #ui-state-processing { background:#ffffff; }
+        .dark #ui-state-processing { background:rgba(2,6,23,0.92); backdrop-filter:blur(20px); }
+        .ring-outer { border:2px solid rgba(108,43,217,0.15); animation:spin 8s linear infinite; }
+        .ring-mid   { border:2px solid transparent; border-top-color:#6C2BD9; animation:spin 1.1s linear infinite; }
+        .ring-inner { border:1px solid rgba(108,43,217,0.3); border-top-color:rgba(108,43,217,0.6); animation:spin .7s linear infinite reverse; }
+        @keyframes spin { to { transform:rotate(360deg); } }
+
+        /* ── Terminal ────────────────────────────────────────────────────── */
+        .terminal-line { opacity:0; transform:translateY(6px); animation:termReveal .35s ease forwards; }
+        @keyframes termReveal { to { opacity:1; transform:translateY(0); } }
+
+        /* ── Progress bar ────────────────────────────────────────────────── */
+        #progress-bar { transition:width .5s ease; background:linear-gradient(90deg,#6C2BD9,#a855f7,#16A34A); background-size:200% 100%; animation:barShift 2s linear infinite; }
+        @keyframes barShift { 0%{background-position:0 0;}100%{background-position:-200% 0;} }
+
+        /* ── XP Bar ──────────────────────────────────────────────────────── */
+        .xp-bar-wrap { display:flex; align-items:center; gap:7px; padding:4px 10px; border-radius:8px; background:rgba(108,43,217,0.06); border:1px solid rgba(108,43,217,0.14); }
+        .xp-bar-track { width:60px; height:4px; border-radius:2px; background:rgba(108,43,217,0.15); overflow:hidden; }
+        .xp-bar-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#6C2BD9,#a855f7); transition:width .6s cubic-bezier(.34,1.3,.64,1); }
+        .xp-label { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; color:#a78bfa; letter-spacing:.06em; white-space:nowrap; }
+        .level-badge { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; padding:2px 6px; border-radius:4px; letter-spacing:.04em; background:rgba(108,43,217,0.14); color:#a78bfa; border:1px solid rgba(108,43,217,0.25); }
+
+        /* ── Stats strip ─────────────────────────────────────────────────── */
+        .stats-strip { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 16px; border-bottom:1px solid rgba(108,43,217,0.07); background:rgba(108,43,217,0.02); }
+        .dark .stats-strip { background:rgba(0,0,0,0.2); border-bottom-color:rgba(255,255,255,0.04); }
+        .stat-item { display:flex; align-items:center; gap:4px; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; color:#64748b; letter-spacing:.04em; }
+        .dark .stat-item { color:#475569; }
+        .stat-item .stat-val { color:#6C2BD9; }
+        .dark .stat-item .stat-val { color:#a78bfa; }
+        .stat-divider { width:1px; height:12px; background:rgba(108,43,217,0.1); flex-shrink:0; }
+        .dark .stat-divider { background:rgba(255,255,255,0.07); }
+
+        /* ── XP pop + Achievement ────────────────────────────────────────── */
+        .xp-gain-pop { position:fixed; right:20px; bottom:80px; z-index:600; display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:12px; background:rgba(108,43,217,0.92); color:#fff; font-family:'Space Mono',monospace; font-size:12px; font-weight:700; box-shadow:0 8px 30px rgba(108,43,217,0.45); border:1px solid rgba(255,255,255,0.15); animation:xpPopIn .4s cubic-bezier(.34,1.56,.64,1) forwards; backdrop-filter:blur(10px); }
+        @keyframes xpPopIn { from{opacity:0;transform:translateY(16px) scale(.9);}to{opacity:1;transform:translateY(0) scale(1);} }
+        .achievement-banner { position:fixed; top:72px; right:16px; z-index:600; display:flex; align-items:center; gap:10px; padding:12px 16px; border-radius:14px; max-width:300px; background:rgba(15,23,42,0.96); border:1px solid rgba(108,43,217,0.3); box-shadow:0 12px 40px rgba(0,0,0,0.4); animation:achieveIn .45s cubic-bezier(.34,1.3,.64,1) forwards; backdrop-filter:blur(14px); }
+        @keyframes achieveIn { from{opacity:0;transform:translateX(30px);}to{opacity:1;transform:translateX(0);} }
+        .achieve-icon { width:36px; height:36px; border-radius:10px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:18px; background:rgba(108,43,217,0.15); border:1px solid rgba(108,43,217,0.25); }
+        .achieve-title { font-family:'Poppins',sans-serif; font-size:.78rem; font-weight:700; color:#e2e8f0; margin-bottom:2px; }
+        .achieve-sub   { font-family:'Space Mono',monospace; font-size:9px; color:#64748b; letter-spacing:.04em; }
+
+        /* ── Memory strength ─────────────────────────────────────────────── */
+        .memory-strength-wrap { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:10px; margin-top:12px; background:rgba(22,163,74,0.05); border:1px solid rgba(22,163,74,0.15); }
+        .ms-label { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#16A34A; white-space:nowrap; }
+        .ms-track { flex:1; height:5px; border-radius:3px; background:rgba(22,163,74,0.15); overflow:hidden; }
+        .ms-fill  { height:100%; border-radius:3px; background:linear-gradient(90deg,#16A34A,#4ade80); width:0%; transition:width 1.2s cubic-bezier(.34,1.3,.64,1); }
+        .ms-pct   { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; color:#16A34A; white-space:nowrap; }
+
+        /* ── Badges ──────────────────────────────────────────────────────── */
+        .badge { display:inline-flex; align-items:center; gap:3px; padding:2px 8px; border-radius:99px; font-size:.68rem; font-weight:700; letter-spacing:.04em; text-transform:uppercase; }
+        .badge-lore { background:rgba(108,43,217,0.12); color:#7c3aed; border:1px solid rgba(108,43,217,0.25); }
+        .dark .badge-lore { color:#a78bfa; }
+        .badge-hack { background:rgba(22,163,74,0.1);  color:#16a34a; border:1px solid rgba(22,163,74,0.2); }
+        .dark .badge-hack { color:#4ade80; }
+        .badge-deep { background:rgba(59,130,246,0.1); color:#2563eb; border:1px solid rgba(59,130,246,0.2); }
+        .dark .badge-deep { color:#60a5fa; }
+        .streak-pill { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:99px; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; letter-spacing:.04em; background:rgba(251,191,36,0.1); color:#d97706; border:1px solid rgba(251,191,36,0.2); }
+        .dark .streak-pill { color:#f59e0b; }
+
+        /* ── Result card ─────────────────────────────────────────────────── */
+        .result-card { border:1px solid rgba(108,43,217,0.12); border-radius:20px; transition:border-color .3s,box-shadow .3s; position:relative; overflow:hidden; background:#ffffff; box-shadow:0 4px 24px rgba(108,43,217,0.07), 0 1px 6px rgba(0,0,0,0.04); }
+        .dark .result-card { background:rgba(15,23,42,0.7); box-shadow:none; }
+        .result-card::before { content:''; position:absolute; top:0; left:0; right:0; height:2px; background:linear-gradient(90deg,transparent,rgba(108,43,217,0.5),rgba(22,163,74,0.3),transparent); }
+        .result-card:hover { border-color:rgba(108,43,217,0.3); box-shadow:0 12px 40px rgba(108,43,217,0.12); }
+        .dark .result-card:hover { box-shadow:0 12px 40px rgba(108,43,217,0.1); }
+        .part-label { font-family:'Space Mono',monospace; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.1em; color:#7c3aed; display:flex; align-items:center; gap:6px; }
+        .dark .part-label { color:#a78bfa; }
+
+        /* ════════════════════════════════════════════════════════════════════
+           CONCEPT BOX — improved light mode
+        ════════════════════════════════════════════════════════════════════ */
+        .concept-box { border-radius:14px; overflow:hidden; margin-bottom:20px; border:1px solid rgba(108,43,217,0.1); background:#fafbff; }
+        .dark .concept-box { background:rgba(8,10,22,0.6); border-color:rgba(255,255,255,0.07); }
+        .concept-box-header { display:flex; align-items:center; justify-content:space-between; padding:9px 14px; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.09em; border-bottom:1px solid rgba(108,43,217,0.08); }
+        .dark .concept-box-header { border-bottom-color:rgba(255,255,255,0.06); }
+        .concept-box[data-type="formula"] .concept-box-header,
+        .concept-box[data-type="table"] .concept-box-header { color:#2563eb; background:rgba(59,130,246,0.06); border-bottom-color:rgba(59,130,246,0.12); }
+        .dark .concept-box[data-type="formula"] .concept-box-header,
+        .dark .concept-box[data-type="table"] .concept-box-header { color:#60a5fa; background:rgba(59,130,246,0.08); }
+        .concept-box[data-type="reaction"] .concept-box-header,
+        .concept-box[data-type="steps"] .concept-box-header { color:#15803d; background:rgba(22,163,74,0.06); border-bottom-color:rgba(22,163,74,0.12); }
+        .dark .concept-box[data-type="reaction"] .concept-box-header,
+        .dark .concept-box[data-type="steps"] .concept-box-header { color:#4ade80; background:rgba(22,163,74,0.08); }
+        .concept-box[data-type="list"] .concept-box-header,
+        .concept-box[data-type="statement"] .concept-box-header { color:#6C2BD9; background:rgba(108,43,217,0.06); border-bottom-color:rgba(108,43,217,0.12); }
+        .dark .concept-box[data-type="list"] .concept-box-header,
+        .dark .concept-box[data-type="statement"] .concept-box-header { color:#a78bfa; background:rgba(108,43,217,0.08); }
+        .concept-box-body { padding:14px 16px; }
+
+        /* ════════════════════════════════════════════════════════════════════
+           LATEX — FIX: proper rendering, proper styling
+        ════════════════════════════════════════════════════════════════════ */
+        .latex-render { display:flex; flex-direction:column; gap:6px; }
+        .latex-line {
+            padding:10px 12px;
+            overflow-x:auto;
+            border-bottom:1px solid rgba(0,0,0,0.04);
+            -webkit-overflow-scrolling:touch;
+            border-radius:8px;
+            background:rgba(59,130,246,0.03);
+        }
+        .latex-line:last-child { border-bottom:none; }
+        .dark .latex-line { border-bottom-color:rgba(255,255,255,0.04); background:rgba(59,130,246,0.06); }
+        .latex-render .katex { font-size:1.1rem!important; }
+        .latex-render .katex-display { margin:0; overflow-x:auto; overflow-y:hidden; }
+
+        /* Light mode KaTeX — dark text */
+        html:not(.dark) .latex-render .katex { color: #1e293b !important; }
+        html:not(.dark) .latex-render .katex .mord,
+        html:not(.dark) .latex-render .katex .mop,
+        html:not(.dark) .latex-render .katex .mrel,
+        html:not(.dark) .latex-render .katex .mopen,
+        html:not(.dark) .latex-render .katex .mclose,
+        html:not(.dark) .latex-render .katex .mpunct,
+        html:not(.dark) .latex-render .katex .minner,
+        html:not(.dark) .latex-render .katex span { color:#1e293b !important; }
+        html:not(.dark) .latex-render .katex .frac-line { background:#1e293b !important; }
+        html:not(.dark) .latex-render .katex svg path { fill:#1e293b !important; }
+        html:not(.dark) .latex-render .katex .rule { background:#1e293b !important; }
+
+        /* Dark mode KaTeX — light text */
+        .dark .latex-render .katex { color:#e2e8f0 !important; }
+        .dark .latex-render .katex .mord,
+        .dark .latex-render .katex .mop,
+        .dark .latex-render .katex .mrel,
+        .dark .latex-render .katex .mopen,
+        .dark .latex-render .katex .mclose,
+        .dark .latex-render .katex .mpunct,
+        .dark .latex-render .katex .minner,
+        .dark .latex-render .katex span { color:#e2e8f0 !important; }
+        .dark .latex-render .katex .frac-line { background:#e2e8f0 !important; }
+        .dark .latex-render .katex svg path { fill:#e2e8f0 !important; }
+        .dark .latex-render .katex .rule { background:#e2e8f0 !important; }
+
+        /* Formula fallback plain text — better styled */
+        .formula-plain-fallback {
+            font-family: 'Space Mono', monospace;
+            font-size: .92rem;
+            line-height: 1.8;
+            color: #1e293b;
+            padding: 10px 14px;
+            background: rgba(59,130,246,0.04);
+            border-radius: 8px;
+            border-left: 3px solid #3b82f6;
+            overflow-x: auto;
+            white-space: pre-wrap;
+            word-break: break-word;
+        }
+        .dark .formula-plain-fallback { color:#e2e8f0; background:rgba(59,130,246,0.08); }
+
+        .plain-toggle-btn { display:inline-flex; align-items:center; gap:5px; padding:3px 9px; border-radius:7px; cursor:pointer; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; border:none; background:rgba(108,43,217,0.06); color:#6C2BD9; transition:all .2s; }
+        .dark .plain-toggle-btn { background:rgba(255,255,255,0.06); color:#94a3b8; }
+        .plain-toggle-btn:hover { background:rgba(108,43,217,0.12); color:#6C2BD9; }
+        .cc-list { display:flex; flex-direction:column; gap:3px; }
+        .cc-item { display:flex; align-items:center; gap:10px; padding:5px 8px; border-radius:7px; transition:background .15s; }
+        .cc-item:hover { background:rgba(108,43,217,0.05); }
+        .dark .cc-item:hover { background:rgba(108,43,217,0.1); }
+        .cc-num { width:20px; height:20px; border-radius:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; background:rgba(108,43,217,0.1); color:#6C2BD9; }
+        .dark .cc-num { background:rgba(108,43,217,0.18); color:#a78bfa; }
+        .cc-text { font-family:'Space Mono',monospace; font-size:.78rem; color:#1e293b; line-height:1.5; }
+        .dark .cc-text { color:#e2e8f0; }
+        .cc-steps { display:flex; flex-direction:column; gap:5px; }
+        .cc-step { display:flex; align-items:flex-start; gap:10px; padding:6px 8px; border-radius:7px; transition:background .15s; }
+        .cc-step:hover { background:rgba(22,163,74,0.05); }
+        .dark .cc-step:hover { background:rgba(22,163,74,0.08); }
+        .cc-step-num { width:20px; height:20px; border-radius:6px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; background:rgba(22,163,74,0.1); color:#15803d; margin-top:1px; }
+        .dark .cc-step-num { background:rgba(22,163,74,0.15); color:#4ade80; }
+        .cc-step-text { font-family:'Space Mono',monospace; font-size:.78rem; color:#1e293b; line-height:1.6; flex:1; }
+        .dark .cc-step-text { color:#e2e8f0; }
+        .cc-plain-line { font-family:'Space Mono',monospace; font-size:.78rem; color:#1e293b; line-height:1.8; margin:0; padding:2px 0; }
+        .dark .cc-plain-line { color:#e2e8f0; }
+        .cc-plain-wrap { display:flex; flex-direction:column; gap:3px; }
+
+        /* ── Mnemonic ────────────────────────────────────────────────────── */
+        .mnemonic-section-wrap { display:flex; flex-direction:column; gap:0; }
+        .mnemonic-hero { border-radius:14px; position:relative; overflow:hidden; padding:18px 20px; }
+        .mnemonic-hero[data-mode="lore"] { background:linear-gradient(135deg,rgba(108,43,217,0.07),rgba(230,230,255,0.4)); border:1.5px solid rgba(108,43,217,0.2); }
+        .dark .mnemonic-hero[data-mode="lore"] { background:linear-gradient(135deg,rgba(108,43,217,0.12),rgba(5,8,20,0.5)); }
+        .mnemonic-hero[data-mode="hack"] { background:linear-gradient(135deg,rgba(22,163,74,0.07),rgba(230,255,240,0.4)); border:1.5px solid rgba(22,163,74,0.2); }
+        .dark .mnemonic-hero[data-mode="hack"] { background:linear-gradient(135deg,rgba(22,163,74,0.10),rgba(3,12,6,0.5)); }
+        .mnemonic-hero[data-mode="deep"] { background:linear-gradient(135deg,rgba(59,130,246,0.07),rgba(230,240,255,0.4)); border:1.5px solid rgba(59,130,246,0.2); }
+        .dark .mnemonic-hero[data-mode="deep"] { background:linear-gradient(135deg,rgba(59,130,246,0.10),rgba(3,6,20,0.5)); }
+        .mnemonic-hero::before { content:''; position:absolute; top:0; left:0; bottom:0; width:4px; border-radius:4px 0 0 4px; }
+        .mnemonic-hero[data-mode="lore"]::before { background:linear-gradient(180deg,#6C2BD9,#a855f7); }
+        .mnemonic-hero[data-mode="hack"]::before { background:linear-gradient(180deg,#16A34A,#4ade80); }
+        .mnemonic-hero[data-mode="deep"]::before { background:linear-gradient(180deg,#3b82f6,#60a5fa); }
+        .mnemonic-hero::after { content:''; position:absolute; top:-50px; right:-50px; width:180px; height:180px; border-radius:50%; pointer-events:none; opacity:.5; }
+        .mnemonic-hero[data-mode="lore"]::after { background:radial-gradient(circle,rgba(108,43,217,0.12),transparent 70%); }
+        .mnemonic-hero[data-mode="hack"]::after { background:radial-gradient(circle,rgba(22,163,74,0.10),transparent 70%); }
+        .mnemonic-hero[data-mode="deep"]::after { background:radial-gradient(circle,rgba(59,130,246,0.10),transparent 70%); }
+        .mnemonic-label-row { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; display:flex; align-items:center; gap:6px; margin-bottom:9px; position:relative; z-index:1; }
+        .hook-context-text { font-size:.78rem; font-family:'Inter',sans-serif; color:#64748b; font-style:italic; line-height:1.5; margin-bottom:12px; position:relative; z-index:1; }
+        .hook-text { line-height:1.35; position:relative; z-index:1; }
+        .hook-text strong { font-weight:900; }
+        .mnemonic-hero[data-mode="lore"] .hook-text strong { color:#6C2BD9; }
+        .mnemonic-hero[data-mode="hack"] .hook-text strong { color:#16A34A; }
+        .mnemonic-hero[data-mode="deep"] .hook-text strong { color:#3b82f6; }
+        .dark .mnemonic-hero[data-mode="lore"] .hook-text strong { color:#a78bfa; text-shadow:0 0 18px rgba(167,139,250,0.35); }
+        .dark .mnemonic-hero[data-mode="hack"] .hook-text strong { color:#4ade80; text-shadow:0 0 18px rgba(74,222,128,0.3); }
+        .dark .mnemonic-hero[data-mode="deep"] .hook-text strong { color:#60a5fa; text-shadow:0 0 18px rgba(96,165,250,0.3); }
+        .acronym-badge-row { display:flex; align-items:center; gap:5px; flex-wrap:wrap; margin-bottom:12px; position:relative; z-index:1; }
+        .acronym-row-label { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; opacity:.6; }
+        .acronym-letter-pill { width:30px; height:30px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; font-family:'Space Mono',monospace; font-size:.8rem; font-weight:700; flex-shrink:0; transition:all .2s; }
+        .mnemonic-hero[data-mode="hack"] .acronym-letter-pill { background:rgba(22,163,74,0.12); color:#16A34A; border:1.5px solid rgba(22,163,74,0.25); }
+        .mnemonic-hero[data-mode="lore"] .acronym-letter-pill { background:rgba(108,43,217,0.12); color:#6C2BD9; border:1.5px solid rgba(108,43,217,0.25); }
+        .mnemonic-hero[data-mode="deep"] .acronym-letter-pill { background:rgba(59,130,246,0.12); color:#2563eb; border:1.5px solid rgba(59,130,246,0.25); }
+        .dark .mnemonic-hero[data-mode="hack"] .acronym-letter-pill { color:#4ade80; }
+        .dark .mnemonic-hero[data-mode="lore"] .acronym-letter-pill { color:#a78bfa; }
+        .dark .mnemonic-hero[data-mode="deep"] .acronym-letter-pill { color:#60a5fa; }
+        .word-chips-container { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:10px; position:relative; z-index:1; }
+        .word-chip { display:inline-flex; align-items:baseline; gap:1px; padding:7px 12px 7px 8px; border-radius:10px; cursor:pointer; font-family:'Poppins',sans-serif; font-size:.95rem; font-weight:600; transition:transform .18s,box-shadow .18s,background .18s,border-color .18s; position:relative; user-select:none; -webkit-tap-highlight-color:transparent; }
+        .mnemonic-hero[data-mode="hack"] .word-chip { background:rgba(22,163,74,0.08); border:1.5px solid rgba(22,163,74,0.2); color:#1e293b; }
+        .mnemonic-hero[data-mode="lore"] .word-chip { background:rgba(108,43,217,0.08); border:1.5px solid rgba(108,43,217,0.2); color:#1e293b; }
+        .mnemonic-hero[data-mode="deep"] .word-chip { background:rgba(59,130,246,0.08); border:1.5px solid rgba(59,130,246,0.2); color:#1e293b; }
+        .dark .mnemonic-hero[data-mode="hack"] .word-chip,
+        .dark .mnemonic-hero[data-mode="lore"] .word-chip,
+        .dark .mnemonic-hero[data-mode="deep"] .word-chip { color:#f1f5f9; }
+        .mnemonic-hero[data-mode="hack"] .word-chip:hover,.mnemonic-hero[data-mode="hack"] .word-chip.chip-active { background:rgba(22,163,74,0.18); border-color:rgba(22,163,74,0.4); transform:translateY(-3px); box-shadow:0 6px 14px rgba(22,163,74,0.2); }
+        .mnemonic-hero[data-mode="lore"] .word-chip:hover,.mnemonic-hero[data-mode="lore"] .word-chip.chip-active { background:rgba(108,43,217,0.18); border-color:rgba(108,43,217,0.4); transform:translateY(-3px); box-shadow:0 6px 14px rgba(108,43,217,0.2); }
+        .mnemonic-hero[data-mode="deep"] .word-chip:hover,.mnemonic-hero[data-mode="deep"] .word-chip.chip-active { background:rgba(59,130,246,0.18); border-color:rgba(59,130,246,0.4); transform:translateY(-3px); box-shadow:0 6px 14px rgba(59,130,246,0.2); }
+        .chip-key-letter { font-size:1.1em; font-weight:800; }
+        .mnemonic-hero[data-mode="hack"] .chip-key-letter { color:#16A34A; }
+        .mnemonic-hero[data-mode="lore"] .chip-key-letter { color:#6C2BD9; }
+        .mnemonic-hero[data-mode="deep"] .chip-key-letter { color:#2563eb; }
+        .dark .mnemonic-hero[data-mode="hack"] .chip-key-letter { color:#4ade80; }
+        .dark .mnemonic-hero[data-mode="lore"] .chip-key-letter { color:#a78bfa; }
+        .dark .mnemonic-hero[data-mode="deep"] .chip-key-letter { color:#60a5fa; }
+        .chip-rest-word { font-weight:600; transition:opacity .25s; }
+        .word-chip.chip-locked { border-color:rgba(22,163,74,0.5)!important; background:rgba(22,163,74,0.1)!important; }
+        .mnemonic-full-sentence { font-size:.8rem; color:rgba(71,85,105,0.65); font-family:'Inter',sans-serif; font-style:italic; margin-bottom:10px; line-height:1.5; position:relative; z-index:1; }
+        .dark .mnemonic-full-sentence { color:rgba(148,163,184,0.55); }
+        .test-mode-btn { padding:5px 10px; border-radius:8px; border:1px solid rgba(108,43,217,0.22); background:rgba(108,43,217,0.06); color:#6C2BD9; font-size:.68rem; font-weight:700; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.06em; cursor:pointer; transition:all .2s; display:inline-flex; align-items:center; gap:5px; }
+        .dark .test-mode-btn { color:#a78bfa; }
+        .test-mode-btn:hover { background:rgba(108,43,217,0.14); border-color:rgba(108,43,217,0.45); }
+        .test-mode-btn.active { background:rgba(108,43,217,0.18); border-color:#6C2BD9; color:#6C2BD9; }
+        .dark .test-mode-btn.active { color:#c4b5fd; }
+        .chip-tooltip { position:absolute; bottom:calc(100% + 10px); left:50%; transform:translateX(-50%); background:#1e293b; color:#f1f5f9; font-size:11px; font-family:'Space Mono',monospace; padding:7px 11px; border-radius:9px; white-space:nowrap; border:1px solid rgba(255,255,255,0.1); z-index:30; pointer-events:none; box-shadow:0 8px 24px rgba(0,0,0,0.45); }
+        .chip-tooltip::after { content:''; position:absolute; top:100%; left:50%; transform:translateX(-50%); border:6px solid transparent; border-top-color:#1e293b; }
+        .test-score-bar { height:3px; border-radius:2px; background:rgba(0,0,0,0.08); overflow:hidden; margin-top:8px; position:relative; z-index:1; }
+        .dark .test-score-bar { background:rgba(255,255,255,0.06); }
+        .test-score-fill { height:100%; border-radius:2px; background:linear-gradient(90deg,#16A34A,#4ade80); width:0%; transition:width .4s ease; }
+        .test-score-label { font-family:'Space Mono',monospace; font-size:9px; color:#64748b; margin-top:4px; position:relative; z-index:1; display:flex; align-items:center; justify-content:space-between; }
+
+        /* ── Decode ──────────────────────────────────────────────────────── */
+        .decode-toggle-btn { width:100%; padding:10px 14px; border-radius:10px; border:1.5px dashed rgba(108,43,217,0.18); background:rgba(108,43,217,0.03); color:#64748b; font-size:.7rem; font-weight:700; font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.09em; display:flex; align-items:center; gap:8px; cursor:pointer; transition:all .25s; margin-top:8px; position:relative; z-index:1; text-align:left; }
+        .dark .decode-toggle-btn { border-color:rgba(255,255,255,0.1); background:rgba(0,0,0,0.18); }
+        .decode-toggle-btn:hover { border-color:rgba(108,43,217,0.35); color:#6C2BD9; background:rgba(108,43,217,0.06); border-style:solid; }
+        .dark .decode-toggle-btn:hover { color:#a78bfa; }
+        .decode-toggle-btn[data-open="true"] { border-style:solid; border-color:rgba(108,43,217,0.25); color:#6C2BD9; background:rgba(108,43,217,0.04); }
+        .dark .decode-toggle-btn[data-open="true"] { color:#a78bfa; }
+        .decode-toggle-hint { margin-left:auto; font-size:9px; opacity:.45; }
+        .decode-content-wrapper { overflow:hidden; transition:max-height .45s cubic-bezier(.4,0,.2,1),opacity .3s ease,margin-top .3s ease; max-height:900px; opacity:1; margin-top:10px; }
+        .collapsed-decode { max-height:0!important; opacity:0!important; margin-top:0!important; }
+        .decode-map-grid { display:flex; flex-direction:column; gap:3px; padding:8px; border-radius:12px; margin-bottom:8px; background:rgba(108,43,217,0.03); border:1px solid rgba(108,43,217,0.08); }
+        .dark .decode-map-grid { background:rgba(0,0,0,0.35); border-color:rgba(255,255,255,0.06); }
+        .decode-map-row { display:flex; align-items:center; gap:10px; padding:6px 8px; border-radius:8px; transition:background .15s; }
+        .decode-map-row:hover { background:rgba(108,43,217,0.05); }
+        .dark .decode-map-row:hover { background:rgba(108,43,217,0.1); }
+        .decode-letter-badge { width:26px; height:26px; border-radius:7px; flex-shrink:0; display:flex; align-items:center; justify-content:center; font-family:'Space Mono',monospace; font-size:.72rem; font-weight:700; }
+        .decode-letter-badge[data-mode="hack"] { background:rgba(22,163,74,0.1); color:#15803d; border:1px solid rgba(22,163,74,0.2); }
+        .decode-letter-badge[data-mode="lore"] { background:rgba(108,43,217,0.1); color:#6C2BD9; border:1px solid rgba(108,43,217,0.2); }
+        .decode-letter-badge[data-mode="deep"] { background:rgba(59,130,246,0.1); color:#2563eb; border:1px solid rgba(59,130,246,0.2); }
+        .dark .decode-letter-badge[data-mode="hack"] { color:#4ade80; }
+        .dark .decode-letter-badge[data-mode="lore"] { color:#a78bfa; }
+        .dark .decode-letter-badge[data-mode="deep"] { color:#60a5fa; }
+        .decode-row-text { flex:1; display:flex; align-items:baseline; flex-wrap:wrap; gap:3px; min-width:0; }
+        .decode-word-label { font-family:'Poppins',sans-serif; font-weight:700; font-size:.8rem; color:#1e293b; }
+        .dark .decode-word-label { color:#e2e8f0; }
+        .decode-arrow { font-family:'Space Mono',monospace; font-size:.7rem; color:#94a3b8; flex-shrink:0; }
+        .decode-meaning { font-family:'Space Mono',monospace; font-size:.7rem; color:#475569; line-height:1.4; flex:1; }
+        .dark .decode-meaning { color:#94a3b8; }
+        .decode-full-text { font-family:'Space Mono',monospace; font-size:.7rem; line-height:1.7; padding-top:8px; margin-top:4px; border-top:1px solid rgba(108,43,217,0.07); color:#475569; }
+        .dark .decode-full-text { color:#94a3b8; border-top-color:rgba(255,255,255,0.06); }
+        .mapping-strip { background:rgba(108,43,217,0.03); border:1px solid rgba(108,43,217,0.08); border-radius:10px; padding:10px 14px; }
+        .dark .mapping-strip { background:rgba(0,0,0,0.3); border-color:rgba(255,255,255,0.06); }
+
+        /* ════════════════════════════════════════════════════════════════════
+           DND GAME — Complete redesign: engaging, game-like, memorable
+        ════════════════════════════════════════════════════════════════════ */
+        .dnd-game {
+            margin-top:12px;
+            border-radius:18px;
+            overflow:hidden;
+            border:2px solid rgba(108,43,217,0.25);
+            background:#f8f7ff;
+            box-shadow:0 8px 32px rgba(108,43,217,0.12), 0 2px 8px rgba(0,0,0,0.06);
+        }
+        .dark .dnd-game {
+            background:linear-gradient(160deg,rgba(15,10,35,0.98),rgba(8,10,28,0.95));
+            border-color:rgba(108,43,217,0.35);
+            box-shadow:0 0 40px rgba(108,43,217,0.15), inset 0 1px 0 rgba(255,255,255,0.05);
+        }
+        .dnd-game.hidden { display:none; }
+        .dnd-game.dnd-complete { border-color:rgba(22,163,74,0.5) !important; }
+        .dark .dnd-game.dnd-complete { box-shadow:0 0 40px rgba(22,163,74,0.2), inset 0 1px 0 rgba(255,255,255,0.05); }
+
+        /* Header */
+        .dnd-header {
+            display:flex; align-items:center; justify-content:space-between;
+            padding:12px 16px;
+            border-bottom:1.5px solid rgba(108,43,217,0.1);
+            background:rgba(108,43,217,0.05);
+        }
+        .dark .dnd-header { background:rgba(108,43,217,0.1); border-bottom-color:rgba(108,43,217,0.18); }
+        .dnd-header-left { display:flex; align-items:center; gap:12px; }
+        .dnd-title {
+            font-family:'Space Mono',monospace; font-size:10px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.12em; color:#6C2BD9; display:flex; align-items:center; gap:6px;
+        }
+        .dark .dnd-title { color:#a78bfa; }
+        .dnd-title-dot { width:6px; height:6px; border-radius:50%; background:#6C2BD9; animation:dotpulse 1.5s ease-in-out infinite; }
+        .dark .dnd-title-dot { background:#a78bfa; }
+        .dnd-score-wrap { display:flex; align-items:center; gap:8px; }
+        .dnd-score-text { font-family:'Space Mono',monospace; font-size:11px; color:#64748b; }
+        .dark .dnd-score-text { color:#64748b; }
+        .dnd-score-cur { color:#6C2BD9; font-weight:700; font-size:14px; }
+        .dark .dnd-score-cur { color:#a78bfa; }
+        .dnd-score-total { color:#94a3b8; font-size:11px; }
+
+        /* Progress mini-bar in header */
+        .dnd-progress-track {
+            width:80px; height:4px; border-radius:2px;
+            background:rgba(108,43,217,0.1);
+            overflow:hidden;
+        }
+        .dark .dnd-progress-track { background:rgba(255,255,255,0.06); }
+        .dnd-progress-fill {
+            height:100%; border-radius:2px; width:0%;
+            background:linear-gradient(90deg,#6C2BD9,#a855f7);
+            transition:width .4s cubic-bezier(.34,1.3,.64,1);
+        }
+
+        .dnd-exit-btn {
+            display:flex; align-items:center; gap:4px; padding:5px 10px; border-radius:8px;
+            font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em;
+            border:1.5px solid rgba(239,68,68,0.2); background:rgba(239,68,68,0.05); color:#ef4444; cursor:pointer; transition:all .2s;
+        }
+        .dnd-exit-btn:hover { background:rgba(239,68,68,0.12); border-color:rgba(239,68,68,0.4); }
+
+        /* Instruction */
+        .dnd-instr {
+            font-family:'Space Mono',monospace; font-size:10px; color:#64748b;
+            text-align:center; padding:10px 16px 6px; letter-spacing:.05em;
+        }
+        .dark .dnd-instr { color:#475569; }
+
+        /* Drop zones row */
+        .dnd-drop-zones {
+            display:flex; flex-wrap:wrap; gap:8px;
+            padding:14px 16px 10px; justify-content:center; min-height:80px;
+        }
+
+        /* Individual drop zone — bigger, cleaner, with letter ABOVE */
+        .dnd-zone {
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:4px; min-width:72px; min-height:72px; padding:6px 8px;
+            border-radius:14px;
+            border:2px dashed rgba(108,43,217,0.2);
+            background:rgba(108,43,217,0.03);
+            transition:border-color .2s,background .2s,transform .15s,box-shadow .2s;
+            cursor:pointer; position:relative; flex-shrink:0;
+        }
+        .dark .dnd-zone {
+            background:rgba(108,43,217,0.05);
+            border-color:rgba(108,43,217,0.25);
+        }
+        /* Zone letter label (always visible) */
+        .dnd-zone-letter-label {
+            font-family:'Space Mono',monospace; font-size:10px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.06em;
+            color:#6C2BD9; opacity:.5;
+        }
+        .dark .dnd-zone-letter-label { color:#a78bfa; opacity:.6; }
+        /* Zone placeholder */
+        .dnd-zone-placeholder {
+            width:44px; height:44px; border-radius:10px;
+            border:2px dashed rgba(108,43,217,0.15);
+            display:flex; align-items:center; justify-content:center;
+        }
+        .dark .dnd-zone-placeholder { border-color:rgba(108,43,217,0.2); }
+        .dnd-zone-placeholder-letter {
+            font-family:'Poppins',monospace; font-size:1rem; font-weight:700;
+            color:rgba(108,43,217,0.3);
+        }
+        .dark .dnd-zone-placeholder-letter { color:rgba(167,139,250,0.3); }
+
+        /* Hover state */
+        .dnd-zone.dnd-zone-hover {
+            border-style:solid; transform:scale(1.05);
+            border-color:#a78bfa; background:rgba(108,43,217,0.1);
+            box-shadow:0 0 20px rgba(108,43,217,0.2);
+        }
+        .dark .dnd-zone.dnd-zone-hover { border-color:#a78bfa; background:rgba(108,43,217,0.15); }
+
+        /* Correct state */
+        .dnd-zone.dnd-zone-correct {
+            border-style:solid; border-color:rgba(22,163,74,0.5);
+            background:rgba(22,163,74,0.06); cursor:default;
+        }
+        .dark .dnd-zone.dnd-zone-correct { background:rgba(22,163,74,0.1); }
+
+        /* Wrong shake */
+        .dnd-zone.dnd-zone-wrong { animation:zoneShake .4s ease; border-color:#ef4444 !important; }
+        @keyframes zoneShake { 0%,100%{transform:translateX(0);}20%{transform:translateX(-6px);}40%{transform:translateX(6px);}60%{transform:translateX(-4px);}80%{transform:translateX(4px);} }
+
+        .dnd-zone.dnd-zone-hint { animation:zoneHint .4s ease; }
+        @keyframes zoneHint { 0%,100%{transform:scale(1);}50%{transform:scale(1.08);} }
+
+        /* Filled zone chip */
+        .dnd-zone-filled {
+            display:flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:2px; padding:6px 8px; border-radius:10px; text-align:center; width:100%;
+            animation:chipPlaceIn .35s cubic-bezier(.34,1.56,.64,1);
+        }
+        @keyframes chipPlaceIn { from{transform:scale(0.7) translateY(-8px);opacity:0;}to{transform:scale(1) translateY(0);opacity:1;} }
+        .dnd-zone-filled-lore { background:rgba(108,43,217,0.15); border:1.5px solid rgba(108,43,217,0.3); }
+        .dark .dnd-zone-filled-lore { background:rgba(108,43,217,0.25); }
+        .dnd-zone-filled-hack { background:rgba(22,163,74,0.15); border:1.5px solid rgba(22,163,74,0.3); }
+        .dark .dnd-zone-filled-hack { background:rgba(22,163,74,0.2); }
+        .dnd-zone-filled-deep { background:rgba(59,130,246,0.15); border:1.5px solid rgba(59,130,246,0.3); }
+        .dark .dnd-zone-filled-deep { background:rgba(59,130,246,0.2); }
+        .dnd-zone-filled .dnd-chip-key-display {
+            font-family:'Space Mono',monospace; font-size:9px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.06em;
+        }
+        .dnd-zone-filled-lore .dnd-chip-key-display { color:#6C2BD9; }
+        .dark .dnd-zone-filled-lore .dnd-chip-key-display { color:#a78bfa; }
+        .dnd-zone-filled-hack .dnd-chip-key-display { color:#16A34A; }
+        .dark .dnd-zone-filled-hack .dnd-chip-key-display { color:#4ade80; }
+        .dnd-zone-filled-deep .dnd-chip-key-display { color:#2563eb; }
+        .dark .dnd-zone-filled-deep .dnd-chip-key-display { color:#60a5fa; }
+        .dnd-zone-filled .dnd-filled-word {
+            font-family:'Poppins',sans-serif; font-size:.7rem; font-weight:700; color:#1e293b;
+            white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:100%;
+        }
+        .dark .dnd-zone-filled .dnd-filled-word { color:#e2e8f0; }
+        .dnd-check-icon { font-size:10px; }
+
+        /* Separator */
+        .dnd-separator {
+            height:1.5px; margin:0 16px;
+            background:linear-gradient(90deg,transparent,rgba(108,43,217,0.15),transparent);
+        }
+        .dark .dnd-separator { background:linear-gradient(90deg,transparent,rgba(108,43,217,0.2),transparent); }
+
+        /* Chip bank */
+        .dnd-chip-bank-label {
+            font-family:'Space Mono',monospace; font-size:9px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.1em; color:#94a3b8;
+            text-align:center; padding:8px 16px 0; display:flex; align-items:center;
+            justify-content:center; gap:6px;
+        }
+        .dnd-chip-bank {
+            display:flex; flex-wrap:wrap; gap:8px;
+            padding:10px 16px 16px; justify-content:center; min-height:60px;
+        }
+
+        /* Bank chips — bigger and more visual */
+        .dnd-bank-chip {
+            display:inline-flex; flex-direction:column; align-items:center; justify-content:center;
+            gap:2px; padding:10px 14px; border-radius:12px; cursor:grab;
+            font-family:'Poppins',sans-serif; font-weight:600;
+            transition:transform .18s,box-shadow .18s,opacity .2s,background .15s,border-color .15s;
+            user-select:none; -webkit-tap-highlight-color:transparent; touch-action:none;
+            min-width:64px; text-align:center; position:relative; overflow:hidden;
+        }
+        .dnd-bank-chip::after {
+            content:''; position:absolute; inset:0; border-radius:inherit;
+            background:linear-gradient(135deg,rgba(255,255,255,0.12),transparent);
+            pointer-events:none;
+        }
+        /* Mode-specific bank chip styles */
+        .dnd-bank-chip[data-mode="lore"] {
+            background:rgba(108,43,217,0.1); border:1.5px solid rgba(108,43,217,0.25);
+            box-shadow:0 2px 8px rgba(108,43,217,0.1);
+        }
+        .dark .dnd-bank-chip[data-mode="lore"] { background:rgba(108,43,217,0.15); }
+        .dnd-bank-chip[data-mode="hack"] {
+            background:rgba(22,163,74,0.1); border:1.5px solid rgba(22,163,74,0.25);
+            box-shadow:0 2px 8px rgba(22,163,74,0.08);
+        }
+        .dark .dnd-bank-chip[data-mode="hack"] { background:rgba(22,163,74,0.12); }
+        .dnd-bank-chip[data-mode="deep"] {
+            background:rgba(59,130,246,0.1); border:1.5px solid rgba(59,130,246,0.25);
+            box-shadow:0 2px 8px rgba(59,130,246,0.08);
+        }
+        .dark .dnd-bank-chip[data-mode="deep"] { background:rgba(59,130,246,0.12); }
+
+        .dnd-bank-chip:hover:not(.dnd-bank-placed) {
+            transform:translateY(-4px) scale(1.04);
+            box-shadow:0 8px 20px rgba(108,43,217,0.25);
+        }
+        .dnd-bank-chip[data-mode="hack"]:hover:not(.dnd-bank-placed) { box-shadow:0 8px 20px rgba(22,163,74,0.2); }
+        .dnd-bank-chip[data-mode="deep"]:hover:not(.dnd-bank-placed) { box-shadow:0 8px 20px rgba(59,130,246,0.2); }
+
+        .dnd-bank-chip.dnd-dragging { opacity:.35; cursor:grabbing; transform:scale(.92); }
+        .dnd-bank-chip.dnd-bank-placed { opacity:.2; cursor:not-allowed; pointer-events:none; transform:scale(.95); }
+
+        /* Selected state */
+        .dnd-bank-chip.dnd-selected[data-mode="lore"] {
+            border-color:#6C2BD9; background:rgba(108,43,217,0.2);
+            box-shadow:0 0 0 3px rgba(108,43,217,0.2),0 8px 20px rgba(108,43,217,0.3);
+            transform:translateY(-4px) scale(1.04);
+        }
+        .dark .dnd-bank-chip.dnd-selected[data-mode="lore"] { border-color:#a78bfa; }
+        .dnd-bank-chip.dnd-selected[data-mode="hack"] {
+            border-color:#16A34A; background:rgba(22,163,74,0.2);
+            box-shadow:0 0 0 3px rgba(22,163,74,0.2),0 8px 20px rgba(22,163,74,0.25);
+            transform:translateY(-4px) scale(1.04);
+        }
+        .dark .dnd-bank-chip.dnd-selected[data-mode="hack"] { border-color:#4ade80; }
+        .dnd-bank-chip.dnd-selected[data-mode="deep"] {
+            border-color:#2563eb; background:rgba(59,130,246,0.2);
+            box-shadow:0 0 0 3px rgba(59,130,246,0.2),0 8px 20px rgba(59,130,246,0.25);
+            transform:translateY(-4px) scale(1.04);
+        }
+
+        /* Chip key letter */
+        .dnd-chip-key {
+            font-family:'Space Mono',monospace; font-size:10px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.06em;
+        }
+        .dnd-bank-chip[data-mode="lore"] .dnd-chip-key { color:#6C2BD9; }
+        .dark .dnd-bank-chip[data-mode="lore"] .dnd-chip-key { color:#a78bfa; }
+        .dnd-bank-chip[data-mode="hack"] .dnd-chip-key { color:#16A34A; }
+        .dark .dnd-bank-chip[data-mode="hack"] .dnd-chip-key { color:#4ade80; }
+        .dnd-bank-chip[data-mode="deep"] .dnd-chip-key { color:#2563eb; }
+        .dark .dnd-bank-chip[data-mode="deep"] .dnd-chip-key { color:#60a5fa; }
+
+        /* Chip word */
+        .dnd-chip-word { font-family:'Poppins',sans-serif; font-size:.85rem; font-weight:700; color:#1e293b; }
+        .dark .dnd-chip-word { color:#e2e8f0; }
+
+        /* Touch clone */
+        .dnd-touch-clone {
+            position:fixed; z-index:9999; pointer-events:none;
+            transform:scale(1.1) rotate(-3deg);
+            box-shadow:0 16px 40px rgba(0,0,0,0.35); opacity:.92;
+            font-family:'Poppins',sans-serif; font-size:.95rem; font-weight:600;
+            padding:10px 14px; border-radius:12px;
+            display:inline-flex; flex-direction:column; align-items:center; gap:2px;
+            background:rgba(108,43,217,0.9); color:#e2e8f0; border:2px solid #a78bfa;
+        }
+
+        /* Complete message */
+        .dnd-complete-msg {
+            display:flex; align-items:center; justify-content:center; gap:10px;
+            padding:14px 16px; font-family:'Poppins',sans-serif; font-size:.88rem; font-weight:700;
+            color:#16A34A; border-top:2px solid rgba(22,163,74,0.2);
+            background:linear-gradient(135deg,rgba(22,163,74,0.06),rgba(74,222,128,0.04));
+            animation:termReveal .4s ease;
+        }
+        .dark .dnd-complete-msg { color:#4ade80; }
+
+        /* Mode-specific drop zone colors */
+        [data-mode="hack"] .dnd-zone { border-color:rgba(22,163,74,0.2); background:rgba(22,163,74,0.03); }
+        .dark [data-mode="hack"] .dnd-zone { background:rgba(22,163,74,0.04); }
+        [data-mode="hack"] .dnd-zone-letter-label { color:#16A34A; }
+        .dark [data-mode="hack"] .dnd-zone-letter-label { color:#4ade80; }
+        [data-mode="hack"] .dnd-zone.dnd-zone-hover { border-color:#4ade80; background:rgba(22,163,74,0.1); box-shadow:0 0 20px rgba(22,163,74,0.18); }
+        [data-mode="hack"] .dnd-progress-fill { background:linear-gradient(90deg,#16A34A,#4ade80); }
+        [data-mode="hack"] .dnd-score-cur { color:#16A34A; }
+        .dark [data-mode="hack"] .dnd-score-cur { color:#4ade80; }
+        [data-mode="hack"] .dnd-title { color:#16A34A; }
+        .dark [data-mode="hack"] .dnd-title { color:#4ade80; }
+        [data-mode="hack"] .dnd-title-dot { background:#16A34A; }
+        .dark [data-mode="hack"] .dnd-title-dot { background:#4ade80; }
+        [data-mode="hack"] .dnd-header { background:rgba(22,163,74,0.05); border-bottom-color:rgba(22,163,74,0.12); }
+        .dark [data-mode="hack"] .dnd-header { background:rgba(22,163,74,0.08); }
+        [data-mode="hack"] .dnd-zone-placeholder-letter { color:rgba(22,163,74,0.3); }
+        [data-mode="hack"] .dnd-zone-placeholder { border-color:rgba(22,163,74,0.15); }
+        [data-mode="hack"] .dnd-separator { background:linear-gradient(90deg,transparent,rgba(22,163,74,0.15),transparent); }
+        .dark [data-mode="hack"] .dnd-separator { background:linear-gradient(90deg,transparent,rgba(22,163,74,0.2),transparent); }
+        .dark .dnd-game[data-mode="hack"] { border-color:rgba(22,163,74,0.35); box-shadow:0 0 40px rgba(22,163,74,0.1), inset 0 1px 0 rgba(255,255,255,0.04); }
+
+        [data-mode="deep"] .dnd-zone { border-color:rgba(59,130,246,0.2); background:rgba(59,130,246,0.03); }
+        .dark [data-mode="deep"] .dnd-zone { background:rgba(59,130,246,0.04); }
+        [data-mode="deep"] .dnd-zone-letter-label { color:#2563eb; }
+        .dark [data-mode="deep"] .dnd-zone-letter-label { color:#60a5fa; }
+        [data-mode="deep"] .dnd-zone.dnd-zone-hover { border-color:#60a5fa; background:rgba(59,130,246,0.1); box-shadow:0 0 20px rgba(59,130,246,0.18); }
+        [data-mode="deep"] .dnd-progress-fill { background:linear-gradient(90deg,#2563eb,#60a5fa); }
+        [data-mode="deep"] .dnd-score-cur { color:#2563eb; }
+        .dark [data-mode="deep"] .dnd-score-cur { color:#60a5fa; }
+        [data-mode="deep"] .dnd-title { color:#2563eb; }
+        .dark [data-mode="deep"] .dnd-title { color:#60a5fa; }
+
+        /* FEEDBACK PANEL ────────────────────────────────────────────────── */
+        .feedback-panel { margin-top:10px; border-radius:12px; border:1px solid rgba(108,43,217,0.1); background:rgba(248,250,252,0.7); overflow:hidden; transition:all .3s ease; }
+        .dark .feedback-panel { background:rgba(15,23,42,0.4); border-color:rgba(255,255,255,0.06); }
+        .feedback-bar { display:flex; align-items:center; gap:10px; flex-wrap:wrap; padding:8px 14px; }
+        .feedback-label { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; white-space:nowrap; }
+        .dark .feedback-label { color:#475569; }
+        .star-row { display:flex; gap:3px; align-items:center; }
+        .star-btn { background:none; border:none; cursor:pointer; padding:2px; font-size:18px; line-height:1; transition:transform .15s; color:#cbd5e1; }
+        .dark .star-btn { color:#334155; }
+        .star-btn:hover, .star-btn.active { color:#f59e0b; transform:scale(1.2); }
+        .star-btn.dimmed { color:#cbd5e1; }
+        .dark .star-btn.dimmed { color:#334155; }
+        .thumb-row { display:flex; gap:6px; margin-left:auto; }
+        .thumb-btn { display:inline-flex; align-items:center; gap:4px; padding:5px 11px; border-radius:8px; cursor:pointer; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; border:1px solid rgba(108,43,217,0.1); background:rgba(108,43,217,0.04); color:#64748b; transition:all .2s; }
+        .dark .thumb-btn { border-color:rgba(255,255,255,0.08); background:rgba(255,255,255,0.04); color:#94a3b8; }
+        .thumb-btn:hover { border-color:rgba(108,43,217,0.3); color:#6C2BD9; }
+        .thumb-btn.liked { background:rgba(22,163,74,0.1); border-color:rgba(22,163,74,0.3); color:#16A34A; }
+        .dark .thumb-btn.liked { color:#4ade80; }
+        .thumb-btn.disliked { background:rgba(239,68,68,0.08); border-color:rgba(239,68,68,0.3); color:#ef4444; }
+        .feedback-comment-section { padding:0 14px; max-height:0; overflow:hidden; transition:max-height .35s cubic-bezier(.4,0,.2,1),padding .35s ease,opacity .3s ease; opacity:0; }
+        .feedback-comment-section.open { max-height:220px; padding:10px 14px 14px; opacity:1; }
+        .feedback-comment-label { font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.08em; color:#64748b; margin-bottom:6px; display:block; }
+        .dark .feedback-comment-label { color:#475569; }
+        .feedback-textarea { width:100%; background:rgba(255,255,255,0.8); border:1.5px solid rgba(108,43,217,0.1); border-radius:9px; padding:8px 12px; font-family:'Space Mono',monospace; font-size:.75rem; color:#1e293b; outline:none; resize:none; line-height:1.5; transition:border-color .2s,box-shadow .2s; }
+        .dark .feedback-textarea { background:rgba(0,0,0,0.25); border-color:rgba(255,255,255,0.1); color:#e2e8f0; }
+        .feedback-textarea:focus { border-color:#6C2BD9; box-shadow:0 0 0 3px rgba(108,43,217,0.1); }
+        .feedback-submit-row { display:flex; align-items:center; justify-content:space-between; margin-top:8px; gap:8px; flex-wrap:wrap; }
+        .feedback-char-count { font-family:'Space Mono',monospace; font-size:9px; color:#94a3b8; }
+        .feedback-submit-btn { padding:6px 14px; border-radius:8px; cursor:pointer; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; background:linear-gradient(135deg,#6C2BD9,#7c3aed); color:#fff; border:none; box-shadow:0 3px 10px rgba(108,43,217,0.3); transition:all .2s; }
+        .feedback-submit-btn:hover { opacity:.88; transform:translateY(-1px); }
+        .feedback-submit-btn:disabled { opacity:.5; cursor:not-allowed; transform:none; }
+        .feedback-thanks { padding:10px 14px 12px; font-family:'Space Mono',monospace; font-size:.75rem; color:#16A34A; display:flex; align-items:center; gap:8px; }
+        .dark .feedback-thanks { color:#4ade80; }
+        .feedback-report-badge { display:inline-flex; align-items:center; gap:4px; padding:2px 8px; border-radius:99px; font-size:9px; font-weight:700; background:rgba(245,158,11,0.1); color:#d97706; border:1px solid rgba(245,158,11,0.2); font-family:'Space Mono',monospace; text-transform:uppercase; letter-spacing:.04em; }
+        .dark .feedback-report-badge { color:#f59e0b; }
+
+        /* ── Auto-regen warning ───────────────────────────────────────────── */
+        .regen-warning { border-radius:12px; padding:12px 16px; margin-bottom:16px; border:1.5px solid rgba(245,158,11,0.3); background:rgba(245,158,11,0.06); display:flex; align-items:flex-start; gap:10px; animation:termReveal .4s ease; }
+        .dark .regen-warning { background:rgba(245,158,11,0.08); }
+        .regen-warning-icon { font-size:18px; flex-shrink:0; margin-top:1px; }
+        .regen-warning-text { flex:1; min-width:0; }
+        .regen-warning-title { font-family:'Poppins',sans-serif; font-size:.82rem; font-weight:700; color:#d97706; margin-bottom:4px; }
+        .dark .regen-warning-title { color:#fbbf24; }
+        .regen-warning-body { font-family:'Space Mono',monospace; font-size:.72rem; color:#64748b; line-height:1.5; }
+        .regen-warning-btns { display:flex; gap:6px; margin-top:8px; flex-wrap:wrap; }
+        .regen-btn-yes { padding:5px 12px; border-radius:7px; cursor:pointer; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; background:#d97706; color:#fff; border:none; transition:all .2s; }
+        .regen-btn-yes:hover { background:#b45309; }
+        .regen-btn-no { padding:5px 12px; border-radius:7px; cursor:pointer; font-family:'Space Mono',monospace; font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:.06em; background:rgba(108,43,217,0.06); color:#64748b; border:1px solid rgba(108,43,217,0.1); transition:all .2s; }
+        .dark .regen-btn-no { background:rgba(255,255,255,0.06); border-color:rgba(255,255,255,0.1); color:#94a3b8; }
+        .regen-btn-no:hover { border-color:rgba(108,43,217,0.3); color:#6C2BD9; }
+
+        /* ── Source card ─────────────────────────────────────────────────── */
+        .source-card { border-left:3px solid #6C2BD9; border-radius:12px; transition:transform .25s,box-shadow .25s; }
+        .source-card:hover { transform:translateY(-2px); box-shadow:0 6px 20px rgba(108,43,217,0.12); }
+
+        /* ── Toast ───────────────────────────────────────────────────────── */
+        .toast { position:fixed; left:50%; transform:translateX(-50%); bottom:24px; background:rgba(15,23,42,0.95); color:#f1f5f9; padding:10px 18px; border-radius:10px; font-size:13px; z-index:500; border:1px solid rgba(255,255,255,0.1); backdrop-filter:blur(10px); animation:termReveal .3s ease forwards; font-family:'Inter',sans-serif; white-space:nowrap; }
+
+        /* ── Confirm modal ───────────────────────────────────────────────── */
+        #confirm-modal { position:fixed; inset:0; z-index:300; background:rgba(0,0,0,0.55); backdrop-filter:blur(6px); display:none; align-items:center; justify-content:center; padding:1rem; }
+        #confirm-modal.open { display:flex; }
+        #confirm-modal-box { background:#fff; border-radius:20px; padding:2rem; max-width:380px; width:100%; box-shadow:0 24px 60px rgba(0,0,0,0.2); border:1px solid rgba(108,43,217,0.1); animation:termReveal .3s ease; }
+        .dark #confirm-modal-box { background:#0f172a; border-color:rgba(255,255,255,0.08); }
+
+        /* ── Image preview ───────────────────────────────────────────────── */
+        #img-preview-strip { display:none; align-items:center; gap:10px; padding:8px 16px; border-top:1px solid rgba(108,43,217,0.08); background:rgba(108,43,217,0.02); }
+        .dark #img-preview-strip { border-top-color:rgba(255,255,255,0.05); background:rgba(108,43,217,0.05); }
+        #img-preview-strip.visible { display:flex; }
+        #preview-thumb { width:48px; height:48px; object-fit:cover; border-radius:8px; border:2px solid rgba(108,43,217,0.3); flex-shrink:0; }
+
+        /* ── State transitions ───────────────────────────────────────────── */
+        .state-section { transition:opacity .3s ease; }
+        .gsap-entry { opacity:0; transform:translateY(16px); }
+
+        /* ── Action bar ──────────────────────────────────────────────────── */
+        .action-bar-btn { display:flex; align-items:center; gap:6px; padding:8px 14px; border-radius:10px; border:1.5px solid rgba(108,43,217,0.12); background:#ffffff; color:#6C2BD9; font-size:.8rem; font-weight:600; font-family:'Inter',sans-serif; transition:all .25s; cursor:pointer; box-shadow:0 1px 4px rgba(108,43,217,0.06); }
+        .dark .action-bar-btn { background:rgba(15,23,42,0.7); border-color:rgba(255,255,255,0.08); color:#94a3b8; }
+        .action-bar-btn:hover { border-color:rgba(108,43,217,0.4); color:#6C2BD9; transform:translateY(-1px); box-shadow:0 4px 12px rgba(108,43,217,0.15); }
+
+        /* ── Definition text ─────────────────────────────────────────────── */
+        .def-text { font-size:.88rem; color:#475569; line-height:1.7; border-bottom:1px solid rgba(108,43,217,0.07); padding-bottom:14px; margin-bottom:16px; }
+        .dark .def-text { color:#94a3b8; border-bottom-color:rgba(255,255,255,0.06); }
+
+        /* ── Tip banner ──────────────────────────────────────────────────── */
+        .tip-banner { display:flex; align-items:center; gap:8px; padding:8px 14px; border-radius:10px; margin-top:12px; background:rgba(108,43,217,0.06); border:1px solid rgba(108,43,217,0.12); font-size:.72rem; color:#64748b; font-family:'Inter',sans-serif; }
+        .dark .tip-banner { background:rgba(108,43,217,0.07); }
+
+        /* ── Chip pop ────────────────────────────────────────────────────── */
+        @keyframes chipPop { 0%{transform:scale(1.18) translateY(-3px);}60%{transform:scale(.96) translateY(0);}100%{transform:scale(1) translateY(0);} }
+        .chip-pop { animation:chipPop .3s ease; }
+
+        /* ── Output header light ──────────────────────────────────────────── */
+        html:not(.dark) .glass.rounded-t-2xl { background:#ffffff; border-color:rgba(108,43,217,0.1); }
+        html:not(.dark) #ui-state-output .glass { box-shadow:0 2px 16px rgba(108,43,217,0.06); }
+
+        /* ── Nav light ────────────────────────────────────────────────────── */
+        html:not(.dark) nav.glass { background:rgba(255,255,255,0.95); border-bottom:1px solid rgba(108,43,217,0.08) !important; box-shadow:0 1px 20px rgba(108,43,217,0.06); }
+
+        /* ── Responsive ──────────────────────────────────────────────────── */
+        @media (max-width:380px) { .grid.grid-cols-2 { grid-template-columns:1fr; } }
+        @media (max-width:480px) {
+            .word-chip { padding:6px 10px 6px 7px; font-size:.88rem; border-radius:9px; }
+            .mnemonic-hero { padding:14px; }
+            .concept-box-body { padding:10px 12px; }
+            .result-card { border-radius:16px; padding:14px !important; }
+            .dnd-zone { min-width:58px; min-height:62px; border-radius:12px; }
+            .dnd-drop-zones { gap:6px; padding:10px 12px; }
+            .dnd-bank-chip { padding:8px 10px; min-width:52px; }
+            .dnd-chip-bank { gap:6px; padding:8px 12px 14px; }
+        }
+        @media (max-width:360px) {
+            #btn-camera span, #btn-upload span { display:none; }
+        }
+        @media (max-width:1023px) {
+            #source-matrix-container { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:10px; padding-bottom:4px; -webkit-overflow-scrolling:touch; }
+            #source-matrix-container .source-card { min-width:180px; flex-shrink:0; margin-bottom:0 !important; }
+        }
+    </style>
 </head>
 
-<body class="bg-brand-lightbg dark:bg-brand-dark text-slate-800 dark:text-slate-200 min-h-screen selection:bg-brand-primary selection:text-white flex flex-col">
+<body class="antialiased min-h-screen flex flex-col relative">
 
-  <div id="canvas-container" aria-hidden="true"></div>
+    <canvas id="bg-canvas" class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none" style="opacity:0.25;"></canvas>
+    <div class="fixed inset-0 -z-10 pointer-events-none dark:opacity-100 opacity-0 transition-opacity duration-500" style="background:radial-gradient(ellipse 80% 50% at 50% -20%,rgba(108,43,217,0.12),transparent);"></div>
 
-  <nav class="fixed top-0 w-full z-50 border-b border-brand-lightborder dark:border-white/10 bg-white/70 dark:bg-brand-dark/70 backdrop-blur-md transition-colors duration-500">
-    <div class="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <i data-lucide="cpu" class="w-6 h-6 text-brand-primary"></i>
-        <span class="text-xl font-display font-bold tracking-tight text-slate-900 dark:text-white">
-          BOARD <span class="text-brand-primary">Algo</span>
-        </span>
-      </div>
-      <div class="flex items-center gap-3">
-        <% if (typeof user !== 'undefined' && user) { %>
-          <div class="text-sm text-slate-600 dark:text-slate-300 hidden sm:block"><%= user.name || user.email || '' %></div>
-        <% } %>
-        <button id="theme-toggle" aria-label="Toggle Dark Mode" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition-colors focus:ring-2 focus:ring-brand-primary">
-          <i data-lucide="sun" class="w-5 h-5 hidden dark:block text-amber-400"></i>
-          <i data-lucide="moon" class="w-5 h-5 block dark:hidden text-brand-primary"></i>
-        </button>
-      </div>
+    <div id="confirm-modal" role="dialog" aria-modal="true">
+        <div id="confirm-modal-box">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style="background:rgba(239,68,68,0.1);">
+                    <i data-lucide="refresh-cw" class="w-5 h-5 text-red-400"></i>
+                </div>
+                <div>
+                    <h3 class="font-display font-bold text-slate-900 dark:text-white text-base">Reconfigure Profile?</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-0.5">This will reset your learning persona</p>
+                </div>
+            </div>
+            <p class="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-5">Your psychographic profile will be deleted and you'll answer setup questions again. History and hooks <strong>won't</strong> be affected.</p>
+            <div class="flex gap-3">
+                <button id="modal-cancel-btn" class="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-white/10 text-slate-600 dark:text-slate-300 text-sm font-semibold hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">Keep Profile</button>
+                <button id="modal-confirm-btn" class="flex-1 py-2.5 rounded-xl text-white text-sm font-bold" style="background:linear-gradient(135deg,#dc2626,#b91c1c);box-shadow:0 4px 14px rgba(220,38,38,0.35);">Yes, Reset It</button>
+            </div>
+        </div>
     </div>
-  </nav>
 
-  <main class="relative z-10 w-full max-w-5xl mx-auto px-4 sm:px-6 pt-28 pb-20 flex-grow flex flex-col gap-6">
-
-    <header class="text-center mb-2">
-      <h1 class="text-3xl md:text-5xl font-display font-extrabold text-slate-900 dark:text-white mb-2">Synthesize Pathway</h1>
-      <p class="text-slate-500 dark:text-slate-400 text-sm md:text-base">Upload a photo, paste a diagram, or type your board doubt.</p>
-    </header>
-
-    <section id="ui-state-idle" class="flex flex-col gap-6 w-full max-w-3xl mx-auto transition-opacity duration-300">
-
-      <form id="mnemonic-form" action="/api/generate-mnemonic" method="POST" class="flex flex-col gap-6" autocomplete="off" novalidate>
-        <div class="hud-panel rounded-2xl border border-transparent input-wrapper transition-all duration-300 p-0 overflow-hidden">
-          <textarea name="question" id="brain-dump" aria-label="Cognitive Input"
-            class="w-full min-h-[140px] bg-transparent text-slate-900 dark:text-white p-6 rounded-t-xl resize-none font-medium placeholder-slate-400 dark:placeholder-slate-500"
-            placeholder="Paste text, drop a photo of a textbook question, or type your doubt here..." required></textarea>
-
-          <div class="flex flex-wrap items-center justify-between px-4 py-3 border-t border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 rounded-b-xl gap-2">
-            <div class="flex gap-1 sm:gap-2 items-center">
-              <button id="btn-camera" type="button" class="has-tooltip relative p-2 md:px-3 md:py-2 rounded-lg bg-white dark:bg-brand-surface border border-brand-lightborder dark:border-white/10 hover:border-brand-primary text-slate-600 dark:text-slate-300 hover:text-brand-primary transition-all flex items-center gap-2 focus:ring-2 focus:ring-brand-primary">
-                <i data-lucide="camera" class="w-4 h-4"></i>
-                <span class="text-xs font-bold hidden sm:inline">Scan</span>
-                <div class="tooltip absolute -top-10 left-0 w-max px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg">Capture via Camera</div>
-              </button>
-
-              <button id="btn-upload" type="button" class="has-tooltip relative p-2 md:px-3 md:py-2 rounded-lg bg-white dark:bg-brand-surface border border-brand-lightborder dark:border-white/10 hover:border-brand-primary text-slate-600 dark:text-slate-300 hover:text-brand-primary transition-all flex items-center gap-2 focus:ring-2 focus:ring-brand-primary">
-                <i data-lucide="image" class="w-4 h-4"></i>
-                <span class="text-xs font-bold hidden sm:inline">Upload</span>
-                <div class="tooltip absolute -top-10 left-0 w-max px-3 py-1.5 bg-slate-900 text-white text-xs rounded-lg">Upload Image (Max 5MB)</div>
-              </button>
-
-              <input id="file-input" name="image" type="file" accept="image/*" class="hidden" />
-              <img id="file-preview" src="" alt="" class="hidden file-preview ml-2" />
-            </div>
-
-            <div class="text-[10px] sm:text-xs text-slate-400 font-mono flex items-center gap-1">
-              <i data-lucide="paperclip" class="w-3 h-3"></i> Clipboard ready
-            </div>
-          </div>
-        </div>
-
-        <div class="flex flex-col md:flex-row items-center justify-between gap-4 hud-panel rounded-2xl p-4">
-          <div class="flex items-center gap-4 w-full md:w-auto">
-            <div role="radiogroup" aria-label="Generation Mode" class="relative flex w-full md:w-[260px] h-12 bg-black/5 dark:bg-black/40 rounded-full p-1 border border-black/10 dark:border-white/10">
-              <div id="mode-indicator" class="absolute top-1 left-1 bottom-1 w-[calc(50%-4px)] bg-brand-primary rounded-full shadow-lg spring-slide z-0"></div>
-
-              <button id="btn-lore" role="radio" aria-checked="true" type="button" class="has-tooltip flex-1 flex items-center justify-center gap-2 font-bold text-sm text-white transition-colors duration-300 relative z-10 focus:outline-none">
-                <i data-lucide="book-open" class="w-4 h-4"></i> Lore
-                <div class="tooltip absolute -top-14 left-0 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none">
-                  <span class="font-bold text-brand-primary">Narrative:</span> Unforgettable stories.
+    <nav class="fixed top-0 w-full z-50 glass" style="border-bottom:1px solid rgba(0,0,0,0.05);">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16 gap-2 sm:gap-4">
+                <div class="flex items-center gap-3 min-w-0 flex-shrink-0">
+                    <a href="/dashboard" class="flex items-center gap-1.5 text-slate-500 dark:text-slate-400 hover:text-brand-primary transition-colors text-sm font-medium">
+                        <i data-lucide="arrow-left" class="w-4 h-4"></i><span class="hidden sm:inline">Dashboard</span>
+                    </a>
+                    <span class="text-slate-300 dark:text-slate-700">|</span>
+                    <a href="/" class="flex items-center gap-2">
+                        <div class="w-8 h-8 rounded-lg flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-base" style="background:linear-gradient(135deg,#6C2BD9,#a855f7);box-shadow:0 3px 10px rgba(108,43,217,0.4);">B</div>
+                        <span class="text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white">BOARD <span class="text-brand-primary">Algo</span></span>
+                    </a>
                 </div>
-              </button>
-
-              <button id="btn-hack" role="radio" aria-checked="false" type="button" class="has-tooltip flex-1 flex items-center justify-center gap-2 font-bold text-sm text-slate-500 dark:text-slate-400 transition-colors duration-300 relative z-10 focus:outline-none">
-                <i data-lucide="zap" class="w-4 h-4"></i> Hack
-                <div class="tooltip absolute -top-14 right-0 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none">
-                  <span class="font-bold text-brand-accent">Bizarre:</span> Aggressive acronyms.
+                <div class="flex items-center gap-2 sm:gap-3 flex-shrink-0">
+                    <div class="xp-bar-wrap hidden sm:flex" id="nav-xp-wrap">
+                        <span class="level-badge" id="nav-level">LVL 1</span>
+                        <div class="xp-bar-track"><div class="xp-bar-fill" id="nav-xp-fill" style="width:0%"></div></div>
+                        <span class="xp-label" id="nav-xp-label">0 XP</span>
+                    </div>
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-gray-400 transition-colors">
+                        <i data-lucide="sun" class="hidden dark:block w-4 h-4 sm:w-5 sm:h-5"></i>
+                        <i data-lucide="moon" class="block dark:hidden w-4 h-4 sm:w-5 sm:h-5"></i>
+                    </button>
+                    <a href="/auth/logout" class="logout-btn hidden sm:flex">
+                        <i data-lucide="log-out" class="w-3.5 h-3.5"></i><span>Logout</span>
+                    </a>
+                    <div class="flex items-center gap-2 sm:gap-3 pl-2 sm:pl-3 border-l border-gray-200 dark:border-gray-800">
+                        <div class="text-right hidden sm:block">
+                            <p class="text-sm font-semibold text-slate-900 dark:text-white leading-tight"><%= user.username %></p>
+                            <p class="text-xs font-medium mt-0.5" style="color:#6C2BD9;"><% if(user.subscription_status==='ACTIVE'){%>Pro Member<%}else{%>Free Trial<%}%></p>
+                        </div>
+                        <%if(user.photoURL){%>
+                        <div class="avatar-ring" style="width:36px;height:36px;"><div class="avatar-inner" style="width:100%;height:100%;"><img src="<%=user.photoURL%>" style="width:100%;height:100%;object-fit:cover;" alt="<%=user.username%>"></div></div>
+                        <%}else{%>
+                        <div class="h-9 w-9 rounded-full flex-shrink-0 flex items-center justify-center text-white font-bold font-display text-base" style="background:linear-gradient(135deg,rgba(108,43,217,0.8),rgba(168,85,247,0.7));border:2px solid rgba(108,43,217,0.4);"><%=user.username.charAt(0).toUpperCase()%></div>
+                        <%}%>
+                    </div>
                 </div>
-              </button>
             </div>
-
-            <button id="btn-deepscan" aria-pressed="false" type="button" class="has-tooltip relative w-12 h-12 shrink-0 rounded-full border-2 border-slate-300 dark:border-slate-700 flex items-center justify-center bg-white dark:bg-brand-surface text-slate-400 hover:text-brand-accent transition-all duration-300 focus:outline-none focus:ring-2 focus:ring-brand-accent">
-              <i data-lucide="radar" class="w-5 h-5"></i>
-              <div class="tooltip absolute -top-14 left-1/2 -translate-x-1/2 w-48 p-2 bg-slate-900 text-white text-xs rounded-lg border border-slate-700 shadow-xl pointer-events-none z-20">
-                <span class="font-bold text-brand-accent">Deep-Scan:</span> Rigorous board retrieval.
-              </div>
-            </button>
-          </div>
-
-          <input type="hidden" name="mode" id="mode-input" value="lore" />
-          <input type="hidden" name="deepScan" id="deepscan-input" value="false" />
-
-          <button id="btn-generate" type="submit" class="w-full md:w-auto px-8 h-12 rounded-xl bg-brand-primary text-white font-display font-bold hover:scale-[1.02] active:scale-95 transition-transform shadow-glow-primary flex items-center justify-center gap-2 focus:ring-4 focus:ring-brand-primary/50">
-            <i data-lucide="fingerprint" class="w-4 h-4"></i>
-            Generate Hook
-          </button>
         </div>
-      </form>
-    </section>
+    </nav>
 
-    <section id="ui-state-processing" class="hidden flex-col items-center justify-center w-full max-w-2xl mx-auto min-h-[300px] hud-panel rounded-2xl p-8 transition-opacity duration-300 opacity-0" aria-live="polite" aria-busy="false">
-      <div class="relative w-20 h-20 mb-6">
-        <div class="absolute inset-0 border-4 border-brand-primary/20 rounded-full"></div>
-        <div class="absolute inset-0 border-4 border-brand-primary border-t-transparent rounded-full animate-spin"></div>
-        <i data-lucide="brain-circuit" class="absolute inset-0 m-auto w-8 h-8 text-brand-primary animate-pulse"></i>
-      </div>
+    <main class="flex-grow pt-20 pb-16">
+        <div class="max-w-4xl mx-auto px-4 sm:px-6">
 
-      <h2 class="text-2xl font-display font-bold text-slate-900 dark:text-white mb-2">Processing Synapse...</h2>
+            <div class="gsap-entry text-center pt-8 pb-6">
+                <div class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full mb-4 text-xs font-semibold" style="background:rgba(108,43,217,0.08);border:1px solid rgba(108,43,217,0.2);color:#6C2BD9;">
+                    <span class="glow-dot"></span> BoardAlgo AI · Memory Synthesizer
+                </div>
+                <h1 class="text-3xl sm:text-4xl md:text-5xl font-display font-bold text-slate-900 dark:text-white tracking-tight mb-3 leading-tight">
+                    Never forget a concept.<br class="hidden sm:block">
+                    <span class="text-transparent bg-clip-text bg-gradient-to-r from-brand-primary to-brand-accent">Ever again.</span>
+                </h1>
+                <p class="text-slate-500 dark:text-gray-400 text-sm sm:text-base max-w-lg mx-auto leading-relaxed">
+                    Type what you want to memorize. BoardAlgo AI turns it into a trick your brain cannot unsee.
+                </p>
+            </div>
 
-      <div class="w-full bg-slate-200 dark:bg-slate-800 rounded-full h-2 mb-6 overflow-hidden">
-        <div id="progress-bar" class="bg-gradient-to-r from-brand-primary to-brand-accent h-2 rounded-full transition-all duration-300" style="width:15%"></div>
-      </div>
+            <section id="ui-state-idle" class="state-section gsap-entry">
+                <form id="mnemonic-form" action="/api/generate-mnemonic" method="POST" autocomplete="off" novalidate>
 
-      <div class="font-mono text-xs sm:text-sm text-slate-500 dark:text-slate-400 w-full text-left bg-black/5 dark:bg-black/40 p-4 rounded-lg border border-brand-lightborder dark:border-white/10">
-        <div class="text-brand-accent mb-1">> Extracting multimodal input... [Done]</div>
-        <div id="processing-line" class="text-brand-primary animate-pulse">> Scanning NCERT & CBSE 10-Year Database... (ETA: —)</div>
-      </div>
+                    <div class="glass input-shell rounded-2xl overflow-hidden mb-4">
+                        <textarea id="brain-dump" name="question"
+                            class="w-full min-h-[130px] bg-transparent text-slate-900 dark:text-white p-5 pb-3 font-sans text-base placeholder-slate-400 dark:placeholder-slate-500 leading-relaxed"
+                            placeholder="e.g. s-block elements, Aldol reaction, Newton's laws, trig ratios..."
+                            required></textarea>
+                        <div id="img-preview-strip">
+                            <img id="preview-thumb" src="" alt="Preview" />
+                            <div class="flex-1 min-w-0">
+                                <p id="preview-filename" class="text-xs font-semibold text-slate-700 dark:text-slate-200 truncate"></p>
+                                <p id="preview-filesize" class="text-[11px] text-slate-400 mt-0.5"></p>
+                            </div>
+                            <button id="btn-remove-img" type="button" class="flex-shrink-0 w-7 h-7 rounded-full flex items-center justify-center text-slate-400 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all">
+                                <i data-lucide="x" class="w-3.5 h-3.5"></i>
+                            </button>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-between px-4 py-3 border-t border-gray-100 dark:border-white/5 bg-slate-50 dark:bg-black/20 gap-2">
+                            <div class="flex items-center gap-2">
+                                <button id="btn-camera" type="button" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 hover:text-brand-primary hover:border-brand-primary/40 transition-all text-xs font-medium shadow-sm">
+                                    <i data-lucide="camera" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Scan Photo</span>
+                                </button>
+                                <button id="btn-upload" type="button" class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-white/10 bg-white dark:bg-white/5 text-slate-500 hover:text-brand-primary hover:border-brand-primary/40 transition-all text-xs font-medium shadow-sm">
+                                    <i data-lucide="image" class="w-3.5 h-3.5"></i><span class="hidden sm:inline">Upload Image</span>
+                                </button>
+                                <input id="file-input" name="image" type="file" accept="image/png,image/jpeg,image/webp,image/gif" class="hidden" />
+                            </div>
+                            <span class="text-xs text-slate-400 dark:text-slate-600 font-medium flex items-center gap-1">
+                                <i data-lucide="command" class="w-3 h-3"></i>+Enter to generate
+                            </span>
+                        </div>
+                    </div>
 
-      <button id="btn-cancel" class="mt-8 px-6 py-2 rounded-full border border-slate-300 dark:border-slate-600 text-slate-500 hover:text-red-500 hover:border-red-500 text-sm font-bold transition-colors">
-        Cancel & Restart
-      </button>
-    </section>
+                    <div class="glass rounded-2xl p-5 mb-4">
+                        <p class="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-3">Choose your weapon</p>
+                        <div class="grid grid-cols-2 gap-3 mb-5">
+                            <button id="btn-lore" type="button" role="radio" aria-checked="true"
+                                class="mode-btn flex flex-col items-start p-4 rounded-xl border-2 transition-all duration-300 text-left focus:outline-none"
+                                style="border-color:#6C2BD9;background:rgba(108,43,217,0.07);">
+                                <div class="flex items-center gap-2 mb-2 w-full">
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(108,43,217,0.15);">
+                                        <i data-lucide="book-open" class="w-4 h-4" style="color:#a78bfa;"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-bold font-display text-slate-900 dark:text-white text-sm leading-tight">Lore Engine</p>
+                                        <span class="badge badge-lore text-[10px]">Story Mode</span>
+                                    </div>
+                                    <div class="ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 mode-radio" style="border-color:#6C2BD9;">
+                                        <div class="w-2 h-2 rounded-full" style="background:#6C2BD9;"></div>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">Cinematic story secretly mapped to your concept.</p>
+                            </button>
+                            <button id="btn-hack" type="button" role="radio" aria-checked="false"
+                                class="mode-btn flex flex-col items-start p-4 rounded-xl border-2 transition-all duration-300 text-left focus:outline-none">
+                                <div class="flex items-center gap-2 mb-2 w-full">
+                                    <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0" style="background:rgba(22,163,74,0.1);">
+                                        <i data-lucide="zap" class="w-4 h-4" style="color:#4ade80;"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-bold font-display text-slate-900 dark:text-white text-sm leading-tight">Neural Hack</p>
+                                        <span class="badge badge-hack text-[10px]">Cheat Code</span>
+                                    </div>
+                                    <div class="ml-auto w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 mode-radio">
+                                        <div class="w-2 h-2 rounded-full hidden" style="background:#16A34A;"></div>
+                                    </div>
+                                </div>
+                                <p class="text-xs text-slate-500 dark:text-gray-400 leading-relaxed">Brutal acronym trick. Screenshot and done.</p>
+                            </button>
+                        </div>
 
-    <section id="ui-state-output" class="hidden flex-col gap-6 w-full transition-opacity duration-300 opacity-0" aria-live="polite">
-      <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        <div class="lg:col-span-1 flex flex-col gap-3" id="source-matrix-container">
-          <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
-            <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
-          </h3>
+                        <div class="border-t border-gray-100 dark:border-white/5 mb-5"></div>
+
+                        <div class="mb-5">
+                            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                                <div>
+                                    <p class="text-xs font-semibold text-slate-500 dark:text-gray-400 uppercase tracking-widest mb-0.5">Response Language</p>
+                                    <p class="text-[11px] text-slate-400 dark:text-slate-600">AI speaks in your chosen language</p>
+                                </div>
+                                <div class="lang-track flex-shrink-0">
+                                    <button type="button" class="lang-btn active" data-lang="english">🇬🇧 English</button>
+                                    <button type="button" class="lang-btn" data-lang="hinglish">🔀 Hinglish</button>
+                                    <button type="button" class="lang-btn" data-lang="hindi">🇮🇳 Hindi</button>
+                                </div>
+                            </div>
+                            <div class="mt-2 flex items-center gap-1.5 pl-0.5">
+                                <i data-lucide="info" class="w-3 h-3 text-slate-400 flex-shrink-0"></i>
+                                <p id="lang-desc-text" class="text-xs text-slate-400 dark:text-slate-500">Full English — precise, clean, board-exam ready.</p>
+                            </div>
+                        </div>
+
+                        <div class="border-t border-gray-100 dark:border-white/5 mb-5"></div>
+
+                        <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-3">
+                            <button id="btn-deepscan" type="button" aria-pressed="false"
+                                class="deepscan-btn glass flex items-center gap-3 px-4 py-3 rounded-xl text-left transition-all focus:outline-none flex-1 sm:flex-none">
+                                <div class="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0 bg-slate-50 dark:bg-white/5">
+                                    <i data-lucide="radar" class="w-4 h-4 text-slate-500 dark:text-slate-400" id="deepscan-icon"></i>
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-semibold text-slate-700 dark:text-slate-200 flex items-center gap-2">
+                                        Deep Scan
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider" style="background:rgba(22,163,74,0.1);color:#16A34A;border:1px solid rgba(22,163,74,0.2);">Pro</span>
+                                    </p>
+                                    <p class="text-xs text-slate-400 dark:text-gray-500 leading-snug mt-0.5">Cross-references NCERT. Citation-backed hooks.</p>
+                                </div>
+                                <div class="w-10 h-6 rounded-full relative flex-shrink-0 border transition-all duration-300" id="deepscan-track" style="background:rgba(0,0,0,0.08);border-color:rgba(0,0,0,0.1);">
+                                    <div class="w-4 h-4 rounded-full absolute top-0.5 left-0.5 transition-all duration-300 shadow-sm" id="deepscan-knob" style="background:#94a3b8;"></div>
+                                </div>
+                            </button>
+                            <input type="hidden" name="mode"     id="mode-input"     value="lore" />
+                            <input type="hidden" name="deepScan" id="deepscan-input" value="false" />
+                            <input type="hidden" name="language" id="language-input" value="english" />
+                            <button id="btn-generate" type="submit"
+                                class="gen-btn flex-1 sm:flex-none sm:min-w-[180px] px-6 py-3 rounded-xl text-white font-display font-bold text-sm flex items-center justify-center gap-2 focus:outline-none">
+                                <i data-lucide="fingerprint" class="w-4 h-4"></i> Generate Hook
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="gsap-entry flex flex-wrap items-center justify-between gap-3 px-1">
+                        <div class="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-slate-400 dark:text-slate-600">
+                            <span class="flex items-center gap-1"><i data-lucide="book-open" class="w-3 h-3"></i> Lore → chapters</span>
+                            <span class="hidden sm:inline">·</span>
+                            <span class="flex items-center gap-1"><i data-lucide="zap" class="w-3 h-3"></i> Hack → lists &amp; formulas</span>
+                            <span class="hidden sm:inline">·</span>
+                            <span class="flex items-center gap-1"><i data-lucide="radar" class="w-3 h-3"></i> Deep → before exams</span>
+                        </div>
+                        <button type="button" id="btn-reconfig" class="reconfig-btn">
+                            <i data-lucide="refresh-cw" class="w-3 h-3"></i> Reconfigure Profile
+                        </button>
+                    </div>
+                </form>
+            </section>
+
+            <section id="ui-state-processing"
+                class="state-section hidden rounded-2xl border border-gray-200 dark:border-white/8 p-8 md:p-12 flex flex-col items-center"
+                aria-live="polite" aria-busy="false" style="min-height:340px;box-shadow:0 4px 24px rgba(108,43,217,0.06);">
+                <div class="relative w-20 h-20 mb-7">
+                    <div class="ring-outer absolute inset-0 rounded-full border-2"></div>
+                    <div class="ring-mid absolute inset-2 rounded-full border-2"></div>
+                    <div class="ring-inner absolute inset-4 rounded-full border"></div>
+                    <i data-lucide="brain-circuit" class="absolute inset-0 m-auto w-7 h-7 text-brand-primary"></i>
+                </div>
+                <h2 id="proc-title" class="text-xl font-display font-bold text-slate-900 dark:text-white mb-1 text-center">BoardAlgo AI is thinking...</h2>
+                <p id="proc-subtitle" class="text-xs font-medium text-slate-500 mb-6 uppercase tracking-widest text-center">Lore Engine · Narrative Mode</p>
+                <div class="w-full max-w-sm bg-gray-200 dark:bg-white/5 rounded-full h-1.5 mb-6 overflow-hidden">
+                    <div id="progress-bar" class="h-1.5 rounded-full" style="width:15%;"></div>
+                </div>
+                <div id="terminal-log" class="w-full max-w-sm font-mono text-xs bg-slate-50 dark:bg-black/40 rounded-xl p-4 border border-slate-200 dark:border-white/5 space-y-2 min-h-[90px]"></div>
+                <button id="btn-cancel" class="mt-8 px-5 py-2 rounded-full border border-gray-300 dark:border-gray-700 text-slate-500 hover:text-red-400 hover:border-red-400/50 text-sm font-medium transition-colors focus:outline-none">Cancel</button>
+            </section>
+
+            <section id="ui-state-output" class="state-section hidden" aria-live="polite">
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-5">
+                    <div class="lg:col-span-1 order-2 lg:order-1" id="source-matrix-container"></div>
+                    <div class="lg:col-span-3 order-1 lg:order-2">
+                        <div class="glass rounded-t-2xl overflow-hidden border border-gray-200 dark:border-white/8 border-b-0">
+                            <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-white/5 bg-slate-50 dark:bg-black/20 flex-wrap gap-2">
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="glow-dot"></span>
+                                    <span class="text-xs font-bold uppercase tracking-widest text-brand-primary font-display">BoardAlgo AI · Result</span>
+                                    <span id="output-mode-badge" class="badge badge-lore">Lore Engine</span>
+                                    <span id="output-lang-badge" class="badge" style="background:rgba(108,43,217,0.08);color:#6C2BD9;border:1px solid rgba(108,43,217,0.2);">EN</span>
+                                    <span id="streak-badge" class="streak-pill hidden"></span>
+                                </div>
+                                <button id="btn-reset" class="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-brand-primary transition-colors focus:outline-none">
+                                    <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i> New Hook
+                                </button>
+                            </div>
+                            <div class="stats-strip" id="stats-strip">
+                                <div class="stat-item"><i data-lucide="layers" class="w-3 h-3"></i> Today: <span class="stat-val ml-1" id="stat-locked">0</span></div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item"><i data-lucide="zap" class="w-3 h-3"></i> XP: <span class="stat-val ml-1" id="stat-xp-earned">0</span></div>
+                                <div class="stat-divider"></div>
+                                <div class="stat-item"><i data-lucide="brain-circuit" class="w-3 h-3"></i> Tests: <span class="stat-val ml-1" id="stat-tests">0</span></div>
+                            </div>
+                        </div>
+                        <div id="ai-items-container" class="glass rounded-b-2xl border border-gray-200 dark:border-white/8 border-t-0 p-4 sm:p-6 space-y-5"></div>
+                        <div class="flex items-center justify-center gap-2 mt-4 flex-wrap">
+                            <button id="btn-copy-output" class="action-bar-btn"><i data-lucide="copy" class="w-3.5 h-3.5"></i> Copy</button>
+                            <button id="btn-save-txt"    class="action-bar-btn"><i data-lucide="download" class="w-3.5 h-3.5"></i> Save .txt</button>
+                            <button id="btn-bookmark"    class="action-bar-btn"><i data-lucide="bookmark" class="w-3.5 h-3.5"></i> Save to History</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
         </div>
+    </main>
 
-        <div class="lg:col-span-3 hud-panel rounded-2xl overflow-hidden border border-brand-primary/20 flex flex-col">
-          <div class="h-12 border-b border-brand-lightborder dark:border-white/10 bg-black/5 dark:bg-black/20 flex items-center px-4 justify-between">
-            <div class="flex items-center gap-2">
-              <span class="relative flex h-3 w-3">
-                <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-brand-accent opacity-75"></span>
-                <span class="relative inline-flex rounded-full h-3 w-3 bg-brand-accent shadow-glow-accent"></span>
-              </span>
-              <span class="font-mono text-xs font-bold uppercase tracking-widest text-brand-accent">BoardAlgo AI Synapse</span>
-            </div>
-            <button id="btn-reset" class="text-xs font-bold text-slate-500 hover:text-slate-900 dark:hover:text-white flex items-center gap-1 transition-colors">
-              <i data-lucide="rotate-ccw" class="w-3 h-3"></i> New Query
-            </button>
-          </div>
+    <script>
+    lucide.createIcons();
 
-          <div id="ai-output-area" class="p-6 md:p-8 font-sans text-slate-800 dark:text-slate-200 leading-relaxed text-sm md:text-base border-b border-brand-lightborder dark:border-white/10">
-            <div id="ai-title" class="text-xl md:text-2xl font-display font-bold text-brand-primary mb-4">Result</div>
-            <div id="ai-content" class="mb-4 prose max-w-none"></div>
-
-            <div id="ai-formula" class="bg-black/5 dark:bg-black/40 p-4 rounded-xl border border-brand-lightborder dark:border-white/10 mb-4 overflow-x-auto hidden text-slate-800 dark:text-slate-200"></div>
-
-            <div id="ai-mnemonic" class="bg-brand-primary/10 border-l-4 border-brand-primary p-4 rounded-r-xl hidden">
-              <strong class="text-brand-primary">Neural Hack Mnemonic:</strong>
-              <p id="ai-mnemonic-text" class="mt-1 font-bold"></p>
-              <p id="ai-mnemonic-sub" class="text-xs opacity-70 mt-1"></p>
-            </div>
-          </div>
-
-          <div class="relative wireframe-bg flex flex-col items-center justify-center min-h-[250px] p-6 group">
-            <div class="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity z-10">
-              <button id="btn-zoom" class="p-1.5 bg-white dark:bg-brand-surface rounded shadow border border-brand-lightborder dark:border-white/10 hover:text-brand-primary"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
-              <button id="btn-download-output" class="p-1.5 bg-white dark:bg-brand-surface rounded shadow border border-brand-lightborder dark:border-white/10 hover:text-brand-primary"><i data-lucide="download" class="w-4 h-4"></i></button>
-            </div>
-
-            <div id="ai-visual" class="w-full max-w-md h-40 bg-white/50 dark:bg-black/30 border border-brand-primary/30 rounded-lg flex flex-col items-center justify-center relative shadow-lg gap-2">
-              <i data-lucide="layers" class="w-10 h-10 text-brand-primary opacity-40"></i>
-              <span class="text-xs font-bold uppercase tracking-widest text-brand-primary opacity-60">Visual Cortex: Coming Soon</span>
-            </div>
-
-            <div class="mt-4 flex gap-2">
-              <button id="btn-copy-output" class="px-3 py-1 rounded border">Copy</button>
-              <button id="btn-save-txt" class="px-3 py-1 rounded border">Download .txt</button>
-            </div>
-          </div>
-
-        </div>
-      </div>
-    </section>
-
-  </main>
-
-  <script>
-  // ---------- icons ----------
-  lucide.createIcons();
-
-  // ---------- elements ----------
-  const form = document.getElementById('mnemonic-form');
-  const textarea = document.getElementById('brain-dump');
-  const fileInput = document.getElementById('file-input');
-  const filePreview = document.getElementById('file-preview');
-
-  const btnUpload = document.getElementById('btn-upload');
-  const btnCamera = document.getElementById('btn-camera');
-  const btnLore = document.getElementById('btn-lore');
-  const btnHack = document.getElementById('btn-hack');
-  const modeIndicator = document.getElementById('mode-indicator');
-  const modeInput = document.getElementById('mode-input');
-  const btnDeepScan = document.getElementById('btn-deepscan');
-  const deepScanInput = document.getElementById('deepscan-input');
-  const btnGenerate = document.getElementById('btn-generate');
-
-  const stateIdle = document.getElementById('ui-state-idle');
-  const stateProcessing = document.getElementById('ui-state-processing');
-  const stateOutput = document.getElementById('ui-state-output');
-  const progressBar = document.getElementById('progress-bar');
-  const processingLine = document.getElementById('processing-line');
-
-  const aiContent = document.getElementById('ai-content');
-  const aiTitle = document.getElementById('ai-title');
-  const aiFormula = document.getElementById('ai-formula');
-  const aiMnemonic = document.getElementById('ai-mnemonic');
-  const aiMnemonicText = document.getElementById('ai-mnemonic-text');
-  const aiMnemonicSub = document.getElementById('ai-mnemonic-sub');
-  const sourceMatrixContainer = document.getElementById('source-matrix-container');
-  const aiVisualContainer = document.getElementById('ai-visual');
-
-  const btnCancel = document.getElementById('btn-cancel');
-  const btnReset = document.getElementById('btn-reset');
-  const btnCopyOutput = document.getElementById('btn-copy-output');
-  const btnSaveTxt = document.getElementById('btn-save-txt');
-  const btnDownloadOutputTop = document.getElementById('btn-download-output');
-
-  const themeToggleBtn = document.getElementById('theme-toggle');
-  const htmlElement = document.documentElement;
-
-  // ---------- small helpers ----------
-  function show(elem){ elem.classList.remove('hidden'); elem.classList.replace?.('opacity-0','opacity-100'); }
-  function hide(elem){ elem.classList.add('hidden'); }
-  function switchState(hideElem, showElem){
-    try { hideElem.classList.replace('opacity-100','opacity-0'); } catch(e){}
-    setTimeout(()=>{
-      hideElem.classList.add('hidden'); hideElem.classList.remove('flex');
-      showElem.classList.remove('hidden'); showElem.classList.add('flex');
-      void showElem.offsetWidth;
-      try{ showElem.classList.replace('opacity-0','opacity-100'); } catch(e){}
-    }, 300);
-  }
-
-  // ---------- auto-expand textarea ----------
-  textarea.addEventListener('input', function(){ this.style.height='auto'; this.style.height = Math.max(140,this.scrollHeight)+'px'; });
-
-  // ---------- mode logic ----------
-  let currentMode = 'lore';
-  function updateModesUI(){
-    if(currentMode === 'lore'){
-      modeIndicator.style.transform = 'translateX(0%)';
-      modeIndicator.style.backgroundColor = '#6C2BD9';
-      btnLore.classList.add('text-white'); btnLore.classList.remove('text-slate-500');
-      btnLore.setAttribute('aria-checked','true');
-      btnHack.classList.remove('text-white'); btnHack.classList.add('text-slate-500'); btnHack.setAttribute('aria-checked','false');
-    } else {
-      modeIndicator.style.transform = 'translateX(100%)';
-      modeIndicator.style.backgroundColor = '#16A34A';
-      btnHack.classList.add('text-white'); btnHack.classList.remove('text-slate-500');
-      btnHack.setAttribute('aria-checked','true');
-      btnLore.classList.remove('text-white'); btnLore.classList.add('text-slate-500'); btnLore.setAttribute('aria-checked','false');
-    }
-    modeInput.value = currentMode;
-  }
-  btnLore.addEventListener('click', ()=>{ currentMode='lore'; updateModesUI(); });
-  btnHack.addEventListener('click', ()=>{ currentMode='hack'; updateModesUI(); });
-  updateModesUI();
-
-  // ---------- deepscan toggle ----------
-  let isDeepScanOn = false;
-  btnDeepScan.addEventListener('click', ()=>{
-    isDeepScanOn = !isDeepScanOn;
-    btnDeepScan.setAttribute('aria-pressed', isDeepScanOn);
-    deepScanInput.value = isDeepScanOn ? 'true' : 'false';
-    if(isDeepScanOn){
-      btnDeepScan.classList.add('border-brand-accent','text-brand-accent','shadow-glow-accent');
-      btnDeepScan.classList.remove('border-slate-300','text-slate-400');
-    } else {
-      btnDeepScan.classList.remove('border-brand-accent','text-brand-accent','shadow-glow-accent');
-      btnDeepScan.classList.add('border-slate-300','text-slate-400');
-    }
-  });
-
-  // ---------- upload / scan: show "Coming soon" only ----------
-  function showToast(msg, ms=1200){
-    const t = document.createElement('div');
-    t.className = 'short-toast';
-    t.textContent = msg;
-    document.body.appendChild(t);
-    setTimeout(()=> t.classList.add('fade'), 20);
-    setTimeout(()=> {
-      if(t.parentNode) t.parentNode.removeChild(t);
-    }, ms);
-  }
-  btnUpload.addEventListener('click', ()=> {
-    showToast('📸 Coming soon — image upload will be enabled later', 1200);
-  });
-  btnCamera.addEventListener('click', ()=> {
-    showToast('📷 Coming soon — camera capture will be enabled later', 1200);
-  });
-
-  // ---------- file preview (only if file added via paste or manual dev) ----------
-  fileInput.addEventListener('change', () => {
-    const f = fileInput.files && fileInput.files[0];
-    if(!f) { filePreview.src=''; filePreview.classList.add('hidden'); return; }
-    const url = URL.createObjectURL(f);
-    filePreview.src = url;
-    filePreview.classList.remove('hidden');
-  });
-
-  // ---------- clipboard paste (text + images) ----------
-  window.addEventListener('paste', async (e)=>{
-    if(!e.clipboardData) return;
-    const items = e.clipboardData.items;
-    for(let i=0;i<items.length;i++){
-      const it = items[i];
-      if(it.type && it.type.startsWith && it.type.startsWith('image/')){
-        const blob = it.getAsFile();
-        const dt = new DataTransfer();
-        dt.items.add(blob);
-        fileInput.files = dt.files;
-        filePreview.src = URL.createObjectURL(blob);
-        filePreview.classList.remove('hidden');
-        return;
-      }
-    }
-    const text = e.clipboardData.getData('text');
-    if(text) {
-      const pos = textarea.selectionStart || textarea.value.length;
-      const before = textarea.value.slice(0,pos);
-      const after = textarea.value.slice(pos);
-      textarea.value = before + text + after;
-      textarea.dispatchEvent(new Event('input'));
-    }
-  });
-
-  // ---------- processing / abort / fake progress ----------
-  let currentController = null;
-  let progressInterval = null;
-  function startFakeProgress(){
-    clearInterval(progressInterval);
-    let p = 20;
-    progressBar.style.width = p + '%';
-    progressInterval = setInterval(()=>{
-      if(p < 80){ p += Math.random()*6; if(p>80) p=80; progressBar.style.width = Math.floor(p)+'%'; }
-    }, 450);
-  }
-  function stopFakeProgress(){
-    clearInterval(progressInterval);
-    progressInterval = null;
-  }
-
-  // ---------- helper: convert file to base64 dataURL ----------
-  function fileToDataURL(file){
-    return new Promise((resolve, reject) => {
-      const r = new FileReader();
-      r.onload = ()=> resolve(r.result);
-      r.onerror = reject;
-      r.readAsDataURL(file);
+    // ── Theme ──────────────────────────────────────────────────────────────────
+    const html = document.documentElement;
+    (function(){
+        const s = localStorage.theme;
+        if(s==='dark'||(!s&&window.matchMedia('(prefers-color-scheme:dark)').matches)) html.classList.add('dark');
+        else html.classList.remove('dark');
+    })();
+    document.getElementById('theme-toggle').addEventListener('click',()=>{
+        html.classList.toggle('dark');
+        localStorage.theme = html.classList.contains('dark')?'dark':'light';
+        setMode(currentMode); // re-apply button colors for new theme
+        if(typeof updateThreeColors==='function') updateThreeColors();
     });
-  }
 
-  // ---------- form submit: send JSON (no multipart) ----------
-  form.addEventListener('submit', async (ev)=>{
-    ev.preventDefault();
+    // ── DOM refs ───────────────────────────────────────────────────────────────
+    const form=document.getElementById('mnemonic-form'),textarea=document.getElementById('brain-dump'),
+        fileInput=document.getElementById('file-input'),imgStrip=document.getElementById('img-preview-strip'),
+        previewThumb=document.getElementById('preview-thumb'),previewFilename=document.getElementById('preview-filename'),
+        previewFilesize=document.getElementById('preview-filesize'),btnRemoveImg=document.getElementById('btn-remove-img'),
+        btnUpload=document.getElementById('btn-upload'),btnCamera=document.getElementById('btn-camera'),
+        btnLore=document.getElementById('btn-lore'),btnHack=document.getElementById('btn-hack'),
+        modeInput=document.getElementById('mode-input'),btnDeepScan=document.getElementById('btn-deepscan'),
+        deepScanInput=document.getElementById('deepscan-input'),deepscanTrack=document.getElementById('deepscan-track'),
+        deepscanKnob=document.getElementById('deepscan-knob'),deepscanIcon=document.getElementById('deepscan-icon'),
+        languageInput=document.getElementById('language-input'),langDescText=document.getElementById('lang-desc-text'),
+        outputLangBadge=document.getElementById('output-lang-badge'),btnGenerate=document.getElementById('btn-generate'),
+        stateIdle=document.getElementById('ui-state-idle'),stateProc=document.getElementById('ui-state-processing'),
+        stateOutput=document.getElementById('ui-state-output'),progressBar=document.getElementById('progress-bar'),
+        terminalLog=document.getElementById('terminal-log'),procTitle=document.getElementById('proc-title'),
+        procSubtitle=document.getElementById('proc-subtitle'),aiItems=document.getElementById('ai-items-container'),
+        sourceMatrix=document.getElementById('source-matrix-container'),outputModeBadge=document.getElementById('output-mode-badge'),
+        streakBadge=document.getElementById('streak-badge'),btnCancel=document.getElementById('btn-cancel'),
+        btnReset=document.getElementById('btn-reset'),btnCopy=document.getElementById('btn-copy-output'),
+        btnSave=document.getElementById('btn-save-txt'),btnReconfig=document.getElementById('btn-reconfig'),
+        confirmModal=document.getElementById('confirm-modal'),modalCancelBtn=document.getElementById('modal-cancel-btn'),
+        modalConfirmBtn=document.getElementById('modal-confirm-btn');
 
-    const question = textarea.value && textarea.value.trim();
-    if(!question && (!fileInput.files || fileInput.files.length===0)){
-      alert('Please enter a question or paste an image.');
-      return;
+    // ── App state ──────────────────────────────────────────────────────────────
+    let currentMode='lore',isDeepScan=false,currentLanguage='english',ctrl=null,progTimer=null,imageBase64=null;
+    let lastInteractionId = null;
+
+    const questionHistory = JSON.parse(sessionStorage.getItem('ba_q_hist')||'{}');
+    function saveQuestionHistory(){ sessionStorage.setItem('ba_q_hist', JSON.stringify(questionHistory)); }
+    function recordQuestion(q, mode) {
+        const key = q.toLowerCase().trim();
+        if (!questionHistory[key]) questionHistory[key] = { count:0, lastMode:mode, lastTs:0 };
+        questionHistory[key].count++; questionHistory[key].lastMode = mode; questionHistory[key].lastTs = Date.now();
+        saveQuestionHistory(); return questionHistory[key];
     }
-
-    switchState(stateIdle, stateProcessing);
-    stateProcessing.setAttribute('aria-busy','true');
-    processingLine.textContent = '> Preparing request...';
-    progressBar.style.width = '15%';
-    startFakeProgress();
-
-    let imageBase64 = null;
-    if(fileInput.files && fileInput.files[0]){
-      try {
-        imageBase64 = await fileToDataURL(fileInput.files[0]);
-      } catch(e){
-        console.error('Failed to convert file to base64', e);
-        imageBase64 = null;
-      }
+    function shouldWarnRepeat(q, mode) {
+        const key = q.toLowerCase().trim(); const h = questionHistory[key];
+        if (!h || h.count < 1) return false; return h.lastMode === mode;
     }
+    function getAlternateMode(mode) { return mode === 'lore' ? 'hack' : 'lore'; }
 
-    const payload = {
-      question: question || '',
-      mode: modeInput.value || currentMode,
-      deepScan: (deepScanInput.value === 'true' || isDeepScanOn === true),
-      image: imageBase64
+    // ── Gamification ───────────────────────────────────────────────────────────
+    const G = {
+        xp:          parseInt(sessionStorage.getItem('ba_xp')   ||'0'),
+        locked:      parseInt(sessionStorage.getItem('ba_locked')||'0'),
+        tests:       parseInt(sessionStorage.getItem('ba_tests') ||'0'),
+        streak:      parseInt(localStorage.getItem('ba_streak')  ||'1'),
+        lastDay:     localStorage.getItem('ba_lastday')          ||'',
+        achievements:JSON.parse(sessionStorage.getItem('ba_ach') ||'[]'),
+        reportCount: parseInt(localStorage.getItem('ba_reports') ||'0'),
     };
+    const XP_LEVELS=[0,50,130,250,420,650,950,1350,1900,2600,3500];
+    function getLevel(xp){ let l=1; for(let i=1;i<XP_LEVELS.length;i++){ if(xp>=XP_LEVELS[i]) l=i+1; else break; } return Math.min(l,XP_LEVELS.length); }
+    function getLevelXP(xp){ const l=getLevel(xp),base=XP_LEVELS[l-1],next=XP_LEVELS[l]||XP_LEVELS[XP_LEVELS.length-1]+1000; return {base,next,pct:Math.round((xp-base)/(next-base)*100)}; }
+    function saveG(){ sessionStorage.setItem('ba_xp',G.xp); sessionStorage.setItem('ba_locked',G.locked); sessionStorage.setItem('ba_tests',G.tests); sessionStorage.setItem('ba_ach',JSON.stringify(G.achievements)); localStorage.setItem('ba_streak',G.streak); localStorage.setItem('ba_lastday',G.lastDay); localStorage.setItem('ba_reports',G.reportCount); }
+    function updateNavXP(){ const l=getLevel(G.xp),{pct}=getLevelXP(G.xp); document.getElementById('nav-level').textContent=`LVL ${l}`; document.getElementById('nav-xp-fill').style.width=pct+'%'; document.getElementById('nav-xp-label').textContent=G.xp+' XP'; }
+    function updateStatStrip(){ document.getElementById('stat-locked').textContent=G.locked; document.getElementById('stat-xp-earned').textContent=G.xp; document.getElementById('stat-tests').textContent=G.tests; }
+    function gainXP(amount,reason){ const ol=getLevel(G.xp); G.xp+=amount; const nl=getLevel(G.xp); saveG(); updateNavXP(); updateStatStrip(); showXPGain('+'+amount+' XP  ·  '+reason); if(nl>ol) showAchievement('⚡','Level Up!','You reached Level '+nl); }
+    function showXPGain(msg){ const el=document.createElement('div'); el.className='xp-gain-pop'; el.innerHTML=`<i data-lucide="star" style="width:14px;height:14px;"></i> ${msg}`; document.body.appendChild(el); lucide.createIcons(); setTimeout(()=>{ el.style.transition='opacity .4s ease'; el.style.opacity='0'; setTimeout(()=>el.remove(),400); },2200); }
+    const ACHIEVEMENTS={
+        first_hook:{icon:'🎯',title:'First Hook!',sub:'Welcome to BoardAlgo AI'},
+        five_hooks: {icon:'🔥',title:'On Fire!',   sub:'5 hooks generated today'},
+        first_test: {icon:'🧠',title:'Memory Tested!',sub:'Completed your first test'},
+        perfect_test:{icon:'⭐',title:'Perfect Recall!',sub:'100% in test mode'},
+        five_tests:  {icon:'🏆',title:'Test Champion!',sub:'5 tests passed'},
+        deep_scan:   {icon:'🔬',title:'Deep Researcher!',sub:'First Deep Scan used'},
+        first_report:{icon:'🛡️',title:'Quality Guard!',sub:'Thanks for your first report'},
+        four_reports:{icon:'💎',title:'2 Days Free!', sub:'4 genuine reports — checking now'},
+    };
+    function triggerAchievement(key){ if(G.achievements.includes(key)) return; G.achievements.push(key); saveG(); const a=ACHIEVEMENTS[key]; if(a) showAchievement(a.icon,a.title,a.sub); }
+    function showAchievement(icon,title,sub){ const el=document.createElement('div'); el.className='achievement-banner'; el.innerHTML=`<div class="achieve-icon">${icon}</div><div><div class="achieve-title">${title}</div><div class="achieve-sub">ACHIEVEMENT UNLOCKED · ${sub.toUpperCase()}</div></div>`; document.body.appendChild(el); setTimeout(()=>{ el.style.transition='opacity .5s ease,transform .5s ease'; el.style.opacity='0'; el.style.transform='translateX(30px)'; setTimeout(()=>el.remove(),500); },3500); }
 
-    currentController = new AbortController();
+    // Streak
+    (function(){
+        const today=new Date().toDateString();
+        if(G.lastDay!==today){ const yesterday=new Date(Date.now()-86400000).toDateString(); if(G.lastDay===yesterday) G.streak++; else if(G.lastDay!=='') G.streak=1; G.lastDay=today; saveG(); }
+        if(G.streak>1){ streakBadge.textContent=`🔥 ${G.streak} day streak`; streakBadge.classList.remove('hidden'); }
+        updateNavXP(); updateStatStrip();
+    })();
 
-    try {
-      const res = await fetch(form.action, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(payload),
-        signal: currentController.signal
-      });
+    // ── Helpers ────────────────────────────────────────────────────────────────
+    function showToast(msg,ms=1800){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>{ if(t.parentNode) t.parentNode.removeChild(t); },ms); }
+    function switchState(hide,show){ hide.style.opacity='0'; setTimeout(()=>{ hide.classList.add('hidden'); hide.classList.remove('flex'); show.classList.remove('hidden'); void show.offsetWidth; show.style.opacity='1'; },280); }
+    function formatBytes(b){ if(b<1024) return b+' B'; if(b<1048576) return (b/1024).toFixed(1)+' KB'; return (b/1048576).toFixed(1)+' MB'; }
+    function mdBold(raw){ if(!raw) return ''; const safe=raw.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); return safe.replace(/\*\*([^*\n]+?)\*\*/g,'<strong>$1</strong>'); }
 
-      processingLine.textContent = '> Awaiting model output...';
-      progressBar.style.width = '85%';
-
-      const json = await res.json();
-
-      stopFakeProgress();
-      progressBar.style.width = '100%';
-
-      // -------------------------------------------------------------
-      // UPDATED JSON PARSING BLOCK
-      // -------------------------------------------------------------
-      
-      // 1. Map Core Content
-      const output = json.definition || json.output || json.text || '';
-      const title = json.title || 'Result';
-      const formulaHtml = json.latex_formula || '';
-      const hookText = json.hook_text || '';
-      const hookSubtext = json.hook_subtext || '';
-      const hookLabel = json.hook_label || (currentMode === 'lore' ? 'Lore Engine Narrative:' : 'Neural Hack Mnemonic:');
-
-      aiTitle.textContent = title;
-      aiContent.innerHTML = output;
-
-      // 2. Map Formula (with KaTeX rendering)
-      if (formulaHtml) {
-        // Remove the $$ delimiters for KaTeX
-        const cleanFormula = formulaHtml.replace(/\$\$/g, '').trim();
+    // ════════════════════════════════════════════════════════════════════
+    // KATEX — improved rendering with better fallback
+    // ════════════════════════════════════════════════════════════════════
+    function renderKatexLine(latexStr, containerEl) {
+        if (!window.katex) {
+            containerEl.className = 'formula-plain-fallback';
+            containerEl.textContent = latexStr;
+            return;
+        }
+        // Clean up common patterns
+        const cleaned = latexStr.trim();
         try {
-          katex.render(cleanFormula, aiFormula, {
-            displayMode: true,
-            throwOnError: false
-          });
-        } catch (error) {
-          console.error("KaTeX Rendering Error:", error);
-          aiFormula.textContent = formulaHtml; // Fallback to plain text if rendering fails
+            katex.render(cleaned, containerEl, {
+                displayMode: true,
+                throwOnError: false,
+                strict: false,
+                trust: true,
+                macros: {
+                    "\\d": "\\mathrm{d}",
+                }
+            });
+        } catch(e) {
+            // Try inline mode
+            try {
+                katex.render(cleaned, containerEl, { displayMode:false, throwOnError:false, strict:false, trust:true });
+            } catch(e2) {
+                // Full fallback — styled plain text
+                containerEl.className = 'formula-plain-fallback';
+                containerEl.textContent = cleaned;
+            }
         }
-        aiFormula.classList.remove('hidden');
-      } else {
-        aiFormula.classList.add('hidden');
-        aiFormula.innerHTML = ''; // Clear previous rendering
-      }
+    }
 
-      // 3. Map Mnemonic / Lore Hook
-      if (hookText) {
-        const strongLabel = aiMnemonic.querySelector('strong');
-        if (strongLabel) strongLabel.textContent = hookLabel;
-        
-        aiMnemonicText.textContent = hookText;
-        aiMnemonicSub.textContent = hookSubtext;
-        aiMnemonic.classList.remove('hidden');
-      } else {
-        aiMnemonic.classList.add('hidden');
-      }
+    // Auto-detect and render inline LaTeX in plain text (for content fields)
+    function tryRenderInlineLatex(textContent) {
+        if (!window.katex || !textContent) return null;
+        // If it contains common LaTeX patterns, try to render
+        const hasLatex = /\\[a-zA-Z]|[\^_]|\$|\\frac|\\int|\\sum|\\sqrt/.test(textContent);
+        if (!hasLatex) return null;
+        const el = document.createElement('div');
+        el.className = 'latex-line';
+        renderKatexLine(textContent, el);
+        return el;
+    }
 
-      // 4. Visual Cortex Label - Kept static "Coming Soon" in HTML for now.
-      // if (json.visual_cortex && json.visual_cortex.tooltip_label) { ... }
+    // ── Concept content builder ────────────────────────────────────────────────
+    function buildConceptContent(cc){
+        if(!cc||!cc.content) return null;
+        const ICONS={reaction:'flask-conical',formula:'sigma',table:'table-2',list:'list',statement:'quote',steps:'git-branch'};
+        const LABELS={reaction:'The Reaction',formula:'The Formula',table:'The Table',list:'What to Memorize',statement:'The Statement',steps:'The Steps'};
+        const box=document.createElement('div'); box.className='concept-box'; box.dataset.type=cc.type||'list';
+        const header=document.createElement('div'); header.className='concept-box-header';
+        const hl=document.createElement('div'); hl.className='flex items-center gap-2';
+        hl.innerHTML=`<i data-lucide="${ICONS[cc.type]||'book-open'}" class="w-3.5 h-3.5"></i><span>${LABELS[cc.type]||'What to Learn'}</span>`;
+        header.appendChild(hl);
+        const body=document.createElement('div'); body.className='concept-box-body';
 
-      // 5. Map Source Matrix (Dynamic Injection)
-      if (json.source_matrix && Array.isArray(json.source_matrix)) {
-          const headerHtml = `
-            <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
-              <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
-            </h3>`;
-          
-          let panelsHtml = '';
-          
-          json.source_matrix.forEach((source, index) => {
-              const colorClass = index === 0 ? 'border-l-brand-primary' : 'border-l-brand-accent';
-              const textClass = index === 0 ? 'text-brand-primary' : 'text-brand-accent';
-              const icon = source.icon_type === 'file' ? 'file-text' : 'book-open';
+        const hasLatex = Array.isArray(cc.latex_content) && cc.latex_content.length > 0;
 
-              panelsHtml += `
-              <div class="hud-panel p-3 rounded-xl border-l-4 ${colorClass} hover:-translate-y-1 transition-transform cursor-pointer mb-3">
-                  <div class="flex justify-between items-start mb-2">
-                      <span class="text-xs font-bold text-slate-900 dark:text-white">${source.title || 'Source'}</span>
-                      <span class="text-[10px] font-mono bg-green-500/10 text-green-600 dark:text-green-400 px-1.5 py-0.5 rounded border border-green-500/20">${source.match_percentage || ''}</span>
-                  </div>
-                  <div class="h-16 bg-slate-200 dark:bg-slate-800 rounded mb-2 flex items-center justify-center overflow-hidden border border-brand-lightborder dark:border-white/5">
-                      <i data-lucide="${icon}" class="text-slate-400 w-6 h-6"></i>
-                  </div>
-                  <button id="btn-view-context-${index + 1}" class="text-[10px] font-bold w-full text-center ${textClass}">View Context</button>
-              </div>`;
-          });
-          
-          sourceMatrixContainer.innerHTML = headerHtml + panelsHtml;
-          
-          // Re-initialize Lucide icons for the new HTML
-          if(window.lucide) window.lucide.createIcons();
-      }
+        if (hasLatex && window.katex) {
+            const lw=document.createElement('div'); lw.className='latex-render';
+            cc.latex_content.forEach(ls=>{
+                const le=document.createElement('div'); le.className='latex-line';
+                renderKatexLine(ls, le);
+                lw.appendChild(le);
+            });
+            body.appendChild(lw);
 
-      stateProcessing.setAttribute('aria-busy','false');
-      switchState(stateProcessing, stateOutput);
+            const tb=document.createElement('button'); tb.className='plain-toggle-btn'; tb.type='button';
+            tb.innerHTML=`<i data-lucide="text" class="w-3 h-3"></i> Plain`;
+            const pw=document.createElement('div'); pw.className='cc-plain-wrap'; pw.style.display='none';
+            cc.content.split('\\n').map(l=>l.trim()).filter(Boolean).forEach(ln=>{
+                const p=document.createElement('p'); p.className='cc-plain-line'; p.textContent=ln; pw.appendChild(p);
+            });
+            body.appendChild(pw);
+            let sl=true;
+            tb.addEventListener('click',()=>{
+                sl=!sl; lw.style.display=sl?'':'none'; pw.style.display=sl?'none':'';
+                tb.innerHTML=sl?`<i data-lucide="text" class="w-3 h-3"></i> Plain`:`<i data-lucide="sigma" class="w-3 h-3"></i> LaTeX`;
+                lucide.createIcons();
+            });
+            header.appendChild(tb);
 
-    } catch (err) {
-      console.error(err);
-      stopFakeProgress();
-      progressBar.style.width = '0%';
-      stateProcessing.setAttribute('aria-busy','false');
-      switchState(stateProcessing, stateIdle);
+        } else if ((cc.type==='formula' || cc.type==='reaction') && window.katex) {
+            // Try to auto-render the content field as LaTeX
+            const lw = document.createElement('div'); lw.className = 'latex-render';
+            const lines = cc.content.split(/\\n|\n/).map(l=>l.trim()).filter(Boolean);
+            lines.forEach(ln => {
+                const le = document.createElement('div'); le.className = 'latex-line';
+                renderKatexLine(ln, le);
+                lw.appendChild(le);
+            });
+            body.appendChild(lw);
 
-      if(err.name === 'AbortError'){
-        alert('Request cancelled.');
-      } else {
-        // Check if it's a JSON parsing error from the response
-        if(err instanceof SyntaxError) {
-           alert('Server error: Received invalid response format.');
+            const tb=document.createElement('button'); tb.className='plain-toggle-btn'; tb.type='button';
+            tb.innerHTML=`<i data-lucide="text" class="w-3 h-3"></i> Plain`;
+            const pw=document.createElement('div'); pw.className='cc-plain-wrap'; pw.style.display='none';
+            lines.forEach(ln=>{ const p=document.createElement('p'); p.className='cc-plain-line'; p.textContent=ln; pw.appendChild(p); });
+            body.appendChild(pw);
+            let sl=true;
+            tb.addEventListener('click',()=>{
+                sl=!sl; lw.style.display=sl?'':'none'; pw.style.display=sl?'none':'';
+                tb.innerHTML=sl?`<i data-lucide="text" class="w-3 h-3"></i> Plain`:`<i data-lucide="sigma" class="w-3 h-3"></i> LaTeX`;
+                lucide.createIcons();
+            });
+            header.appendChild(tb);
+
+        } else if(cc.type==='list'){
+            const ul=document.createElement('div'); ul.className='cc-list';
+            cc.content.split('\\n').map(l=>l.trim()).filter(Boolean).forEach((ln,i)=>{
+                const it=document.createElement('div'); it.className='cc-item';
+                it.innerHTML=`<span class="cc-num">${i+1}</span><span class="cc-text">${ln}</span>`;
+                ul.appendChild(it);
+            });
+            body.appendChild(ul);
+        } else if(cc.type==='steps'){
+            const sw=document.createElement('div'); sw.className='cc-steps';
+            cc.content.split('\\n').map(l=>l.trim()).filter(Boolean).forEach((ln,i)=>{
+                const st=document.createElement('div'); st.className='cc-step';
+                st.innerHTML=`<span class="cc-step-num">${i+1}</span><span class="cc-step-text">${ln}</span>`;
+                sw.appendChild(st);
+            });
+            body.appendChild(sw);
         } else {
-           alert('Request failed. Check console for details.');
+            const pw=document.createElement('div'); pw.className='cc-plain-wrap';
+            cc.content.split('\\n').map(l=>l.trim()).filter(Boolean).forEach(ln=>{
+                const p=document.createElement('p'); p.className='cc-plain-line'; p.textContent=ln; pw.appendChild(p);
+            });
+            body.appendChild(pw);
         }
-      }
-    } finally {
-      currentController = null;
-      stopFakeProgress();
+        box.appendChild(header); box.appendChild(body); return box;
     }
-  });
 
-  // ---------- cancel ----------
-  btnCancel.addEventListener('click', ()=>{
-    if(currentController) currentController.abort();
-    stateProcessing.setAttribute('aria-busy','false');
-    switchState(stateProcessing, stateIdle);
-    progressBar.style.width = '0%';
-  });
+    // ── Confetti ───────────────────────────────────────────────────────────────
+    function fireConfetti(x,y){ const cv=document.createElement('canvas'); cv.style.cssText='position:fixed;top:0;left:0;width:100%;height:100%;pointer-events:none;z-index:200;'; document.body.appendChild(cv); const ctx=cv.getContext('2d'); cv.width=innerWidth; cv.height=innerHeight; const cols=['#6C2BD9','#a78bfa','#16A34A','#4ade80','#f472b6','#fbbf24','#38bdf8']; const cx=x||cv.width/2,cy=y||cv.height/3; const ps=Array.from({length:55},()=>({x:cx,y:cy,r:3+Math.random()*5,color:cols[Math.floor(Math.random()*cols.length)],vx:(Math.random()-.5)*8,vy:-4-Math.random()*6,rot:Math.random()*360,vr:(Math.random()-.5)*14})); let fr; const st=Date.now(); function draw(){ ctx.clearRect(0,0,cv.width,cv.height); const el=Date.now()-st; ps.forEach(p=>{ p.x+=p.vx; p.y+=p.vy; p.rot+=p.vr; p.vy+=0.1; ctx.save(); ctx.translate(p.x,p.y); ctx.rotate(p.rot*Math.PI/180); ctx.fillStyle=p.color; ctx.globalAlpha=Math.max(0,1-el/2000); ctx.fillRect(-p.r,-p.r/2,p.r*2,p.r); ctx.restore(); }); if(el<2000) fr=requestAnimationFrame(draw); else{ cancelAnimationFrame(fr); if(cv.parentNode) document.body.removeChild(cv); } } draw(); }
 
-  // ---------- reset / new query ----------
-  btnReset.addEventListener('click', ()=>{
-    form.reset();
-    filePreview.src = ''; filePreview.classList.add('hidden');
-    aiContent.innerHTML = '';
-    aiTitle.textContent = 'Result';
-    aiFormula.classList.add('hidden'); aiMnemonic.classList.add('hidden');
-    progressBar.style.width = '0%';
+    function showMemoryStrength(cardEl,pct){ const ex=cardEl.querySelector('.memory-strength-wrap'); if(ex) ex.remove(); const w=document.createElement('div'); w.className='memory-strength-wrap'; w.innerHTML=`<span class="ms-label">Memory Strength</span><div class="ms-track"><div class="ms-fill"></div></div><span class="ms-pct">${pct}%</span>`; cardEl.appendChild(w); setTimeout(()=>{ const f=w.querySelector('.ms-fill'); if(f) f.style.width=pct+'%'; },80); }
+
+    // ── FEEDBACK PANEL BUILDER ─────────────────────────────────────────────────
+    function buildFeedbackPanel(interactionId, question, mode, cardEl) {
+        const panel = document.createElement('div'); panel.className = 'feedback-panel';
+        let currentRating=0,currentDisliked=false,submitted=false;
+        const bar=document.createElement('div'); bar.className='feedback-bar';
+        const lbl=document.createElement('span'); lbl.className='feedback-label'; lbl.textContent='Rate this hook';
+        bar.appendChild(lbl);
+        const starRow=document.createElement('div'); starRow.className='star-row';
+        const stars=[];
+        for(let i=1;i<=5;i++){
+            const s=document.createElement('button'); s.className='star-btn'; s.type='button'; s.textContent='★';
+            s.addEventListener('mouseenter',()=>{ stars.forEach((b,j)=>b.classList.toggle('active',j<i)); });
+            s.addEventListener('mouseleave',()=>{ stars.forEach((b,j)=>b.classList.toggle('active',j<currentRating)); });
+            s.addEventListener('click',()=>{ currentRating=i; stars.forEach((b,j)=>b.classList.toggle('active',j<i)); openComment(); });
+            stars.push(s); starRow.appendChild(s);
+        }
+        bar.appendChild(starRow);
+        const thumbRow=document.createElement('div'); thumbRow.className='thumb-row';
+        const likeBtn=document.createElement('button'); likeBtn.className='thumb-btn'; likeBtn.type='button'; likeBtn.innerHTML='<i data-lucide="thumbs-up" class="w-3 h-3"></i>';
+        const dislikeBtn=document.createElement('button'); dislikeBtn.className='thumb-btn'; dislikeBtn.type='button'; dislikeBtn.innerHTML='<i data-lucide="thumbs-down" class="w-3 h-3"></i>';
+        likeBtn.addEventListener('click',()=>{ likeBtn.classList.toggle('liked'); dislikeBtn.classList.remove('disliked'); currentDisliked=false; submitFeedback(false); gainXP(2,'Feedback given'); });
+        dislikeBtn.addEventListener('click',()=>{ dislikeBtn.classList.toggle('disliked'); likeBtn.classList.remove('liked'); currentDisliked=dislikeBtn.classList.contains('disliked'); if(currentDisliked){ openComment(true); showRegenWarning(question,mode,cardEl); } });
+        thumbRow.appendChild(likeBtn); thumbRow.appendChild(dislikeBtn); bar.appendChild(thumbRow); panel.appendChild(bar);
+        const commentSection=document.createElement('div'); commentSection.className='feedback-comment-section';
+        const commentLabel=document.createElement('span'); commentLabel.className='feedback-comment-label'; commentLabel.textContent='Add a comment (optional)'; commentSection.appendChild(commentLabel);
+        const ta=document.createElement('textarea'); ta.className='feedback-textarea'; ta.rows=3; ta.maxLength=500; ta.placeholder='e.g. "Mnemonic words are too hard to remember"'; commentSection.appendChild(ta);
+        const submitRow=document.createElement('div'); submitRow.className='feedback-submit-row';
+        const charCount=document.createElement('span'); charCount.className='feedback-char-count'; charCount.textContent='0 / 500';
+        ta.addEventListener('input',()=>{ charCount.textContent=ta.value.length+' / 500'; });
+        const submitBtn=document.createElement('button'); submitBtn.className='feedback-submit-btn'; submitBtn.type='button'; submitBtn.textContent='Submit Feedback';
+        submitBtn.addEventListener('click',()=>submitFeedback(true));
+        submitRow.appendChild(charCount); submitRow.appendChild(submitBtn); commentSection.appendChild(submitRow); panel.appendChild(commentSection);
+        const thanksEl=document.createElement('div'); thanksEl.className='feedback-thanks'; thanksEl.style.display='none'; panel.appendChild(thanksEl);
+        let commentOpen=false;
+        function openComment(forced){ if(commentOpen) return; commentOpen=true; if(forced) commentLabel.textContent='Tell us what was wrong — helps improve the AI'; commentSection.classList.add('open'); }
+        async function submitFeedback(withComment){
+            if(submitted&&!withComment) return;
+            const payload={interaction_id:interactionId,question,mode,rating:currentRating>0?currentRating:null,disliked:currentDisliked,comment:ta.value.trim()};
+            try{
+                await fetch('/api/feedback/mnemonic',{method:'POST',credentials:'include',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+                if(withComment||currentDisliked){
+                    commentSection.classList.remove('open'); commentOpen=false; thanksEl.style.display='flex';
+                    if(currentDisliked){ G.reportCount++; saveG(); if(G.reportCount===1) triggerAchievement('first_report'); if(G.reportCount>=4){ triggerAchievement('four_reports'); thanksEl.innerHTML=`<span>🛡️</span><div><div style="font-family:'Poppins',sans-serif;font-size:.8rem;font-weight:700;color:#4ade80;margin-bottom:3px;">Thank you!</div><div style="font-family:'Space Mono',monospace;font-size:.72rem;color:#64748b;line-height:1.5;">Genuine report verified → <span class="feedback-report-badge">2 Days Premium Free</span></div></div>`; }
+                    else{ const rem=4-G.reportCount; thanksEl.innerHTML=`<span>🙏</span><div><div style="font-family:'Poppins',sans-serif;font-size:.78rem;font-weight:700;color:#e2e8f0;margin-bottom:3px;">Thanks!</div><div style="font-family:'Space Mono',monospace;font-size:.7rem;color:#64748b;">${rem} more report${rem!==1?'s':''} = <span class="feedback-report-badge">2 Days Premium</span></div></div>`; }
+                    } else{ thanksEl.innerHTML=`<span>⭐</span><div style="font-family:'Space Mono',monospace;font-size:.75rem;color:#64748b;">Thanks! Feedback helps us improve.</div>`; }
+                    submitted=true;
+                } else{ showToast('Rating saved!',1200); submitted=true; }
+            } catch(e){ showToast('Could not save feedback — try again.'); }
+        }
+        lucide.createIcons();
+        return panel;
+    }
+
+    // ── REGEN WARNING ──────────────────────────────────────────────────────────
+    function showRegenWarning(question, mode, cardEl) {
+        const altMode=getAlternateMode(mode); const altLabel=altMode==='hack'?'Neural Hack (acronym trick)':'Lore Engine (cinematic story)';
+        const existing=aiItems.querySelector('.regen-warning'); if(existing) existing.remove();
+        const warn=document.createElement('div'); warn.className='regen-warning';
+        warn.innerHTML=`<div class="regen-warning-icon">⚠️</div><div class="regen-warning-text"><div class="regen-warning-title">This hook didn't land?</div><div class="regen-warning-body">We'll switch to <strong>${altLabel}</strong> with Deep Scan ON for better results.</div><div class="regen-warning-btns"><button class="regen-btn-yes" id="regen-yes">Yes, try again →</button><button class="regen-btn-no" id="regen-no">Keep this</button></div></div>`;
+        aiItems.insertBefore(warn, aiItems.firstChild);
+        warn.querySelector('#regen-yes').addEventListener('click',()=>{ warn.remove(); setMode(altMode); if(!isDeepScan) btnDeepScan.click(); textarea.value=question; form.dispatchEvent(new Event('submit',{bubbles:true,cancelable:true})); });
+        warn.querySelector('#regen-no').addEventListener('click',()=>{ warn.style.opacity='0'; warn.style.transition='opacity .3s ease'; setTimeout(()=>warn.remove(),300); });
+    }
+
+    // ════════════════════════════════════════════════════════════════════
+    // MNEMONIC SECTION BUILDER
+    // ════════════════════════════════════════════════════════════════════
+    function buildMnemonicSection(json, heroMode, labelColor, labelIcon, defaultLabel, cardEl) {
+        const wrap = document.createElement('div'); wrap.className = 'mnemonic-section-wrap';
+        const hero = document.createElement('div'); hero.className = 'mnemonic-hero'; hero.dataset.mode = heroMode;
+        wrap.appendChild(hero);
+        const hl=document.createElement('div'); hl.className='mnemonic-label-row'; hl.style.color=labelColor;
+        hl.innerHTML=`<i data-lucide="${labelIcon}" class="w-3 h-3"></i> ${json.hook_label||defaultLabel}`;
+        hero.appendChild(hl);
+        if(json.hook_context){ const ctx=document.createElement('p'); ctx.className='hook-context-text'; ctx.textContent=json.hook_context; hero.appendChild(ctx); }
+        const hasChips=Array.isArray(json.word_chips)&&json.word_chips.length>0;
+
+        if(hasChips){
+            if(json.acronym_key){
+                const ar=document.createElement('div'); ar.className='acronym-badge-row';
+                const al=document.createElement('span'); al.className='acronym-row-label'; al.style.color=labelColor; al.textContent='Key →';
+                ar.appendChild(al);
+                [...json.acronym_key].forEach(l=>{ const p=document.createElement('span'); p.className='acronym-letter-pill'; p.textContent=l; ar.appendChild(p); });
+                hero.appendChild(ar);
+            }
+            const chipsContainer=document.createElement('div'); chipsContainer.className='word-chips-container';
+            let revealedCount=0; const totalChips=json.word_chips.length;
+            const scoreBarWrap=document.createElement('div');
+            scoreBarWrap.innerHTML=`<div class="test-score-bar"><div class="test-score-fill"></div></div><div class="test-score-label" style="display:none;"><span>Tap each word to reveal</span><span class="test-score-pct">0 / ${totalChips}</span></div>`;
+
+            json.word_chips.forEach((cd,idx)=>{
+                const chip=document.createElement('div'); chip.className='word-chip';
+                chip.innerHTML=`<span class="chip-key-letter">${cd.letter||'?'}</span><span class="chip-rest-word">${cd.rest||''}</span>`;
+                chip.style.opacity='0'; chip.style.transform='translateY(10px)';
+                setTimeout(()=>{ chip.style.transition='opacity .3s ease,transform .3s ease'; chip.style.opacity='1'; chip.style.transform='translateY(0)'; },60+idx*40);
+                chip.addEventListener('click',()=>{
+                    if(chipsContainer.classList.contains('test-mode')){
+                        if(!chip.classList.contains('chip-revealed')){ chip.classList.add('chip-revealed','chip-pop'); setTimeout(()=>chip.classList.remove('chip-pop'),300); revealedCount++; const pct=Math.round(revealedCount/totalChips*100); const f=scoreBarWrap.querySelector('.test-score-fill'); if(f) f.style.width=pct+'%'; const pl=scoreBarWrap.querySelector('.test-score-pct'); if(pl) pl.textContent=`${revealedCount} / ${totalChips}`; if(revealedCount===totalChips){ G.tests++; saveG(); updateStatStrip(); gainXP(25,'Test passed'); triggerAchievement('first_test'); if(G.tests>=5) triggerAchievement('five_tests'); triggerAchievement('perfect_test'); setTimeout(()=>{ const r=chip.getBoundingClientRect(); fireConfetti(r.left,r.top); showToast('Memory locked! +25 XP',2800); showMemoryStrength(cardEl,100); chipsContainer.querySelectorAll('.word-chip').forEach(c=>c.classList.add('chip-locked')); },200); } }
+                    } else {
+                        chipsContainer.querySelectorAll('.chip-tooltip').forEach(t=>t.remove()); chipsContainer.querySelectorAll('.word-chip.chip-active').forEach(c=>c.classList.remove('chip-active'));
+                        if(!chip.classList.contains('chip-active')){ const mt=(cd.maps_to&&cd.maps_to.trim())?cd.maps_to:`${cd.letter} — see decode`; const tt=document.createElement('div'); tt.className='chip-tooltip'; tt.innerHTML=`<span style="font-weight:700;color:${labelColor};">${cd.letter}</span>&nbsp;→&nbsp;${mt}`; chip.appendChild(tt); chip.classList.add('chip-active'); setTimeout(()=>{ tt.remove(); chip.classList.remove('chip-active'); },3500); }
+                    }
+                });
+                chipsContainer.appendChild(chip);
+            });
+            hero.appendChild(chipsContainer);
+            if(json.hook_text){ const s=document.createElement('p'); s.className='mnemonic-full-sentence'; s.textContent=json.hook_text; hero.appendChild(s); }
+
+            const testRow=document.createElement('div'); testRow.style.cssText='display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:4px;position:relative;z-index:1;';
+            const testBtn=document.createElement('button'); testBtn.className='test-mode-btn'; testBtn.type='button'; testBtn.innerHTML=`<i data-lucide="brain-circuit" class="w-3 h-3"></i> Test Me`;
+            const tiphint=document.createElement('span'); tiphint.style.cssText='font-family:Space Mono,monospace;font-size:9px;color:#94a3b8;letter-spacing:.04em;'; tiphint.textContent='tap any word · reveal mapping';
+            testRow.appendChild(testBtn); testRow.appendChild(tiphint); hero.appendChild(testRow); hero.appendChild(scoreBarWrap);
+
+            // ════════════════════════════════════════════════════════════════════
+            // DND GAME — Redesigned
+            // ════════════════════════════════════════════════════════════════════
+            const dndGame = document.createElement('div');
+            dndGame.className = 'dnd-game hidden';
+            dndGame.dataset.mode = heroMode;
+
+            // Header
+            const dndHeader = document.createElement('div'); dndHeader.className = 'dnd-header';
+            const dndHeaderLeft = document.createElement('div'); dndHeaderLeft.className = 'dnd-header-left';
+            const dndTitleEl = document.createElement('div'); dndTitleEl.className = 'dnd-title';
+            dndTitleEl.innerHTML = `<span class="dnd-title-dot"></span> MEMORY TEST`;
+            const dndScoreWrap = document.createElement('div'); dndScoreWrap.className = 'dnd-score-wrap';
+            dndScoreWrap.innerHTML = `<div class="dnd-progress-track"><div class="dnd-progress-fill"></div></div><span class="dnd-score-text"><span class="dnd-score-cur">0</span><span class="dnd-score-total"> / ${totalChips}</span></span>`;
+            dndHeaderLeft.appendChild(dndTitleEl); dndHeaderLeft.appendChild(dndScoreWrap);
+            const dndExitBtn = document.createElement('button'); dndExitBtn.className = 'dnd-exit-btn'; dndExitBtn.type = 'button';
+            dndExitBtn.innerHTML = `<i data-lucide="x" style="width:11px;height:11px;"></i> Exit`;
+            dndHeader.appendChild(dndHeaderLeft); dndHeader.appendChild(dndExitBtn); dndGame.appendChild(dndHeader);
+
+            // Instruction
+            const dndInstr = document.createElement('p'); dndInstr.className = 'dnd-instr';
+            dndInstr.textContent = window.innerWidth < 640 ? 'Tap a word chip, then tap its letter slot' : 'Drag each word chip to its matching letter slot';
+            dndGame.appendChild(dndInstr);
+
+            // Drop zones
+            const dropZonesRow = document.createElement('div'); dropZonesRow.className = 'dnd-drop-zones';
+            const dropZones = [];
+            json.word_chips.forEach((cd, idx) => {
+                const z = document.createElement('div'); z.className = 'dnd-zone'; z.dataset.idx = idx; z.dataset.mode = heroMode;
+                // Letter label above zone
+                const zLetterLabel = document.createElement('div'); zLetterLabel.className = 'dnd-zone-letter-label'; zLetterLabel.textContent = cd.letter || '?';
+                // Placeholder box
+                const zPlaceholder = document.createElement('div'); zPlaceholder.className = 'dnd-zone-placeholder';
+                const zPlaceholderLetter = document.createElement('span'); zPlaceholderLetter.className = 'dnd-zone-placeholder-letter'; zPlaceholderLetter.textContent = cd.letter || '?';
+                zPlaceholder.appendChild(zPlaceholderLetter);
+                z.appendChild(zLetterLabel); z.appendChild(zPlaceholder);
+                dropZonesRow.appendChild(z); dropZones.push(z);
+            });
+            dndGame.appendChild(dropZonesRow);
+
+            // Separator
+            const sep = document.createElement('div'); sep.className = 'dnd-separator'; dndGame.appendChild(sep);
+
+            // Bank label
+            const bankLabel = document.createElement('div'); bankLabel.className = 'dnd-chip-bank-label';
+            bankLabel.innerHTML = `<i data-lucide="hand" style="width:11px;height:11px;opacity:.5;"></i> WORD BANK — drag to match`;
+            dndGame.appendChild(bankLabel);
+
+            // Chip bank
+            const chipBank = document.createElement('div'); chipBank.className = 'dnd-chip-bank';
+            const shuffled = [...Array(totalChips).keys()].sort(() => Math.random() - .5);
+            const bankChips = [];
+            shuffled.forEach(idx => {
+                const cd = json.word_chips[idx];
+                const bc = document.createElement('div');
+                bc.className = 'dnd-bank-chip'; bc.dataset.idx = idx; bc.dataset.mode = heroMode; bc.draggable = true;
+                // Key letter label + full word
+                bc.innerHTML = `<span class="dnd-chip-key">${cd.letter || '?'}</span><span class="dnd-chip-word">${(cd.letter||'') + (cd.rest||'')}</span>`;
+                chipBank.appendChild(bc); bankChips[idx] = bc;
+            });
+            dndGame.appendChild(chipBank);
+
+            let dndCorrect = 0, selectedBankChip = null;
+            const progressFill = dndGame.querySelector('.dnd-progress-fill');
+
+            function updateDndProgress() {
+                if (progressFill) progressFill.style.width = Math.round((dndCorrect / totalChips) * 100) + '%';
+                const scoreEl = dndGame.querySelector('.dnd-score-cur'); if (scoreEl) scoreEl.textContent = dndCorrect;
+            }
+
+            function placedCorrect(zone, bc) {
+                const idx = parseInt(bc.dataset.idx); const cd = json.word_chips[idx];
+                zone.innerHTML = '';
+                zone.classList.add('dnd-zone-correct');
+                const fi = document.createElement('div'); fi.className = `dnd-zone-filled dnd-zone-filled-${heroMode}`;
+                const keySpan = document.createElement('span'); keySpan.className = 'dnd-chip-key-display'; keySpan.textContent = cd.letter || '';
+                const wordSpan = document.createElement('span'); wordSpan.className = 'dnd-filled-word'; wordSpan.textContent = (cd.letter||'')+(cd.rest||'');
+                const checkSpan = document.createElement('span'); checkSpan.className = 'dnd-check-icon'; checkSpan.textContent = '✓';
+                fi.appendChild(keySpan); fi.appendChild(wordSpan); fi.appendChild(checkSpan);
+                zone.appendChild(fi);
+                bc.classList.add('dnd-bank-placed'); bc.draggable = false;
+                dndCorrect++; selectedBankChip = null;
+                document.querySelectorAll('.dnd-bank-chip.dnd-selected').forEach(c => c.classList.remove('dnd-selected'));
+                updateDndProgress();
+
+                if (dndCorrect === totalChips) {
+                    setTimeout(() => {
+                        G.tests++; saveG(); updateStatStrip(); gainXP(25, 'Test passed');
+                        triggerAchievement('first_test'); if (G.tests >= 5) triggerAchievement('five_tests'); triggerAchievement('perfect_test');
+                        const r = dndGame.getBoundingClientRect(); fireConfetti(r.left + r.width / 2, r.top + r.height / 2);
+                        showToast('🎯 Perfect recall! +25 XP', 2800); showMemoryStrength(cardEl, 100);
+                        dndGame.classList.add('dnd-complete');
+                        const cm = document.createElement('div'); cm.className = 'dnd-complete-msg';
+                        cm.innerHTML = `<span>🎯</span><strong>Perfect recall!</strong><span style="opacity:.7;">All ${totalChips} words mapped correctly.</span>`;
+                        dndGame.appendChild(cm);
+                    }, 300);
+                }
+            }
+
+            function placedWrong(z) {
+                z.classList.add('dnd-zone-wrong'); setTimeout(() => z.classList.remove('dnd-zone-wrong'), 600);
+                // Brief red flash
+                z.style.borderColor = '#ef4444';
+                setTimeout(() => { z.style.borderColor = ''; }, 700);
+            }
+
+            function tryPlace(z, bc) {
+                if (!bc || bc.classList.contains('dnd-bank-placed')) return;
+                if (z.classList.contains('dnd-zone-correct')) return;
+                parseInt(z.dataset.idx) === parseInt(bc.dataset.idx) ? placedCorrect(z, bc) : placedWrong(z);
+            }
+
+            // Drag events
+            let draggedChip = null;
+            chipBank.addEventListener('dragstart', e => {
+                const c = e.target.closest('.dnd-bank-chip'); if (!c || c.classList.contains('dnd-bank-placed')) { e.preventDefault(); return; }
+                draggedChip = c; c.classList.add('dnd-dragging'); e.dataTransfer.effectAllowed = 'move'; e.dataTransfer.setData('text/plain', c.dataset.idx);
+            });
+            chipBank.addEventListener('dragend', e => { e.target.classList.remove('dnd-dragging'); draggedChip = null; });
+            dropZonesRow.addEventListener('dragover', e => { e.preventDefault(); const z = e.target.closest('.dnd-zone'); if (z && !z.classList.contains('dnd-zone-correct')) z.classList.add('dnd-zone-hover'); });
+            dropZonesRow.addEventListener('dragleave', e => { const z = e.target.closest('.dnd-zone'); if (z) z.classList.remove('dnd-zone-hover'); });
+            dropZonesRow.addEventListener('drop', e => { e.preventDefault(); const z = e.target.closest('.dnd-zone'); if (!z) return; z.classList.remove('dnd-zone-hover'); tryPlace(z, bankChips[parseInt(e.dataTransfer.getData('text/plain'))]); });
+
+            // Click-to-place
+            chipBank.addEventListener('click', e => {
+                const c = e.target.closest('.dnd-bank-chip'); if (!c || c.classList.contains('dnd-bank-placed')) return;
+                if (selectedBankChip === c) { c.classList.remove('dnd-selected'); selectedBankChip = null; }
+                else { document.querySelectorAll('.dnd-bank-chip.dnd-selected').forEach(b => b.classList.remove('dnd-selected')); c.classList.add('dnd-selected'); selectedBankChip = c; }
+            });
+            dropZonesRow.addEventListener('click', e => {
+                const z = e.target.closest('.dnd-zone'); if (!z || z.classList.contains('dnd-zone-correct')) return;
+                if (!selectedBankChip) { z.classList.add('dnd-zone-hint'); setTimeout(() => z.classList.remove('dnd-zone-hint'), 500); return; }
+                tryPlace(z, selectedBankChip);
+            });
+
+            // Touch drag
+            let touchDragChip = null, touchClone = null;
+            chipBank.addEventListener('touchstart', e => {
+                const c = e.target.closest('.dnd-bank-chip'); if (!c || c.classList.contains('dnd-bank-placed')) return;
+                touchDragChip = c; c.classList.add('dnd-dragging');
+                touchClone = document.createElement('div'); touchClone.className = 'dnd-touch-clone';
+                touchClone.innerHTML = c.innerHTML;
+                document.body.appendChild(touchClone);
+                const t = e.touches[0]; touchClone.style.left = t.clientX - 50 + 'px'; touchClone.style.top = t.clientY - 28 + 'px';
+            }, { passive: true });
+            document.addEventListener('touchmove', e => {
+                if (!touchClone) return;
+                const t = e.touches[0]; touchClone.style.left = t.clientX - 50 + 'px'; touchClone.style.top = t.clientY - 28 + 'px';
+                touchClone.style.display = 'none'; const el = document.elementFromPoint(t.clientX, t.clientY); touchClone.style.display = '';
+                const z = el && el.closest('.dnd-zone'); document.querySelectorAll('.dnd-zone.dnd-zone-hover').forEach(dz => dz.classList.remove('dnd-zone-hover'));
+                if (z && !z.classList.contains('dnd-zone-correct')) z.classList.add('dnd-zone-hover');
+            }, { passive: true });
+            document.addEventListener('touchend', e => {
+                if (!touchDragChip || !touchClone) return; touchClone.remove(); touchClone = null; touchDragChip.classList.remove('dnd-dragging');
+                const t = e.changedTouches[0]; const el = document.elementFromPoint(t.clientX, t.clientY); const z = el && el.closest('.dnd-zone');
+                document.querySelectorAll('.dnd-zone.dnd-zone-hover').forEach(dz => dz.classList.remove('dnd-zone-hover'));
+                if (z) tryPlace(z, touchDragChip); touchDragChip = null;
+            }, { passive: true });
+
+            testBtn.addEventListener('click', () => {
+                const activating = !dndGame.classList.contains('dnd-active');
+                if (activating) {
+                    chipsContainer.style.display = 'none'; const fs = hero.querySelector('.mnemonic-full-sentence'); if (fs) fs.style.display = 'none'; const ab = hero.querySelector('.acronym-badge-row'); if (ab) ab.style.display = 'none'; scoreBarWrap.style.display = 'none'; tiphint.style.display = 'none';
+                    dndGame.classList.remove('hidden'); dndGame.classList.add('dnd-active');
+                    testBtn.innerHTML = `<i data-lucide="eye" class="w-3 h-3"></i> Show Mnemonic`; testBtn.classList.add('active');
+                    lucide.createIcons();
+                } else {
+                    chipsContainer.style.display = ''; const fs = hero.querySelector('.mnemonic-full-sentence'); if (fs) fs.style.display = ''; const ab = hero.querySelector('.acronym-badge-row'); if (ab) ab.style.display = ''; scoreBarWrap.style.display = ''; tiphint.style.display = '';
+                    dndGame.classList.remove('dnd-active'); dndGame.classList.add('hidden');
+                    testBtn.innerHTML = `<i data-lucide="brain-circuit" class="w-3 h-3"></i> Test Me`; testBtn.classList.remove('active');
+                    lucide.createIcons();
+                }
+            });
+            dndExitBtn.addEventListener('click', () => testBtn.click());
+            wrap._dndGame = dndGame;
+            lucide.createIcons();
+
+        } else {
+            const ht = document.createElement('p');
+            ht.className = 'hook-text text-xl md:text-2xl font-display font-bold text-slate-900 dark:text-white leading-snug mb-4';
+            ht.innerHTML = mdBold(json.hook_text || '');
+            hero.appendChild(ht);
+        }
+
+        // Decode section
+        const subtext = (json.hook_subtext || '').trim();
+        if (hasChips || subtext.length > 0) {
+            const dc = document.createElement('div'); dc.className = 'decode-content-wrapper collapsed-decode';
+            if (hasChips) {
+                const mg = document.createElement('div'); mg.className = 'decode-map-grid';
+                json.word_chips.forEach(cd => {
+                    const row = document.createElement('div'); row.className = 'decode-map-row';
+                    const badge = document.createElement('div'); badge.className = 'decode-letter-badge'; badge.dataset.mode = heroMode; badge.textContent = cd.letter || '?';
+                    const tp = document.createElement('div'); tp.className = 'decode-row-text';
+                    const wl = document.createElement('span'); wl.className = 'decode-word-label'; wl.textContent = (cd.letter || '') + (cd.rest || '');
+                    const ar = document.createElement('span'); ar.className = 'decode-arrow'; ar.textContent = ' → ';
+                    const mn = document.createElement('span'); mn.className = 'decode-meaning'; mn.textContent = (cd.maps_to && cd.maps_to.trim()) ? cd.maps_to : `${cd.letter} — tap chip above`;
+                    tp.appendChild(wl); tp.appendChild(ar); tp.appendChild(mn); row.appendChild(badge); row.appendChild(tp); mg.appendChild(row);
+                });
+                dc.appendChild(mg);
+                const fn = document.createElement('p'); fn.className = 'decode-full-text';
+                fn.innerHTML = subtext ? mdBold(subtext) : json.word_chips.map(c => `[${c.letter}]${c.rest} = ${c.maps_to || c.letter}`).join('  ·  ');
+                dc.appendChild(fn);
+            } else {
+                const mw = document.createElement('div'); mw.className = 'mapping-strip';
+                const ml = document.createElement('p'); ml.style.cssText = `font-family:'Space Mono',monospace;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:${labelColor};display:flex;align-items:center;gap:5px;margin-bottom:8px;`;
+                ml.innerHTML = `<i data-lucide="arrow-right" class="w-3 h-3"></i> How it maps`;
+                const st = document.createElement('p'); st.style.cssText = 'font-family:Space Mono,monospace;font-size:.75rem;line-height:1.7;color:#475569;';
+                st.innerHTML = mdBold(subtext); mw.appendChild(ml); mw.appendChild(st); dc.appendChild(mw);
+            }
+            const dt = document.createElement('button'); dt.className = 'decode-toggle-btn'; dt.type = 'button'; dt.dataset.open = 'false';
+            dt.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5" style="flex-shrink:0;"></i><span>Unlock the Decode</span><span class="decode-toggle-hint">tap to reveal →</span>`;
+            wrap.appendChild(dt); wrap.appendChild(dc);
+            dt.addEventListener('click', () => {
+                const open = dt.dataset.open === 'true';
+                if (!open) { dc.classList.remove('collapsed-decode'); dt.dataset.open = 'true'; dt.innerHTML = `<i data-lucide="lock-open" class="w-3.5 h-3.5" style="flex-shrink:0;"></i><span>Hide Decode</span>`; }
+                else { dc.classList.add('collapsed-decode'); dt.dataset.open = 'false'; dt.innerHTML = `<i data-lucide="lock" class="w-3.5 h-3.5" style="flex-shrink:0;"></i><span>Unlock the Decode</span><span class="decode-toggle-hint">tap to reveal →</span>`; }
+                lucide.createIcons();
+            });
+        }
+        return wrap;
+    }
+
+    // ── Mode selection ─────────────────────────────────────────────────────────
+    function setMode(mode){
+        currentMode=mode; modeInput.value=mode;
+        const isDark = html.classList.contains('dark');
+        // Unselected colors differ per theme — dark needs visible borders/backgrounds
+        const unselBorder = isDark ? 'rgba(255,255,255,0.09)' : 'rgba(0,0,0,0.08)';
+        const unselBg     = isDark ? 'rgba(255,255,255,0.04)' : '#fafbff';
+        const unselRadio  = isDark ? 'rgba(255,255,255,0.2)'  : 'rgba(0,0,0,0.2)';
+
+        btnLore.style.borderColor = mode==='lore' ? '#6C2BD9'  : unselBorder;
+        btnLore.style.background  = mode==='lore' ? 'rgba(108,43,217,0.1)' : unselBg;
+        btnHack.style.borderColor = mode==='hack' ? '#16A34A'  : unselBorder;
+        btnHack.style.background  = mode==='hack' ? 'rgba(22,163,74,0.08)' : unselBg;
+
+        const ld=btnLore.querySelector('.mode-radio div'),hd=btnHack.querySelector('.mode-radio div');
+        btnLore.querySelector('.mode-radio').style.borderColor = mode==='lore' ? '#6C2BD9' : unselRadio;
+        btnHack.querySelector('.mode-radio').style.borderColor = mode==='hack' ? '#16A34A' : unselRadio;
+        if(ld) ld.classList.toggle('hidden',mode!=='lore');
+        if(hd) hd.classList.toggle('hidden',mode!=='hack');
+        btnLore.setAttribute('aria-checked',mode==='lore');
+        btnHack.setAttribute('aria-checked',mode==='hack');
+        btnGenerate.style.background  = mode==='hack' ? 'linear-gradient(135deg,#16A34A,#15803d)' : 'linear-gradient(135deg,#6C2BD9,#7c3aed)';
+        btnGenerate.style.boxShadow   = mode==='hack' ? '0 4px 20px rgba(22,163,74,0.4)' : '0 4px 20px rgba(108,43,217,0.4)';
+    }
+    btnLore.addEventListener('click',()=>setMode('lore'));
+    btnHack.addEventListener('click',()=>setMode('hack'));
+    setMode('lore');
+
+    // ── Deep scan ──────────────────────────────────────────────────────────────
+    btnDeepScan.addEventListener('click',()=>{
+        isDeepScan=!isDeepScan; deepScanInput.value=isDeepScan?'true':'false'; btnDeepScan.setAttribute('aria-pressed',isDeepScan);
+        if(isDeepScan){ btnDeepScan.classList.add('active'); deepscanTrack.style.background='#16A34A'; deepscanTrack.style.borderColor='#16A34A'; deepscanKnob.style.left='20px'; deepscanKnob.style.background='#fff'; deepscanIcon.style.color='#4ade80'; }
+        else { btnDeepScan.classList.remove('active'); deepscanTrack.style.background='rgba(0,0,0,0.08)'; deepscanTrack.style.borderColor='rgba(0,0,0,0.1)'; deepscanKnob.style.left='2px'; deepscanKnob.style.background='#94a3b8'; deepscanIcon.style.color=''; }
+    });
+
+    // ── Language ───────────────────────────────────────────────────────────────
+    const LANG_META={english:{badge:'🇬🇧 EN',desc:'Full English — precise, clean, board-exam ready.'},hinglish:{badge:'🔀 HE',desc:'Hindi + English mix — the way toppers actually talk.'},hindi:{badge:'🇮🇳 HI',desc:'Pure Hindi — best if you memorize in Hindi.'}};
+    document.querySelectorAll('.lang-btn').forEach(btn=>{ btn.addEventListener('click',()=>{ document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); currentLanguage=btn.dataset.lang; languageInput.value=currentLanguage; langDescText.textContent=LANG_META[currentLanguage].desc; }); });
+
+    // ── Image upload & Paste handler ───────────────────────────────────────────
+    btnUpload.addEventListener('click',()=>fileInput.click()); btnCamera.addEventListener('click',()=>showToast('📷 Camera capture coming soon'));
+    function loadImageFile(file){ if(!file) return; if(file.size>5*1024*1024){ showToast('❌ Image too large — max 5MB'); fileInput.value=''; return; } const r=new FileReader(); r.onload=e=>{ imageBase64=e.target.result; previewThumb.src=imageBase64; previewFilename.textContent=file.name; previewFilesize.textContent=formatBytes(file.size); imgStrip.classList.add('visible'); btnUpload.style.borderColor='#6C2BD9'; btnUpload.style.color='#6C2BD9'; }; r.readAsDataURL(file); }
+    fileInput.addEventListener('change',()=>loadImageFile(fileInput.files&&fileInput.files[0]));
+    function clearImage(){ imageBase64=null; fileInput.value=''; previewThumb.src=''; previewFilename.textContent=''; previewFilesize.textContent=''; imgStrip.classList.remove('visible'); btnUpload.style.borderColor=''; btnUpload.style.color=''; }
+    btnRemoveImg.addEventListener('click',clearImage);
     
-    // Reset Source Matrix Container to original state
-    sourceMatrixContainer.innerHTML = `
-      <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
-        <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
-      </h3>`;
-    if(window.lucide) window.lucide.createIcons();
-
-    switchState(stateOutput, stateIdle);
-    textarea.focus();
-  });
-
-  // ---------- copy & download ----------
-  function copyText(text){
-    navigator.clipboard.writeText(text).then(()=>{
-      const el = document.createElement('div');
-      el.className = 'short-toast';
-      el.textContent = 'Copied to clipboard';
-      document.body.appendChild(el);
-      setTimeout(()=> document.body.removeChild(el), 900);
+    window.addEventListener('paste',e=>{ 
+        if(!e.clipboardData) return; 
+        for(const it of e.clipboardData.items){ 
+            if(it.type&&it.type.startsWith('image/')){ 
+                e.preventDefault(); 
+                const blob=it.getAsFile(); 
+                if(!blob) continue; 
+                if(blob.size>5*1024*1024){ showToast('❌ Too large — max 5MB'); return; } 
+                const file = new File([blob], "Screenshot-pasted.png", { type: blob.type });
+                const dt=new DataTransfer(); 
+                dt.items.add(file); 
+                fileInput.files=dt.files; 
+                loadImageFile(file); 
+                return; 
+            } 
+        } 
     });
-  }
-  btnCopyOutput.addEventListener('click', ()=> {
-    const txt = aiContent.innerText || aiContent.textContent || '';
-    if(!txt) return alert('No content to copy');
-    copyText(txt);
-  });
+    
+    textarea.addEventListener('input',function(){ this.style.height='auto'; this.style.height=Math.max(130,this.scrollHeight)+'px'; });
 
-  btnSaveTxt.addEventListener('click', ()=> {
-    const txt = aiContent.innerText || aiContent.textContent || '';
-    if(!txt) return alert('No content to save');
-    const blob = new Blob([txt], { type: 'text/plain' });
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
-    a.download = 'boardalgo-output.txt';
-    a.click();
-  });
-  btnDownloadOutputTop.addEventListener('click', ()=> btnSaveTxt.click());
+    // ── Processing terminal ────────────────────────────────────────────────────
+    const TERMINAL={
+        lore:[{t:'> Reading your concept...',c:'#94a3b8',d:0},{t:'> Mapping to your learning profile...',c:'#a78bfa',d:700},{t:'> Constructing narrative arc...',c:'#94a3b8',d:1500},{t:'> Planting memory anchors...',c:'#a78bfa',d:2600},{t:'> Finalizing lore sequence...',c:'#94a3b8',d:4000}],
+        hack:[{t:'> Extracting concept signal...',c:'#94a3b8',d:0},{t:'> Compressing to minimum viable mnemonic...',c:'#4ade80',d:500},{t:'> Building letter chips...',c:'#94a3b8',d:1200},{t:'> Neural hack ready. Encoding...',c:'#4ade80',d:2000}],
+        deep:[{t:'> Deep Scan activated...',c:'#60a5fa',d:0},{t:'> Cross-referencing NCERT index...',c:'#94a3b8',d:700},{t:'> Pulling chapter references...',c:'#60a5fa',d:1600},{t:'> Validating accuracy...',c:'#94a3b8',d:2800},{t:'> Building citation-backed hook...',c:'#60a5fa',d:4200}],
+    };
+    let termTimers=[];
+    function runTerminal(lines){ terminalLog.innerHTML=''; termTimers.forEach(clearTimeout); termTimers=[]; lines.forEach(({t,c,d})=>{ const tid=setTimeout(()=>{ const el=document.createElement('div'); el.className='terminal-line'; el.style.color=c; el.textContent=t; terminalLog.appendChild(el); terminalLog.scrollTop=terminalLog.scrollHeight; },d); termTimers.push(tid); }); }
+    function startProgress(fast){ clearInterval(progTimer); let p=15; progTimer=setInterval(()=>{ if(p<78){ p+=Math.random()*(fast?10:5); if(p>78)p=78; progressBar.style.width=Math.floor(p)+'%'; } },fast?280:480); }
+    function stopProgress(){ clearInterval(progTimer); progTimer=null; }
 
-  // ---------- view context placeholders ("Coming Soon") ----------
-  sourceMatrixContainer.addEventListener('click', (e) => {
-    // Check if the clicked element or its parent is a view-context button
-    const button = e.target.closest('button');
-    if (button && button.id && button.id.startsWith('btn-view-context-')) {
-      alert('Context viewer is coming soon!');
+    // ── Render output ──────────────────────────────────────────────────────────
+    function renderOutput(rawData, mode, deepScan, language, interactionId) {
+        const items=Array.isArray(rawData)?rawData:[rawData]; if(!items.length) return;
+        if(deepScan){ outputModeBadge.textContent='Deep Scan'; outputModeBadge.className='badge badge-deep'; }
+        else if(mode==='hack'){ outputModeBadge.textContent='Neural Hack'; outputModeBadge.className='badge badge-hack'; }
+        else { outputModeBadge.textContent='Lore Engine'; outputModeBadge.className='badge badge-lore'; }
+        outputLangBadge.textContent=(LANG_META[language]||LANG_META.english).badge;
+        const heroMode=deepScan?'deep':mode;
+        const titleColor=deepScan?'#2563eb':(mode==='hack'?'#16A34A':'#6C2BD9');
+        const labelColor=deepScan?'#60a5fa':(mode==='hack'?'#4ade80':'#a78bfa');
+        const labelIcon=deepScan?'scan-search':(mode==='hack'?'zap':'book-open');
+        const defaultLabel=deepScan?'Deep Scan Result:':(mode==='lore'?'Lore Engine Narrative:':'Neural Hack Mnemonic:');
+        aiItems.innerHTML='';
+        let currentQuestion = textarea.value.trim();
+        if (!currentQuestion && window.__INJECTED_RESULT__) {
+            currentQuestion = window.__INJECTED_RESULT__.user_query_text || '(unknown)';
+        } else if (!currentQuestion) {
+            currentQuestion = '(unknown)';
+        }
+        items.forEach((json,idx)=>{
+            const card=document.createElement('div'); card.className='result-card p-4 sm:p-6';
+            card.style.cssText=`opacity:0;transform:translateY(14px);transition:opacity .45s ease ${idx*0.12}s,transform .45s cubic-bezier(0.34,1.3,0.64,1) ${idx*0.12}s;`;
+            if(items.length>1){ const ph=document.createElement('div'); ph.style.cssText='display:flex;align-items:center;margin-bottom:12px;'; const pl=document.createElement('div'); pl.className='part-label'; pl.innerHTML=`<i data-lucide="layers" class="w-3 h-3"></i> Part ${idx+1} of ${items.length}`; ph.appendChild(pl); card.appendChild(ph); }
+            const te=document.createElement('div'); te.className='text-base sm:text-lg font-display font-bold mb-3'; te.style.color=titleColor; te.textContent=json.title||'Result'; card.appendChild(te);
+            if(json.definition){ const def=document.createElement('p'); def.className='def-text'; def.textContent=json.definition; card.appendChild(def); }
+            const cc=json.concept_content||json.learn_box; const ccEl=buildConceptContent(cc); if(ccEl) card.appendChild(ccEl);
+            if(json.hook_text){ const mnWrap=buildMnemonicSection(json,heroMode,labelColor,labelIcon,defaultLabel,card); card.appendChild(mnWrap); if(mnWrap._dndGame) mnWrap.appendChild(mnWrap._dndGame); }
+            if(idx===0&&Array.isArray(json.word_chips)&&json.word_chips.length>0){ const tip=document.createElement('div'); tip.className='tip-banner'; tip.innerHTML=`<i data-lucide="lightbulb" class="w-3.5 h-3.5 flex-shrink-0" style="color:#a78bfa;"></i> Tap any word chip for its mapping. Hit <strong style="color:#6C2BD9;">Test Me</strong> to earn +25 XP.`; card.appendChild(tip); }
+            if(interactionId){ const fp=buildFeedbackPanel(interactionId,currentQuestion,mode,card); card.appendChild(fp); }
+            aiItems.appendChild(card);
+            requestAnimationFrame(()=>requestAnimationFrame(()=>{ card.style.opacity='1'; card.style.transform='translateY(0)'; }));
+        });
+        lucide.createIcons();
+        G.locked++; saveG(); updateStatStrip(); gainXP(15,'Hook generated');
+        if(G.locked===1) triggerAchievement('first_hook'); if(G.locked===5) triggerAchievement('five_hooks'); if(deepScan) triggerAchievement('deep_scan');
+        setTimeout(()=>fireConfetti(),350);
+        const allSources=items.flatMap(j=>j.source_matrix||[]);
+        if(allSources.length){
+            let h=`<div class="text-[10px] font-semibold uppercase tracking-widest text-slate-500 dark:text-gray-500 flex items-center gap-2 mb-3 px-1" style="font-family:'Space Mono',monospace;"><i data-lucide="database" class="w-3 h-3"></i> NCERT References</div>`;
+            allSources.forEach((s,i)=>{ const ac=i%2===0?'#6C2BD9':'#16A34A'; const ic=s.icon_type==='file'?'file-text':'book-open'; h+=`<div class="source-card glass p-3 mb-3" style="border-left-color:${ac};"><div class="flex items-start justify-between gap-2 mb-2"><p class="text-xs font-semibold text-slate-800 dark:text-slate-200 leading-tight">${s.title||'Source'}</p><span class="text-[10px] font-bold whitespace-nowrap px-1.5 py-0.5 rounded flex-shrink-0" style="color:${ac};background:rgba(108,43,217,0.08);border:1px solid rgba(108,43,217,0.15);">${s.match_percentage||''}</span></div><div class="flex items-center gap-1.5 text-slate-400"><i data-lucide="${ic}" class="w-3.5 h-3.5"></i><span class="text-[11px]">${ic==='file-text'?'Board Paper':'NCERT Chapter'}</span></div></div>`; });
+            sourceMatrix.innerHTML=h; lucide.createIcons();
+        } else { sourceMatrix.innerHTML=''; }
     }
-  });
 
-  // ---------- shortcut ----------
-  textarea.addEventListener('keydown', (e)=>{
-    if((e.ctrlKey || e.metaKey) && e.key === 'Enter'){ btnGenerate.click(); }
-  });
-
-  // ---------- theme toggle ----------
-  const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-  if(prefersDark) htmlElement.classList.add('dark');
-  themeToggleBtn.addEventListener('click', ()=>{ htmlElement.classList.toggle('dark'); updateThreeJSColors(); });
-
-  // ---------- three.js background ----------
-  const prefersReducedMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-  let scene, camera, renderer, grid, particlesMesh;
-  function initThreeJS(){
-    if(prefersReducedMotion) return;
-    const container = document.getElementById('canvas-container');
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-    camera.position.set(0,3,10); camera.rotation.x = -0.2;
-    renderer = new THREE.WebGLRenderer({ alpha:true, antialias:true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setPixelRatio(window.devicePixelRatio);
-    container.appendChild(renderer.domElement);
-
-    const gridGeo = new THREE.PlaneGeometry(200,200,60,60);
-    const gridMat = new THREE.MeshBasicMaterial({ color:0x6C2BD9, wireframe:true, transparent:true, opacity:0.12 });
-    grid = new THREE.Mesh(gridGeo, gridMat);
-    grid.rotation.x = -Math.PI/2; scene.add(grid);
-
-    const particlesGeo = new THREE.BufferGeometry();
-    const particlesCount = 300;
-    const posArray = new Float32Array(particlesCount*3);
-    for(let i=0;i<posArray.length;i++) posArray[i] = (Math.random()-0.5) * 60;
-    particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
-    const particlesMat = new THREE.PointsMaterial({ size:0.08, color:0xffffff, transparent:true, opacity:0.4 });
-    particlesMesh = new THREE.Points(particlesGeo, particlesMat);
-    scene.add(particlesMesh);
-
-    updateThreeJSColors();
-
-    let time = 0;
-    function animate(){
-      requestAnimationFrame(animate);
-      time += 0.003;
-      grid.position.z = (time*10) % 5;
-      const positions = gridGeo.attributes.position;
-      for(let i=0;i<positions.count;i++){
-        positions.setZ(i, Math.sin(i/5 + time*5) * 0.2);
-      }
-      positions.needsUpdate = true;
-      renderer.render(scene, camera);
-    }
-    animate();
-
-    window.addEventListener('resize', ()=>{
-      camera.aspect = window.innerWidth/window.innerHeight;
-      camera.updateProjectionMatrix();
-      renderer.setSize(window.innerWidth, window.innerHeight);
+    // ── Form submit ────────────────────────────────────────────────────────────
+    form.addEventListener('submit',async(ev)=>{
+        ev.preventDefault(); const q=textarea.value.trim(); if(!q){ showToast('Please type what you want to memorize'); return; }
+        if(shouldWarnRepeat(q,currentMode)){
+            const altMode=getAlternateMode(currentMode); const altLabel=altMode==='hack'?'Neural Hack':'Lore Engine';
+            const warn=document.createElement('div'); warn.className='regen-warning';
+            warn.innerHTML=`<div class="regen-warning-icon">🔄</div><div class="regen-warning-text"><div class="regen-warning-title">You tried this before with ${currentMode==='lore'?'Lore Engine':'Neural Hack'}!</div><div class="regen-warning-body">Same mode = same result. Switch to <strong>${altLabel}</strong> for a fresh perspective?</div><div class="regen-warning-btns"><button class="regen-btn-yes" id="repeat-yes">Switch to ${altLabel} →</button><button class="regen-btn-no" id="repeat-no">Keep same mode</button></div></div>`;
+            switchState(stateIdle,stateOutput); aiItems.innerHTML=''; sourceMatrix.innerHTML=''; aiItems.appendChild(warn);
+            await new Promise(resolve=>{ warn.querySelector('#repeat-yes').addEventListener('click',()=>{ setMode(altMode); warn.remove(); resolve('alt'); }); warn.querySelector('#repeat-no').addEventListener('click',()=>{ warn.remove(); resolve('same'); }); });
+            if(stateOutput.contains(aiItems)&&!aiItems.children.length) switchState(stateOutput,stateIdle);
+        }
+        const isFast=currentMode==='hack'&&!isDeepScan; const lines=isDeepScan?TERMINAL.deep:(currentMode==='hack'?TERMINAL.hack:TERMINAL.lore);
+        procTitle.textContent=isDeepScan?'Running Deep Scan...':(currentMode==='hack'?'Hacking your concept...':'Crafting your lore...');
+        procSubtitle.textContent=isDeepScan?'Deep Scan · NCERT Cross-Reference':(currentMode==='hack'?'Neural Hack · Compression Mode':'Lore Engine · Narrative Mode');
+        runTerminal(lines); progressBar.style.width='15%'; startProgress(isFast);
+        stateProc.setAttribute('aria-busy','true'); switchState(stateIdle,stateProc);
+        const payload={question:q,mode:currentMode,deepScan:isDeepScan,language:currentLanguage,image:imageBase64};
+        ctrl=new AbortController();
+        try{
+            const res=await fetch(form.action,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'include',body:JSON.stringify(payload),signal:ctrl.signal});
+            progressBar.style.width='88%';
+            if(!res.ok){ const e=await res.json().catch(()=>({})); throw new Error(e.error||`Server error ${res.status}`); }
+            const json=await res.json(); stopProgress(); progressBar.style.width='100%';
+            recordQuestion(q,currentMode); lastInteractionId=json._id||null;
+            renderOutput(json.initial_ai_response||json,currentMode,isDeepScan,currentLanguage,lastInteractionId);
+            stateProc.setAttribute('aria-busy','false'); switchState(stateProc,stateOutput);
+        } catch(err){
+            stopProgress(); progressBar.style.width='0%'; stateProc.setAttribute('aria-busy','false'); switchState(stateProc,stateIdle);
+            if(err.name==='AbortError') showToast('Cancelled.'); else { showToast('❌ '+(err.message||'Something went wrong.')); console.error(err); }
+        } finally { ctrl=null; termTimers.forEach(clearTimeout); termTimers=[]; }
     });
-  }
-  function updateThreeJSColors(){
-    if(!scene) return;
-    const isDark = htmlElement.classList.contains('dark');
-    if(isDark){
-      scene.fog = new THREE.FogExp2(0x020617, 0.03);
-      if(particlesMesh) particlesMesh.material.color.setHex(0xffffff);
-    } else {
-      scene.fog = new THREE.FogExp2(0xF9FAFB, 0.03);
-      if(particlesMesh) particlesMesh.material.color.setHex(0x6C2BD9);
-    }
-  }
-  initThreeJS();
 
-  // ---------- initialize UI visibility ----------
-  stateIdle.classList.remove('hidden');
-  stateProcessing.classList.add('hidden');
-  stateOutput.classList.add('hidden');
+    btnCancel.addEventListener('click',()=>{ if(ctrl) ctrl.abort(); stateProc.setAttribute('aria-busy','false'); switchState(stateProc,stateIdle); stopProgress(); progressBar.style.width='0%'; });
+    btnReset.addEventListener('click',()=>{ form.reset(); clearImage(); aiItems.innerHTML=''; sourceMatrix.innerHTML=''; progressBar.style.width='0%'; switchState(stateOutput,stateIdle); setMode('lore'); textarea.focus(); });
+    btnCopy.addEventListener('click',()=>{ const txt=aiItems.innerText||''; if(!txt) return showToast('Nothing to copy yet'); navigator.clipboard.writeText(txt).then(()=>showToast('✓ Copied to clipboard')); });
+    btnSave.addEventListener('click',()=>{ const txt=aiItems.innerText||''; if(!txt) return showToast('Nothing to save yet'); const blob=new Blob([txt],{type:'text/plain'}); const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='boardalgo-mnemonic.txt'; a.click(); });
+    document.getElementById('btn-bookmark').addEventListener('click',()=>showToast('📌 Bookmark feature coming soon'));
+    textarea.addEventListener('keydown',e=>{ if((e.ctrlKey||e.metaKey)&&e.key==='Enter') btnGenerate.click(); });
 
+    // ── Reconfig modal ─────────────────────────────────────────────────────────
+    btnReconfig.addEventListener('click',()=>{ confirmModal.classList.add('open'); document.body.style.overflow='hidden'; });
+    function closeConfirmModal(){ confirmModal.classList.remove('open'); document.body.style.overflow=''; }
+    modalCancelBtn.addEventListener('click',closeConfirmModal);
+    confirmModal.addEventListener('click',e=>{ if(e.target===confirmModal) closeConfirmModal(); });
+    modalConfirmBtn.addEventListener('click',async()=>{ modalConfirmBtn.textContent='Resetting...'; modalConfirmBtn.disabled=true; try{ await fetch('/api/user/reset-behaviour',{method:'POST',credentials:'include'}); window.location.href='/dashboard'; }catch(e){ showToast('❌ Reset failed. Try again.'); modalConfirmBtn.textContent='Yes, Reset It'; modalConfirmBtn.disabled=false; closeConfirmModal(); } });
 
-// ---------- injected result loader ----------
-(function(){
+    gsap.to('.gsap-entry',{y:0,opacity:1,stagger:.1,duration:.55,ease:'power2.out',delay:.05});
 
-  if(!window.__INJECTED_RESULT__) return;
+    // ── Three.js background ────────────────────────────────────────────────────
+    let threeParticles,threeRenderer;
+    function updateThreeColors(){ if(!threeParticles) return; threeParticles.material.color.set(html.classList.contains('dark')?0x6C2BD9:0x6C2BD9); threeParticles.material.opacity=html.classList.contains('dark')?.6:.12; }
+    (function(){
+        const canvas=document.getElementById('bg-canvas'); threeRenderer=new THREE.WebGLRenderer({canvas,alpha:true}); const scene=new THREE.Scene(),camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,.1,1000); threeRenderer.setSize(innerWidth,innerHeight); threeRenderer.setPixelRatio(Math.min(devicePixelRatio,2));
+        const count=1500,pos=new Float32Array(count*3); for(let i=0;i<count*3;i++) pos[i]=(Math.random()-.5)*20;
+        const geo=new THREE.BufferGeometry(); geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+        const mat=new THREE.PointsMaterial({size:.025,color:0x6C2BD9,transparent:true,opacity:.4});
+        threeParticles=new THREE.Points(geo,mat); scene.add(threeParticles); camera.position.z=4;
+        let mx=0,my=0;
+        document.addEventListener('mousemove',e=>{ mx=e.clientX/innerWidth-.5; my=e.clientY/innerHeight-.5; });
+        document.addEventListener('touchmove',e=>{ if(e.touches.length){ mx=e.touches[0].clientX/innerWidth-.5; my=e.touches[0].clientY/innerHeight-.5; } },{passive:true});
+        (function animate(){ requestAnimationFrame(animate); threeParticles.rotation.y+=.0005+mx*.002; threeParticles.rotation.x+=.0002+my*.001; threeRenderer.render(scene,camera); })();
+        window.addEventListener('resize',()=>{ camera.aspect=innerWidth/innerHeight; camera.updateProjectionMatrix(); threeRenderer.setSize(innerWidth,innerHeight); });
+        updateThreeColors();
+    })();
 
-  const json =
-      window.__INJECTED_RESULT__.initial_ai_response ||
-      window.__INJECTED_RESULT__;
-
-switchState(stateIdle, stateOutput);
-
-  // populate title + content
-  aiTitle.textContent = json.title || "Result";
-  aiContent.innerHTML = json.definition || json.output || json.text || "";
-
-  // render formula
-  if(json.latex_formula){
-      const clean = json.latex_formula.replace(/\$\$/g,"").trim();
-      try{
-          katex.render(clean, aiFormula, { displayMode:true });
-      }catch(e){
-          aiFormula.textContent = json.latex_formula;
-      }
-      aiFormula.classList.remove("hidden");
-  }
-
-  // mnemonic / lore
-  if(json.hook_text){
-      aiMnemonic.classList.remove("hidden");
-      aiMnemonicText.textContent = json.hook_text;
-      aiMnemonicSub.textContent = json.hook_subtext || "";
-  }
-
-  // source matrix
-  if(Array.isArray(json.source_matrix)){
-
-      let html = `
-      <h3 class="text-xs font-bold uppercase tracking-widest text-slate-500 dark:text-slate-400 flex items-center gap-2 mb-3">
-        <i data-lucide="database" class="w-4 h-4"></i> Source Matrix
-      </h3>`;
-
-      json.source_matrix.forEach((s)=>{
-
-          const icon = s.icon_type === "file" ? "file-text" : "book-open";
-
-          html += `
-          <div class="hud-panel p-3 rounded-xl border-l-4 border-l-brand-primary mb-3">
-            <div class="flex justify-between mb-2">
-              <span class="text-xs font-bold">${s.title || "Source"}</span>
-              <span class="text-[10px] font-mono">${s.match_percentage || ""}</span>
-            </div>
-
-            <div class="h-16 flex items-center justify-center">
-              <i data-lucide="${icon}" class="w-6 h-6"></i>
-            </div>
-          </div>`;
-      });
-
-      sourceMatrixContainer.innerHTML = html;
-
-      if(window.lucide) lucide.createIcons();
-  }
-
-})();
-
-
-  </script>
-<script src="/js/tracking.js" defer></script>
+    // ── Injected result loader (history) ──────────────────────────────────────
+    (function(){
+        if(!window.__INJECTED_RESULT__) return;
+        const saved=window.__INJECTED_RESULT__; const raw=saved.initial_ai_response||saved; const mode=saved.generation_mode||'lore'; const deep=saved.deep_scan_enabled||false; const lang=saved.language||'english';
+        currentMode=mode; isDeepScan=deep; currentLanguage=lang; setMode(mode); if(deep) btnDeepScan.click();
+        document.querySelectorAll('.lang-btn').forEach(b=>{ b.classList.toggle('active',b.dataset.lang===lang); });
+        languageInput.value=lang; langDescText.textContent=(LANG_META[lang]||LANG_META.english).desc;
+        renderOutput(raw,mode,deep,lang,saved._id||null); switchState(stateIdle,stateOutput);
+    })();
+    </script>
+    <script src="/js/tracking.js" defer></script>
 </body>
 </html>

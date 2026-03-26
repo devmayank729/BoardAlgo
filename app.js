@@ -244,6 +244,7 @@ app.post("/api/auth/google/submit-details", async function(req, res) {
     const Class = req.body.Class;
     const parent_phone_number = req.body.parent_phone_number;
     const phone_number = req.body.phone_number;
+    const referral_code = req.body.referral_code ; 
 
     const updatedUser = await user.findByIdAndUpdate( // CHANGED: Assigned the result directly to 'updatedUser'
       req.session.user._id,
@@ -251,6 +252,7 @@ app.post("/api/auth/google/submit-details", async function(req, res) {
         Class: Class,
         phone_number: phone_number,
         parent_phone_number: parent_phone_number,
+        referral_code : referral_code ,
       },
       { new: true } // ADDED: { new: true } tells Mongoose to return the newly updated document instead of the old one
     );
@@ -290,7 +292,8 @@ app.get("/signup" , function(req, res)
  
 app.post("/signupsubmit" , async(req,res)=> 
 {
-const username = req.body.username ; 
+const username = req.body.username ;
+const referral_code = req.body.referral_code ;  
 const email = req.body.email ; 
 const phone_number = req.body.phone_number ;
 const password = req.body.password ;
@@ -315,6 +318,7 @@ const newuser = new user
         username : username , 
         email : email.toLowerCase().trim() ,
         phone_number : phone_number , 
+        referral_code : referral_code , 
         password_hash : password_hash , 
         parent_phone_number : parent_phone_number , 
         Class : Class , 
@@ -827,25 +831,49 @@ const data = await interaction.findOne(
 )
 
 
-app.get("/mne/history/:id" ,isLoggedIn , async function(req , res)
-{
-const data = await interaction.findOne(
-  {
-    _id : req.params.id , 
-    user_id : req.session.user._id 
-  })
+// app.get("/mne/history/:id" ,isLoggedIn , async function(req , res)
+// {
+// const data = await interaction.findOne(
+//   {
+//     _id : req.params.id , 
+//     user_id : req.session.user._id 
+//   })
 
-  if(!data)
-  {
-    return res.send("Not Found!!, please don't try to change the URL") ; 
+//   if(!data)
+//   {
+//     return res.send("Not Found!!, please don't try to change the URL") ; 
+//   }
+//   // console.log(data) ;
+
+
+
+//   // res.render("mnemonic" , {_id : data._id,initial_ai_response : data.initial_ai_response ,generation_mode : data.generation_mode , deep_scan_enabled : data.deep_scan_enabled , time_taken_ms : data.time_taken_ms   }) ;
+//     res.render("mnemonic" , {user : req.session.user , savedSolution : data}) ;
+// })
+
+app.get("/mne/history/:id", isLoggedIn, async function(req, res) {
+  try {
+    const data = await interaction.findOne({
+      _id: req.params.id, 
+      user_id: req.session.user._id 
+    });
+
+    if(!data) {
+      return res.send("Not Found!!, please don't try to change the URL"); 
+    }
+
+    // Safety Check: If this is an old DB entry that hasn't been properly parsed
+    if (data.initial_ai_response && data.initial_ai_response.output && !data.initial_ai_response.steps) {
+        return res.send("This is a legacy solution format that can no longer be displayed. Please generate a new solution.");
+    }
+
+    res.render("mnemonic", { user: req.session.user, savedSolution: data });
+
+  } catch (error) {
+    console.error("Error fetching history:", error);
+    res.status(500).send("Server Error");
   }
-  // console.log(data) ;
-
-
-
-  // res.render("mnemonic" , {_id : data._id,initial_ai_response : data.initial_ai_response ,generation_mode : data.generation_mode , deep_scan_enabled : data.deep_scan_enabled , time_taken_ms : data.time_taken_ms   }) ;
-    res.render("mnemonic" , {user : req.session.user , savedSolution : data}) ;
-})
+});
 
 app.get("/eve/history/:id", isLoggedIn , async function(req,res)
 {
@@ -3410,44 +3438,44 @@ const result = await model.generateContent(
         }
 
     }) ;
+console.log("result : ", result);
+    let textResponse = result.response.text();
 
-    const textResponse = await result.response.text();
+    // 1. Clean the text response in case Gemini wraps it in markdown (e.g., ```json ... ```)
+    textResponse = textResponse.replace(/```json/gi, '').replace(/```/g, '').trim();
 
-    // parse in JSON format
-    let parsed ;
-{
-    parsed = {output : textResponse} ; 
-}
-
-
-// ---time taken ---
-const endTime = Date.now() ; 
-const timeTaken = endTime - startTime ; 
-
-
-// save 
-
-await interaction.findByIdAndUpdate(newLI._id , 
-    {
-       initial_ai_response : parsed , 
-       time_taken_ms : timeTaken 
+    // 2. Parse the string into a real JSON object
+    let parsed;
+    try {
+        parsed = JSON.parse(textResponse); 
+    } catch (parseError) {
+        console.error("JSON Parsing Error:", parseError);
+        console.error("Raw AI Output:", textResponse);
+        return res.status(500).json({ error: "Failed to parse AI response into JSON." });
     }
-) ;
 
+    // ---time taken ---
+    const endTime = Date.now(); 
+    const timeTaken = endTime - startTime; 
 
-//  --- send to frontend 
+    // save 
+    await interaction.findByIdAndUpdate(newLI._id, 
+        {
+           initial_ai_response: parsed, 
+           time_taken_ms: timeTaken 
+        }
+    );
 
-res.json(parsed) ; 
+    //  --- send to frontend 
+    res.json(parsed); 
+
+} 
+catch (error) {
+    // Note: use res.status().json() so the frontend can catch the error properly
+    console.log("\n Date :", Date.now()); 
+    console.log("\n GEMINI ERROR : ", error);
+    res.status(500).json({ error: "AI is unable to generate at this time" });
 }
-
-
-catch (error)
-{
-    res.send("AI is unable to generate at this time",Date.now()) ;
-    console.log("\n Date :", Date.now()) ; 
-    console.log("\n GEMINI ERROR : ", error )  ;
-}
-
 }
 )
 //calling ended here

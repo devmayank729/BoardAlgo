@@ -13,7 +13,6 @@
   <script src="https://unpkg.com/konva@9.3.6/konva.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/contrib/auto-render.min.js"></script>
 
   <script>
     tailwind.config = {
@@ -22,18 +21,12 @@
         extend: {
           colors: {
             brand: {
-              black:   '#020617',
-              surface: '#0f172a',
-              border:  '#1e293b',
-              primary: '#6C2BD9',
-              accent:  '#16A34A',
-              red:     '#EF4444',
+              black: '#020617', surface: '#0f172a', border: '#1e293b',
+              primary: '#6C2BD9', accent: '#16A34A', red: '#EF4444',
             }
           },
           fontFamily: {
-            sans:    ['Inter', 'sans-serif'],
-            display: ['Poppins', 'sans-serif'],
-            hand:    ['Kalam', 'cursive'],
+            sans: ['Inter','sans-serif'], display: ['Poppins','sans-serif'], hand: ['Kalam','cursive'],
           }
         }
       }
@@ -42,46 +35,31 @@
 
   <style>
     :root {
-      --c-primary: #6C2BD9;
-      --c-accent:  #16A34A;
-      --c-red:     #EF4444;
-      --c-surface: #0f172a;
-      --c-bg:      #020617;
+      --c-primary: #6C2BD9; --c-accent: #16A34A; --c-red: #EF4444;
+      --c-surface: #0f172a; --c-bg: #020617;
     }
-
     *, *::before, *::after { box-sizing: border-box; }
     html { scroll-behavior: smooth; }
     body {
-      background-color: #f8fafc;
-      color: #0f172a;
+      background-color: #f8fafc; color: #0f172a;
       transition: background-color 0.3s, color 0.3s;
-      font-family: 'Inter', sans-serif;
-      -webkit-font-smoothing: antialiased;
+      font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased;
     }
     .dark body { background-color: #020617; color: #f8fafc; }
-
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: rgba(108,43,217,0.3); border-radius: 3px; }
 
     .glass {
-      background: rgba(255,255,255,0.75);
-      backdrop-filter: blur(16px);
-      -webkit-backdrop-filter: blur(16px);
-      border: 1px solid rgba(0,0,0,0.07);
+      background: rgba(255,255,255,0.75); backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px); border: 1px solid rgba(0,0,0,0.07);
     }
-    .dark .glass {
-      background: rgba(15,23,42,0.65);
-      border: 1px solid rgba(255,255,255,0.08);
-    }
+    .dark .glass { background: rgba(15,23,42,0.65); border: 1px solid rgba(255,255,255,0.08); }
 
     .logout-btn {
-      display: flex; align-items: center; gap: 6px;
-      padding: 7px 13px; border-radius: 9px;
-      border: 1px solid rgba(239,68,68,0.28);
-      background: rgba(239,68,68,0.07);
-      color: #f87171; font-size: 0.8rem; font-weight: 500;
-      text-decoration: none; transition: all 0.2s;
+      display: flex; align-items: center; gap: 6px; padding: 7px 13px; border-radius: 9px;
+      border: 1px solid rgba(239,68,68,0.28); background: rgba(239,68,68,0.07);
+      color: #f87171; font-size: 0.8rem; font-weight: 500; text-decoration: none; transition: all 0.2s;
     }
     .logout-btn:hover { background: rgba(239,68,68,0.16); border-color: rgba(239,68,68,0.5); }
 
@@ -90,24 +68,21 @@
       border-radius: 50%; padding: 2px; display: inline-flex;
     }
     .avatar-inner {
-      border-radius: 50%; overflow: hidden;
-      display: flex; align-items: center; justify-content: center;
+      border-radius: 50%; overflow: hidden; display: flex;
+      align-items: center; justify-content: center;
       font-family: 'Poppins', sans-serif; font-weight: 700;
     }
-
     .footer-link { color: #94a3b8; font-size: 0.875rem; text-decoration: none; transition: color 0.2s; }
     .footer-link:hover { color: var(--c-primary); }
 
-    /* ── Drop zone ── */
+    /* ══ UPLOAD ZONE ══ */
     #drop-zone {
-      border: 2px dashed rgba(108,43,217,0.35);
-      border-radius: 22px;
+      border: 2px dashed rgba(108,43,217,0.35); border-radius: 22px;
       transition: all 0.3s cubic-bezier(0.34,1.56,0.64,1);
       cursor: pointer; position: relative; overflow: hidden;
     }
     #drop-zone::before {
-      content: '';
-      position: absolute; inset: 0;
+      content: ''; position: absolute; inset: 0;
       background: radial-gradient(ellipse at 50% -10%, rgba(108,43,217,0.07), transparent 65%);
       pointer-events: none; transition: opacity 0.3s;
     }
@@ -116,14 +91,20 @@
       box-shadow: 0 0 0 4px rgba(108,43,217,0.18), 0 24px 48px rgba(108,43,217,0.15);
       transform: scale(1.012);
     }
-    #drop-zone:hover:not(.drag-over) {
-      border-color: rgba(108,43,217,0.6);
-      box-shadow: 0 8px 32px rgba(108,43,217,0.1);
+    #drop-zone.paste-flash {
+      border-color: #16A34A;
+      box-shadow: 0 0 0 5px rgba(22,163,74,0.2), 0 12px 32px rgba(22,163,74,0.15);
+      animation: pasteFlash 0.4s ease;
     }
-
+    @keyframes pasteFlash {
+      0% { background: rgba(22,163,74,0.12); }
+      100% { background: transparent; }
+    }
+    #drop-zone:hover:not(.drag-over) {
+      border-color: rgba(108,43,217,0.6); box-shadow: 0 8px 32px rgba(108,43,217,0.1);
+    }
     .upload-icon-wrap {
-      width: 84px; height: 84px; border-radius: 24px;
-      margin: 0 auto 22px;
+      width: 84px; height: 84px; border-radius: 24px; margin: 0 auto 22px;
       background: linear-gradient(135deg, rgba(108,43,217,0.13), rgba(99,102,241,0.1));
       border: 1px solid rgba(108,43,217,0.22);
       display: flex; align-items: center; justify-content: center;
@@ -131,67 +112,40 @@
     }
     #drop-zone:hover .upload-icon-wrap { transform: translateY(-6px) scale(1.07); }
 
-    /* Mobile action buttons */
-    .mobile-action-btns {
-      display: none;
-      gap: 10px;
-      justify-content: center;
-      flex-wrap: wrap;
-      margin-bottom: 20px;
-    }
-    .mob-btn {
-      display: inline-flex; align-items: center; gap: 7px;
-      padding: 11px 20px; border-radius: 13px;
-      font-family: 'Poppins', sans-serif; font-weight: 700;
-      font-size: 0.85rem; border: none; cursor: pointer;
-      transition: all 0.22s cubic-bezier(0.34,1.56,0.64,1);
-      min-width: 130px; justify-content: center;
-    }
-    .mob-btn:active { transform: scale(0.96); }
-    .mob-btn-camera {
-      background: linear-gradient(135deg, #6C2BD9, #7c3aed);
-      color: #fff;
-      box-shadow: 0 6px 20px rgba(108,43,217,0.45);
-    }
-    .mob-btn-camera:hover { box-shadow: 0 10px 28px rgba(108,43,217,0.55); transform: translateY(-1px); }
-    .mob-btn-upload {
-      background: rgba(108,43,217,0.1);
-      color: #a78bfa;
-      border: 1.5px solid rgba(108,43,217,0.3) !important;
-    }
-    .mob-btn-upload:hover { background: rgba(108,43,217,0.18); }
-
-    /* File chip */
+    /* ══ FILE CHIP WITH THUMBNAIL ══ */
     .file-chip {
       display: flex; align-items: center; gap: 7px;
-      padding: 5px 10px 5px 8px; border-radius: 10px;
+      padding: 4px 10px 4px 5px; border-radius: 10px;
       background: rgba(108,43,217,0.1); border: 1px solid rgba(108,43,217,0.22);
       font-size: 0.75rem; font-weight: 500; color: #a78bfa;
       animation: chipIn 0.22s cubic-bezier(0.34,1.56,0.64,1);
-      max-width: 190px;
+      max-width: 210px; position: relative; overflow: hidden;
     }
     .dark .file-chip { background: rgba(108,43,217,0.16); }
     @keyframes chipIn {
       from { opacity:0; transform: scale(0.85) translateY(6px); }
       to   { opacity:1; transform: none; }
     }
+    .chip-thumb {
+      width: 32px; height: 32px; border-radius: 6px; object-fit: cover; flex-shrink: 0;
+      border: 1px solid rgba(108,43,217,0.3); background: rgba(108,43,217,0.1);
+    }
+    .chip-thumb-placeholder {
+      width: 32px; height: 32px; border-radius: 6px; flex-shrink: 0;
+      background: rgba(108,43,217,0.15); border: 1px solid rgba(108,43,217,0.2);
+      display: flex; align-items: center; justify-content: center;
+    }
     .file-chip-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; flex:1; }
     .chip-remove { cursor: pointer; opacity: 0.6; flex-shrink:0; transition: opacity 0.15s, transform 0.15s; }
     .chip-remove:hover { opacity:1; transform: scale(1.2); }
 
     .fmt-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 5px 12px; border-radius: 10px;
-      font-size: 0.75rem; font-weight: 600;
-      border: 1px solid rgba(0,0,0,0.07);
-      background: rgba(0,0,0,0.03);
+      display: inline-flex; align-items: center; gap: 5px; padding: 5px 12px;
+      border-radius: 10px; font-size: 0.75rem; font-weight: 600;
+      border: 1px solid rgba(0,0,0,0.07); background: rgba(0,0,0,0.03);
       color: #475569; transition: all 0.2s;
     }
-    .dark .fmt-badge {
-      border-color: rgba(255,255,255,0.07);
-      background: rgba(255,255,255,0.04);
-      color: #94a3b8;
-    }
+    .dark .fmt-badge { border-color: rgba(255,255,255,0.07); background: rgba(255,255,255,0.04); color: #94a3b8; }
     .fmt-badge:hover { border-color: rgba(108,43,217,0.3); background: rgba(108,43,217,0.06); color: #a78bfa; }
 
     .btn-submit {
@@ -214,112 +168,291 @@
     .btn-submit:active:not(:disabled) { transform: translateY(0); }
     .btn-submit:disabled { opacity: 0.45; cursor: not-allowed; }
 
-    /* Loading */
-    .scanner-line {
-      position: absolute; left: 0; right: 0; height: 2px;
-      background: linear-gradient(90deg, transparent, #6C2BD9, #EF4444, transparent);
-      animation: scan 2s linear infinite;
+    /* ══ ENHANCED LOADER ══ */
+    #loading-section { display: none; }
+    .loader-card {
+      border-radius: 24px; overflow: hidden; position: relative;
+      background: linear-gradient(135deg, rgba(15,23,42,0.98), rgba(5,10,25,0.98));
+      border: 1px solid rgba(108,43,217,0.2);
+      box-shadow: 0 30px 80px rgba(0,0,0,0.5), 0 0 0 1px rgba(108,43,217,0.1);
     }
-    @keyframes scan {
-      0%  { top: 0; opacity: 1; }
-      95% { top: 100%; opacity: 0.6; }
-      100%{ top: 0; opacity: 0; }
-    }
-    @keyframes thinking-pulse {
-      0%,100% { opacity:1; transform: scale(1); }
-      50% { opacity:0.3; transform: scale(0.75); }
-    }
-    .t-dot { animation: thinking-pulse 1.5s ease-in-out infinite; }
-    .t-dot:nth-child(2) { animation-delay: 0.25s; }
-    .t-dot:nth-child(3) { animation-delay: 0.5s; }
 
-    /* Scorecard */
+    /* Scanner beam */
+    .scan-beam {
+      position: absolute; left: 0; right: 0; height: 3px;
+      background: linear-gradient(90deg, transparent 0%, rgba(108,43,217,0.4) 20%, rgba(239,68,68,0.9) 50%, rgba(108,43,217,0.4) 80%, transparent 100%);
+      animation: scanBeam 2.4s ease-in-out infinite;
+      filter: blur(1px);
+    }
+    @keyframes scanBeam {
+      0% { top: 0%; opacity: 1; }
+      90% { top: 100%; opacity: 0.5; }
+      100% { top: 0%; opacity: 0; }
+    }
+    /* Ambient glow strips */
+    .glow-strip-top {
+      position: absolute; top: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, #6C2BD9, #EF4444, #6C2BD9, transparent);
+      animation: glowPulse 2.4s ease-in-out infinite;
+    }
+    .glow-strip-bottom {
+      position: absolute; bottom: 0; left: 0; right: 0; height: 1px;
+      background: linear-gradient(90deg, transparent, #6C2BD9, #EF4444, #6C2BD9, transparent);
+      animation: glowPulse 2.4s ease-in-out infinite 1.2s;
+    }
+    @keyframes glowPulse {
+      0%, 100% { opacity: 0.4; } 50% { opacity: 1; }
+    }
+
+    /* Central orb */
+    .loader-orb-container {
+      position: relative; width: 140px; height: 140px; margin: 0 auto;
+    }
+    .orb-ring {
+      position: absolute; border-radius: 50%;
+      border: 2px solid transparent; animation: orbSpin linear infinite;
+    }
+    .orb-ring-1 {
+      inset: 0;
+      border-top-color: rgba(108,43,217,0.8);
+      border-right-color: rgba(108,43,217,0.2);
+      animation-duration: 1.8s;
+    }
+    .orb-ring-2 {
+      inset: 12px;
+      border-top-color: rgba(239,68,68,0.7);
+      border-left-color: rgba(239,68,68,0.2);
+      animation-duration: 2.4s;
+      animation-direction: reverse;
+    }
+    .orb-ring-3 {
+      inset: 24px;
+      border-top-color: rgba(22,163,74,0.8);
+      border-right-color: rgba(22,163,74,0.15);
+      animation-duration: 3s;
+    }
+    @keyframes orbSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+    .orb-core {
+      position: absolute; inset: 36px; border-radius: 50%;
+      background: radial-gradient(circle at 35% 35%, rgba(108,43,217,0.8), rgba(239,68,68,0.5), rgba(15,23,42,0.9));
+      display: flex; align-items: center; justify-content: center;
+      animation: coreBreath 2.4s ease-in-out infinite;
+      box-shadow: 0 0 30px rgba(108,43,217,0.5), inset 0 0 20px rgba(239,68,68,0.3);
+    }
+    @keyframes coreBreath {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 30px rgba(108,43,217,0.5); }
+      50% { transform: scale(1.06); box-shadow: 0 0 50px rgba(108,43,217,0.7), 0 0 20px rgba(239,68,68,0.4); }
+    }
+
+    /* Progress bar */
+    .loader-progress-track {
+      height: 4px; border-radius: 99px; background: rgba(255,255,255,0.06); overflow: hidden;
+    }
+    .loader-progress-fill {
+      height: 100%; border-radius: 99px; width: 0%;
+      background: linear-gradient(90deg, #6C2BD9, #EF4444);
+      transition: width 0.8s cubic-bezier(0.34,1.56,0.64,1);
+      box-shadow: 0 0 8px rgba(108,43,217,0.5);
+    }
+
+    /* Stage steps */
+    .loader-stage {
+      display: flex; align-items: center; gap: 10px;
+      padding: 8px 12px; border-radius: 10px;
+      background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05);
+      transition: all 0.4s ease;
+    }
+    .loader-stage.active {
+      background: rgba(108,43,217,0.1); border-color: rgba(108,43,217,0.3);
+    }
+    .loader-stage.done {
+      background: rgba(22,163,74,0.08); border-color: rgba(22,163,74,0.2);
+    }
+    .stage-icon {
+      width: 26px; height: 26px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+      font-size: 11px; flex-shrink: 0; transition: all 0.4s;
+      background: rgba(255,255,255,0.06); color: rgba(255,255,255,0.4);
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .loader-stage.active .stage-icon {
+      background: rgba(108,43,217,0.3); color: #a78bfa;
+      border-color: rgba(108,43,217,0.5); animation: stageSpin 1s linear infinite;
+    }
+    .loader-stage.done .stage-icon {
+      background: rgba(22,163,74,0.3); color: #4ade80;
+      border-color: rgba(22,163,74,0.5); animation: none;
+    }
+    @keyframes stageSpin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+    /* Fun facts ticker */
+    .fact-ticker {
+      overflow: hidden; height: 20px; position: relative;
+    }
+    .fact-item {
+      position: absolute; top: 0; left: 0; right: 0;
+      font-size: 0.72rem; color: rgba(148,163,184,0.7);
+      transition: transform 0.4s ease, opacity 0.4s ease;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ══ PAGE TURN ANIMATION ══ */
+    .page-flip-perspective {
+      perspective: 1400px; perspective-origin: 50% 50%;
+    }
+    .page-content-wrap {
+      transform-style: preserve-3d; backface-visibility: hidden;
+      will-change: transform, opacity;
+    }
+    .page-content-wrap.flip-exit-left {
+      animation: flipExitLeft 0.38s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+    }
+    .page-content-wrap.flip-exit-right {
+      animation: flipExitRight 0.38s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+    }
+    .page-content-wrap.flip-enter-right {
+      animation: flipEnterRight 0.42s cubic-bezier(0.215, 0.61, 0.355, 1.0) forwards;
+    }
+    .page-content-wrap.flip-enter-left {
+      animation: flipEnterLeft 0.42s cubic-bezier(0.215, 0.61, 0.355, 1.0) forwards;
+    }
+    @keyframes flipExitLeft {
+      0%   { transform: perspective(1400px) rotateY(0deg); opacity: 1; }
+      100% { transform: perspective(1400px) rotateY(-80deg); opacity: 0; }
+    }
+    @keyframes flipExitRight {
+      0%   { transform: perspective(1400px) rotateY(0deg); opacity: 1; }
+      100% { transform: perspective(1400px) rotateY(80deg); opacity: 0; }
+    }
+    @keyframes flipEnterRight {
+      0%   { transform: perspective(1400px) rotateY(80deg); opacity: 0; }
+      100% { transform: perspective(1400px) rotateY(0deg); opacity: 1; }
+    }
+    @keyframes flipEnterLeft {
+      0%   { transform: perspective(1400px) rotateY(-80deg); opacity: 0; }
+      100% { transform: perspective(1400px) rotateY(0deg); opacity: 1; }
+    }
+
+    /* Page shadow overlay during flip */
+    .page-flip-shadow {
+      position: absolute; inset: 0; border-radius: 12px; pointer-events: none; z-index: 5;
+      background: linear-gradient(90deg, rgba(0,0,0,0.7), transparent);
+      opacity: 0; transition: opacity 0.2s;
+    }
+
+    /* ══ AR CANVAS ══ */
+    #canvas-wrapper {
+      position: relative; display: inline-block; width: 100%;
+      line-height: 0; border-radius: 12px; overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+    }
+    #student-img {
+      width: 100%; height: auto; display: block; border-radius: 12px;
+    }
+    #konva-container {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      pointer-events: none; border-radius: 12px; overflow: hidden;
+    }
+    /* Safe zone overlay — annotations won't bleed past this */
+    #canvas-safezone {
+      position: absolute; inset: 0; pointer-events: none; border-radius: 12px;
+      /* Subtle inset shadow to show the safe zone visually */
+    }
+    .anno-tooltip {
+      position: absolute; background: rgba(15,23,42,0.92); backdrop-filter: blur(8px);
+      border: 1px solid rgba(239,68,68,0.35); color: #fca5a5;
+      padding: 5px 10px; border-radius: 8px; font-size: 0.75rem; font-weight: 600;
+      pointer-events: none; z-index: 20; transform: translateX(-50%); white-space: nowrap;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.4); opacity: 0; transition: opacity 0.15s;
+    }
+    .anno-tooltip.show { opacity: 1; }
+
+    /* ══ FULLSCREEN MODE ══ */
+    #fullscreen-overlay {
+      display: none; position: fixed; inset: 0; z-index: 9999;
+      background: rgba(2,6,23,0.97); backdrop-filter: blur(12px);
+      flex-direction: column;
+    }
+    #fullscreen-overlay.active { display: flex; }
+
+    .fs-topbar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 12px 20px; flex-shrink: 0;
+      background: rgba(15,23,42,0.8); border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .fs-image-area {
+      flex: 1; overflow: hidden; display: flex; align-items: center; justify-content: center;
+      position: relative; cursor: grab;
+    }
+    .fs-image-area:active { cursor: grabbing; }
+    .fs-zoom-container {
+      position: relative; transform-origin: center center;
+      transition: transform 0.2s ease;
+    }
+    .fs-zoom-container img {
+      display: block; max-width: 90vw; max-height: 82vh;
+      border-radius: 10px; user-select: none;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.6);
+    }
+    #fs-konva-container {
+      position: absolute; top: 0; left: 0; pointer-events: none; border-radius: 10px;
+    }
+    .fs-bottombar {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      padding: 10px 20px; flex-shrink: 0;
+      background: rgba(15,23,42,0.8); border-top: 1px solid rgba(255,255,255,0.06);
+      overflow-x: auto;
+    }
+    .fs-thumb {
+      width: 52px; height: 52px; border-radius: 7px; object-fit: cover;
+      border: 2px solid rgba(255,255,255,0.1); cursor: pointer;
+      transition: all 0.2s; flex-shrink: 0;
+    }
+    .fs-thumb.active { border-color: #6C2BD9; box-shadow: 0 0 12px rgba(108,43,217,0.5); }
+    .fs-thumb:hover:not(.active) { border-color: rgba(255,255,255,0.3); }
+    .fs-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 36px; height: 36px; border-radius: 10px;
+      background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.8); cursor: pointer; transition: all 0.2s; flex-shrink: 0;
+    }
+    .fs-btn:hover { background: rgba(108,43,217,0.3); border-color: rgba(108,43,217,0.5); color: #a78bfa; }
+    .fs-zoom-display {
+      font-size: 0.75rem; font-weight: 700; color: rgba(255,255,255,0.5);
+      min-width: 44px; text-align: center; font-family: 'Poppins', sans-serif;
+    }
+
+    /* ══ RESULT COMPONENTS ══ */
     .scorecard {
       background: linear-gradient(135deg, rgba(239,68,68,0.07) 0%, rgba(108,43,217,0.06) 50%, rgba(22,163,74,0.04) 100%);
       border: 1px solid rgba(239,68,68,0.22);
     }
     .dark .scorecard { background: linear-gradient(135deg, rgba(239,68,68,0.1), rgba(108,43,217,0.08), rgba(22,163,74,0.05)); }
-
     .score-ring-wrap { position: relative; display: inline-flex; align-items: center; justify-content: center; }
     .score-ring-wrap svg { transform: rotate(-90deg); }
     .ring-track { fill: none; stroke: rgba(108,43,217,0.13); }
     .ring-fill  { fill: none; stroke: url(#rGrad); stroke-linecap: round;
                   transition: stroke-dashoffset 1.4s cubic-bezier(0.34,1.56,0.64,1); }
     .ring-text  { position: absolute; text-align: center; font-family: 'Poppins', sans-serif; }
-
     .strict-badge {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 3px 10px; border-radius: 99px;
+      display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; border-radius: 99px;
       background: rgba(239,68,68,0.12); border: 1px solid rgba(239,68,68,0.3);
       color: #f87171; font-size: 0.68rem; font-weight: 800;
       letter-spacing: 0.06em; text-transform: uppercase;
     }
-
-    .diff-pill {
-      padding: 2px 9px; border-radius: 99px;
-      font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
-    }
+    .diff-pill { padding: 2px 9px; border-radius: 99px; font-size: 0.7rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
     .diff-easy   { background:rgba(22,163,74,0.12);  color:#4ade80; border:1px solid rgba(22,163,74,0.25); }
     .diff-medium { background:rgba(245,158,11,0.12); color:#fbbf24; border:1px solid rgba(245,158,11,0.25); }
     .diff-hard   { background:rgba(239,68,68,0.12);  color:#f87171; border:1px solid rgba(239,68,68,0.3); }
-
-    /* AR Canvas */
-    #canvas-wrapper {
-      position: relative;
-      display: block;
-      width: 100%;
-      line-height: 0;
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-    }
-    #student-img {
-      width: 100%;
-      height: auto;
-      display: block;
-      border-radius: 12px;
-    }
-    #konva-container {
-      position: absolute;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      pointer-events: none;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-
-    .anno-tooltip {
-      position: absolute;
-      background: rgba(15,23,42,0.92);
-      backdrop-filter: blur(8px);
-      border: 1px solid rgba(239,68,68,0.35);
-      color: #fca5a5;
-      padding: 5px 10px; border-radius: 8px;
-      font-size: 0.75rem; font-weight: 600;
-      pointer-events: none; z-index: 20;
-      transform: translateX(-50%);
-      white-space: nowrap;
-      box-shadow: 0 4px 16px rgba(0,0,0,0.4);
-      opacity: 0; transition: opacity 0.15s;
-    }
-    .anno-tooltip.show { opacity: 1; }
-
-    /* Topper's Notebook */
     .toppers-notebook {
-      background: #ffffff;
-      border-left: 4px solid var(--c-primary);
+      background: #ffffff; border-left: 4px solid var(--c-primary);
       border-radius: 0 14px 14px 0;
       box-shadow: 0 8px 32px rgba(0,0,0,0.08), 0 2px 8px rgba(108,43,217,0.1);
     }
     .dark .toppers-notebook {
-      background: rgba(15,23,42,0.85);
-      border-left-color: #a78bfa;
+      background: rgba(15,23,42,0.85); border-left-color: #a78bfa;
       box-shadow: 0 8px 32px rgba(0,0,0,0.3);
     }
-    .step-card {
-      border-bottom: 1px solid rgba(108,43,217,0.08);
-      transition: background 0.2s;
-    }
+    .step-card { border-bottom: 1px solid rgba(108,43,217,0.08); transition: background 0.2s; }
     .dark .step-card { border-bottom-color: rgba(255,255,255,0.05); }
     .step-card:last-child { border-bottom: none; }
     .step-card:hover { background: rgba(108,43,217,0.03); }
@@ -328,155 +461,100 @@
       width: 28px; height: 28px; border-radius: 50%; flex-shrink: 0;
       background: linear-gradient(135deg, #6C2BD9, #a855f7);
       display: flex; align-items: center; justify-content: center;
-      color: #fff; font-size: 0.75rem; font-weight: 700;
-      font-family: 'Poppins', sans-serif;
+      color: #fff; font-size: 0.75rem; font-weight: 700; font-family: 'Poppins', sans-serif;
       box-shadow: 0 3px 10px rgba(108,43,217,0.4);
     }
-
-    /* KaTeX block — critical: allow horizontal scroll, never clip */
     .katex-block {
-      overflow-x: auto;
-      overflow-y: visible;
-      padding: 12px 16px;
-      border-radius: 10px;
-      background: rgba(108,43,217,0.05);
-      border: 1px solid rgba(108,43,217,0.1);
-      margin-top: 10px;
-      -webkit-overflow-scrolling: touch;
+      overflow-x: auto; padding: 10px 16px; border-radius: 10px;
+      background: rgba(108,43,217,0.05); border: 1px solid rgba(108,43,217,0.1); margin-top: 10px;
     }
-    .dark .katex-block {
-      background: rgba(108,43,217,0.09);
-      border-color: rgba(108,43,217,0.18);
-    }
-    .katex-block .katex-display {
-      margin: 0 !important;
-      overflow-x: auto;
-      overflow-y: visible;
-    }
-    .katex-block .katex {
-      font-size: 1.1em;
-    }
-    /* Inline katex in problem statement */
-    .problem-text .katex {
-      font-size: 1em;
-    }
-
+    .dark .katex-block { background: rgba(108,43,217,0.09); border-color: rgba(108,43,217,0.18); }
+    .katex-block .katex { font-size: 1.1em; }
     .rbar-track { background: rgba(0,0,0,0.06); height: 7px; border-radius: 99px; overflow: hidden; }
     .dark .rbar-track { background: rgba(255,255,255,0.07); }
     .rbar-fill { height: 100%; border-radius: 99px; transition: width 1.1s cubic-bezier(0.34,1.56,0.64,1); }
-
     .glow-card { transition: transform 0.3s ease, box-shadow 0.3s ease, border-color 0.3s ease; }
-    .glow-card:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 16px 40px rgba(108,43,217,0.14);
-      border-color: rgba(108,43,217,0.25) !important;
-    }
-
+    .glow-card:hover { transform: translateY(-3px); box-shadow: 0 16px 40px rgba(108,43,217,0.14); border-color: rgba(108,43,217,0.25) !important; }
     .meta-chip {
-      display: inline-flex; align-items: center; gap: 5px;
-      padding: 4px 10px; border-radius: 8px;
+      display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 8px;
       font-size: 0.72rem; font-weight: 600;
-      background: rgba(108,43,217,0.08); border: 1px solid rgba(108,43,217,0.18);
-      color: #a78bfa;
+      background: rgba(108,43,217,0.08); border: 1px solid rgba(108,43,217,0.18); color: #a78bfa;
     }
     .dark .meta-chip { background: rgba(108,43,217,0.13); }
-
     .glow-dot {
-      width: 7px; height: 7px; border-radius: 50%;
-      background: #16A34A; box-shadow: 0 0 6px #16A34A;
-      display: inline-block; animation: dotpulse 2s ease-in-out infinite;
+      width: 7px; height: 7px; border-radius: 50%; background: #16A34A;
+      box-shadow: 0 0 6px #16A34A; display: inline-block; animation: dotpulse 2s ease-in-out infinite;
     }
-    @keyframes dotpulse {
-      0%,100% { opacity:1; transform:scale(1); }
-      50% { opacity:0.5; transform:scale(0.8); }
-    }
-
+    @keyframes dotpulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:0.5; transform:scale(0.8); } }
     .diagram-ph {
-      border: 2px dashed rgba(108,43,217,0.22);
-      border-radius: 16px;
+      border: 2px dashed rgba(108,43,217,0.22); border-radius: 16px;
       background: linear-gradient(135deg, rgba(108,43,217,0.04), rgba(99,102,241,0.03));
+      transition: border-color 0.3s, background 0.3s;
     }
-
-    .section-rule {
-      display: flex; align-items: center; gap: 12px; margin-bottom: 18px;
-    }
+    .diagram-ph:hover { border-color: rgba(108,43,217,0.42); }
+    .section-rule { display: flex; align-items: center; gap: 12px; margin-bottom: 18px; }
     .section-rule h3 { font-family: 'Poppins', sans-serif; font-weight: 700; }
-    .section-rule::after {
-      content: ''; flex: 1; height: 1px;
-      background: linear-gradient(90deg, rgba(108,43,217,0.2), transparent);
-    }
-
+    .section-rule::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, rgba(108,43,217,0.2), transparent); }
     .gl-input {
-      width: 100%;
-      background: rgba(255,255,255,0.55);
-      border: 1px solid rgba(0,0,0,0.08);
-      border-radius: 11px; padding: 9px 13px;
-      font-family: 'Inter', sans-serif; font-size: 0.875rem;
-      color: #0f172a; outline: none;
-      transition: border-color 0.2s, box-shadow 0.2s;
+      width: 100%; background: rgba(255,255,255,0.55); border: 1px solid rgba(0,0,0,0.08);
+      border-radius: 11px; padding: 9px 13px; font-family: 'Inter', sans-serif; font-size: 0.875rem;
+      color: #0f172a; outline: none; transition: border-color 0.2s, box-shadow 0.2s;
     }
-    .dark .gl-input {
-      background: rgba(0,0,0,0.28);
-      border-color: rgba(255,255,255,0.09);
-      color: #f1f5f9;
-    }
-    .gl-input:focus {
-      border-color: #6C2BD9;
-      box-shadow: 0 0 0 3px rgba(108,43,217,0.16);
-    }
+    .dark .gl-input { background: rgba(0,0,0,0.28); border-color: rgba(255,255,255,0.09); color: #f1f5f9; }
+    .gl-input:focus { border-color: #6C2BD9; box-shadow: 0 0 0 3px rgba(108,43,217,0.16); }
     .gl-input option { background: #0f172a; color: #f1f5f9; }
     select.gl-input { cursor: pointer; }
 
-    /* Crop Modal */
-    #crop-modal {
-      position: fixed; inset: 0; z-index: 9999;
-      display: none; align-items: center; justify-content: center;
-      padding: 16px;
+    /* ══ PAGE NAV ══ */
+    .page-nav-btn {
+      display: flex; align-items: center; justify-content: center;
+      width: 38px; height: 38px; border-radius: 10px;
+      background: rgba(108,43,217,0.1); border: 1px solid rgba(108,43,217,0.25);
+      color: #a78bfa; cursor: pointer; transition: all 0.2s;
     }
-    #crop-modal.open { display: flex; }
-    #crop-backdrop {
-      position: absolute; inset: 0;
-      background: rgba(2,6,23,0.85);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
-    }
-    #crop-panel {
-      position: relative; z-index: 1;
-      width: 100%; max-width: 500px;
-      background: rgba(15,23,42,0.97);
-      border: 1px solid rgba(108,43,217,0.3);
-      border-radius: 20px; overflow: hidden;
-      box-shadow: 0 32px 80px rgba(0,0,0,0.6);
-      animation: cropPanelIn 0.25s cubic-bezier(0.34,1.56,0.64,1);
-    }
-    @keyframes cropPanelIn {
-      from { opacity:0; transform: scale(0.92) translateY(10px); }
-      to   { opacity:1; transform: none; }
-    }
-    #crop-canvas {
-      display: block; width: 100%;
-      cursor: crosshair; touch-action: none;
-      background: #080e1e;
-    }
-    .crop-action-btn {
-      flex: 1; padding: 10px 12px; border-radius: 11px;
-      font-family: 'Poppins', sans-serif; font-weight: 700;
-      font-size: 0.8rem; cursor: pointer; border: none;
-      transition: all 0.18s ease; text-align: center;
-    }
-    .crop-action-btn:active { transform: scale(0.96); }
-    .crop-btn-cancel { background: rgba(239,68,68,0.1); color: #f87171; border: 1px solid rgba(239,68,68,0.25) !important; }
-    .crop-btn-cancel:hover { background: rgba(239,68,68,0.18); }
-    .crop-btn-skip   { background: rgba(255,255,255,0.06); color: #94a3b8; border: 1px solid rgba(255,255,255,0.1) !important; }
-    .crop-btn-skip:hover { background: rgba(255,255,255,0.1); }
-    .crop-btn-apply  {
-      background: linear-gradient(135deg, #6C2BD9, #a855f7);
-      color: #fff; box-shadow: 0 4px 14px rgba(108,43,217,0.45);
-    }
-    .crop-btn-apply:hover { box-shadow: 0 6px 20px rgba(108,43,217,0.6); transform: translateY(-1px); }
+    .page-nav-btn:hover:not(:disabled) { background: rgba(108,43,217,0.25); border-color: rgba(108,43,217,0.5); }
+    .page-nav-btn:disabled { opacity: 0.35; cursor: not-allowed; }
 
+    /* ══ TIP BANNER ══ */
+    .tip-banner {
+      border-radius: 14px; padding: 14px 16px;
+      background: linear-gradient(135deg, rgba(22,163,74,0.08), rgba(22,163,74,0.04));
+      border: 1px solid rgba(22,163,74,0.2);
+    }
+    .tip-badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 8px; border-radius: 6px; font-size: 0.65rem; font-weight: 800;
+      background: rgba(22,163,74,0.2); border: 1px solid rgba(22,163,74,0.3);
+      color: #4ade80; text-transform: uppercase; letter-spacing: 0.06em;
+    }
+
+    /* ══ PASTE HINT ══ */
+    .paste-hint {
+      display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px;
+      border-radius: 8px; font-size: 0.72rem; font-weight: 600;
+      background: rgba(22,163,74,0.08); border: 1px solid rgba(22,163,74,0.2);
+      color: #4ade80;
+    }
+    kbd {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 1px 5px; border-radius: 4px; font-size: 0.65rem; font-weight: 700;
+      background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7); font-family: 'Poppins', monospace;
+    }
+
+    /* ══ ANNOTATION COUNT BADGES ══ */
+    .anno-stat {
+      display: inline-flex; align-items: center; gap: 5px; padding: 3px 9px;
+      border-radius: 8px; font-size: 0.7rem; font-weight: 700;
+    }
+    .anno-stat-errors { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); color: #f87171; }
+    .anno-stat-marks  { background: rgba(22,163,74,0.1);  border: 1px solid rgba(22,163,74,0.25);  color: #4ade80; }
+
+    @media (max-width: 640px) {
+      .notebook-paper { padding: 28px 14px 36px 60px !important; }
+    }
     @media print {
-      #bg-canvas, nav, footer, #upload-section, #loading-section { display: none !important; }
+      #bg-canvas, nav, footer, #upload-section, #loading-section, #fullscreen-overlay { display: none !important; }
       body { background: white !important; }
       .glass { background: white !important; box-shadow: none !important; }
     }
@@ -489,18 +567,60 @@
   window.injectedEvaluationData = <%- JSON.stringify(evaluationData || null) %>;
 </script>
 
+<!-- Particle canvas -->
 <canvas id="bg-canvas" class="fixed top-0 left-0 w-full h-full -z-10 pointer-events-none" style="opacity:0.3;"></canvas>
 <div class="fixed inset-0 -z-10 pointer-events-none"
-     style="background:radial-gradient(ellipse 70% 45% at 50% -10%, rgba(239,68,68,0.07), transparent);"></div>
+    style="background:radial-gradient(ellipse 70% 45% at 50% -10%, rgba(239,68,68,0.07), transparent);"></div>
 
-<!-- NAV -->
+<!-- ══════════════════════ FULLSCREEN OVERLAY ══════════════════════ -->
+<div id="fullscreen-overlay" role="dialog" aria-modal="true" aria-label="Full screen view">
+  <!-- Top bar -->
+  <div class="fs-topbar">
+    <div class="flex items-center gap-3">
+      <div class="w-7 h-7 rounded-md flex items-center justify-center text-white font-bold text-sm"
+          style="background:linear-gradient(135deg,#6C2BD9,#a855f7);">B</div>
+      <span class="text-sm font-bold text-white font-display">Full-screen View</span>
+      <span id="fs-page-badge" class="text-xs text-slate-400 font-semibold"></span>
+    </div>
+    <div class="flex items-center gap-2">
+      <!-- Zoom controls -->
+      <button class="fs-btn" onclick="fsZoom(1.25)" title="Zoom in"><i data-lucide="zoom-in" class="w-4 h-4"></i></button>
+      <span class="fs-zoom-display" id="fs-zoom-label">100%</span>
+      <button class="fs-btn" onclick="fsZoom(0.8)"  title="Zoom out"><i data-lucide="zoom-out" class="w-4 h-4"></i></button>
+      <button class="fs-btn" onclick="fsZoomReset()" title="Reset zoom"><i data-lucide="maximize-2" class="w-4 h-4"></i></button>
+      <!-- Annotation toggles -->
+      <div class="w-px h-6 mx-1 bg-white/10"></div>
+      <button class="fs-btn" id="fs-toggle-errors" onclick="fstoggleErrors()" title="Toggle error marks"><i data-lucide="x-circle" class="w-4 h-4" style="color:#f87171;"></i></button>
+      <button class="fs-btn" id="fs-toggle-marks"  onclick="fstoggleMarks()"  title="Toggle tick marks"><i data-lucide="check-circle" class="w-4 h-4" style="color:#4ade80;"></i></button>
+      <div class="w-px h-6 mx-1 bg-white/10"></div>
+      <!-- Prev / Next -->
+      <button class="fs-btn" id="fs-prev" onclick="fsPrevPage()" title="Previous page"><i data-lucide="chevron-left" class="w-4 h-4"></i></button>
+      <button class="fs-btn" id="fs-next" onclick="fsNextPage()" title="Next page"><i data-lucide="chevron-right" class="w-4 h-4"></i></button>
+      <div class="w-px h-6 mx-1 bg-white/10"></div>
+      <button class="fs-btn" onclick="closeFullscreen()" title="Close fullscreen (Esc)"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+  </div>
+
+  <!-- Main image area -->
+  <div class="fs-image-area" id="fs-image-area">
+    <div class="fs-zoom-container" id="fs-zoom-container">
+      <img id="fs-img" src="" alt="Answer sheet full view" draggable="false">
+      <div id="fs-konva-container"></div>
+    </div>
+  </div>
+
+  <!-- Thumbnail strip (bottom) -->
+  <div class="fs-bottombar" id="fs-bottombar"></div>
+</div>
+
+<!-- ══════════════════════ NAV ══════════════════════ -->
 <nav class="fixed top-0 w-full z-50 glass" style="border-bottom:1px solid rgba(0,0,0,0.05);">
   <div class="max-w-6xl mx-auto px-4 sm:px-6">
     <div class="flex items-center justify-between h-16 gap-2">
       <div class="flex items-center gap-3 min-w-0">
         <a href="/" class="flex items-center gap-2 flex-shrink-0">
           <div class="w-8 h-8 rounded-lg flex items-center justify-center text-white font-bold text-base"
-               style="background:linear-gradient(135deg,#6C2BD9,#a855f7);box-shadow:0 3px 10px rgba(108,43,217,0.4);">B</div>
+              style="background:linear-gradient(135deg,#6C2BD9,#a855f7);box-shadow:0 3px 10px rgba(108,43,217,0.4);">B</div>
           <span class="text-xl font-bold font-display tracking-tight text-slate-900 dark:text-white hidden sm:block">
             BOARD <span style="color:#6C2BD9;">Algo</span>
           </span>
@@ -518,7 +638,7 @@
           <i data-lucide="moon" class="block dark:hidden w-4 h-4 sm:w-5 sm:h-5"></i>
         </button>
         <a href="/dashboard"
-           class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
+          class="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm font-medium
                   text-slate-600 dark:text-gray-300 hover:bg-black/5 dark:hover:bg-white/5 transition-colors">
           <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i> Dashboard
         </a>
@@ -543,8 +663,8 @@
           </div>
           <% } else { %>
           <div class="h-9 w-9 rounded-full flex-shrink-0 flex items-center justify-center
-                       text-white font-bold text-base font-display"
-               style="background:linear-gradient(135deg,rgba(108,43,217,0.8),rgba(168,85,247,0.7));
+                      text-white font-bold text-base font-display"
+              style="background:linear-gradient(135deg,rgba(108,43,217,0.8),rgba(168,85,247,0.7));
                       border:2px solid rgba(108,43,217,0.4);">
             <%= user.username.charAt(0).toUpperCase() %>
           </div>
@@ -555,14 +675,14 @@
   </div>
 </nav>
 
-<!-- MAIN -->
+<!-- ══════════════════════ MAIN ══════════════════════ -->
 <main class="flex-grow pt-20 sm:pt-24 pb-16">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 space-y-7 sm:space-y-10">
 
-    <!-- Hero -->
+    <!-- Page Hero -->
     <div class="gsap-entry text-center space-y-3 pt-2">
       <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full"
-           style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);">
+          style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.25);">
         <i data-lucide="gavel" class="w-3.5 h-3.5" style="color:#f87171;"></i>
         <span class="text-xs font-bold uppercase tracking-widest" style="color:#f87171;">AI-Powered · CBSE Grading</span>
       </div>
@@ -580,28 +700,28 @@
     <!-- Feature tiles -->
     <div class="gsap-entry grid grid-cols-2 sm:grid-cols-4 gap-3">
       <div class="glass glow-card rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/5 text-center">
-        <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background:rgba(239,68,68,0.1);">
+        <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-content" style="background:rgba(239,68,68,0.1);display:flex;justify-content:center;">
           <i data-lucide="shield-check" class="w-4 h-4" style="color:#f87171;"></i>
         </div>
         <p class="text-xs font-bold text-slate-700 dark:text-gray-200 font-display">CBSE Marking</p>
         <p class="text-xs text-slate-400 mt-0.5 hidden sm:block">Official scheme</p>
       </div>
       <div class="glass glow-card rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/5 text-center">
-        <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background:rgba(108,43,217,0.1);">
+        <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-content" style="background:rgba(108,43,217,0.1);display:flex;justify-content:center;">
           <i data-lucide="scan" class="w-4 h-4" style="color:#a78bfa;"></i>
         </div>
         <p class="text-xs font-bold text-slate-700 dark:text-gray-200 font-display">AR Annotations</p>
         <p class="text-xs text-slate-400 mt-0.5 hidden sm:block">Visual marks</p>
       </div>
       <div class="glass glow-card rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/5 text-center">
-        <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background:rgba(22,163,74,0.1);">
+        <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-content" style="background:rgba(22,163,74,0.1);display:flex;justify-content:center;">
           <i data-lucide="sigma" class="w-4 h-4" style="color:#4ade80;"></i>
         </div>
         <p class="text-xs font-bold text-slate-700 dark:text-gray-200 font-display">KaTeX Math</p>
         <p class="text-xs text-slate-400 mt-0.5 hidden sm:block">Perfect rendering</p>
       </div>
       <div class="glass glow-card rounded-xl p-3 sm:p-4 border border-gray-200 dark:border-white/5 text-center">
-        <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-center" style="background:rgba(245,158,11,0.1);">
+        <div class="w-8 h-8 rounded-lg mx-auto mb-2 flex items-center justify-content" style="background:rgba(245,158,11,0.1);display:flex;justify-content:center;">
           <i data-lucide="zap" class="w-4 h-4" style="color:#fbbf24;"></i>
         </div>
         <p class="text-xs font-bold text-slate-700 dark:text-gray-200 font-display">Instant Results</p>
@@ -609,8 +729,42 @@
       </div>
     </div>
 
-    <!-- UPLOAD FORM -->
+    <!-- ══════════ UPLOAD FORM ══════════ -->
     <div id="upload-section" class="gsap-entry">
+
+      <!-- ★ TIP BANNER (NEW) -->
+      <div class="tip-banner mb-5">
+        <div class="flex items-start gap-3">
+          <div class="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
+              style="background:rgba(22,163,74,0.15);border:1px solid rgba(22,163,74,0.3);">
+            <i data-lucide="lightbulb" class="w-4 h-4" style="color:#4ade80;"></i>
+          </div>
+          <div class="flex-1">
+            <div class="flex flex-wrap items-center gap-2 mb-1.5">
+              <span class="tip-badge">Pro Tips for Best Results</span>
+            </div>
+            <ul class="text-sm text-slate-600 dark:text-gray-300 space-y-1 leading-relaxed">
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style="color:#4ade80;"></i>
+                <span><strong>Fill all fields</strong> (Subject, Max Marks, Class) — this improves accuracy by up to 40%</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style="color:#4ade80;"></i>
+                <span><strong>Upload photos for 1 question only</strong> — multiple pages of the same answer are fine, but don't mix questions</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style="color:#4ade80;"></i>
+                <span><strong>Paste from clipboard</strong> — press <kbd>Ctrl</kbd>+<kbd>V</kbd> anywhere to paste a screenshot directly</span>
+              </li>
+              <li class="flex items-start gap-2">
+                <i data-lucide="check-circle-2" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style="color:#4ade80;"></i>
+                <span>Good lighting + flat surface = better handwriting recognition. No PDFs accepted.</span>
+              </li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <form id="evaluator-form" method="POST" action="/examiner/evaluate" enctype="multipart/form-data" novalidate>
         <input type="hidden" name="screen_width"        id="f-sw">
         <input type="hidden" name="screen_height"       id="f-sh">
@@ -622,9 +776,12 @@
         <input type="hidden" name="image_metadata_json" id="f-imgmeta">
         <input type="hidden" name="timestamp_submit"    id="f-ts">
 
+        <!-- Subject / Marks / Class / Exam Year -->
         <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <div>
-            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Subject *</label>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+              Subject <span style="color:#EF4444;">*</span>
+            </label>
             <select name="subject" class="gl-input" required>
               <option value="">Select…</option>
               <option>Physics</option><option>Chemistry</option><option>Mathematics</option>
@@ -634,11 +791,15 @@
             </select>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Max Marks *</label>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+              Max Marks <span style="color:#EF4444;">*</span>
+            </label>
             <input type="number" name="total_marks" min="1" max="100" placeholder="e.g. 5" class="gl-input" required>
           </div>
           <div>
-            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">Class *</label>
+            <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">
+              Class <span style="color:#EF4444;">*</span>
+            </label>
             <select name="class" class="gl-input" required>
               <option value="">Select…</option>
               <% ['9','10','11','12'].forEach(function(c){ %>
@@ -657,6 +818,7 @@
           </div>
         </div>
 
+        <!-- Question text -->
         <div class="mb-4">
           <label class="block text-xs font-semibold text-slate-600 dark:text-gray-300 uppercase tracking-wide mb-1.5">
             Question / Topic
@@ -667,38 +829,47 @@
                     class="gl-input" style="resize:vertical;"></textarea>
         </div>
 
-        <div id="drop-zone" class="glass rounded-2xl p-8 sm:p-14 text-center mb-5"
-             role="button" tabindex="0" aria-label="Upload answer sheets">
+        <!-- Drop Zone -->
+        <div id="drop-zone" class="glass rounded-2xl p-8 sm:p-12 text-center mb-4"
+            role="button" tabindex="0" aria-label="Upload answer sheets">
           <div class="upload-icon-wrap">
             <i data-lucide="upload-cloud" class="w-10 h-10" style="color:#6C2BD9;"></i>
           </div>
           <h3 class="text-lg sm:text-xl font-bold font-display text-slate-900 dark:text-white mb-2">
             Drop your answer sheets here
           </h3>
-          <p id="desktop-upload-hint" class="text-sm text-slate-400 dark:text-gray-500 mb-7">
+          <p class="text-sm text-slate-400 dark:text-gray-500 mb-2">
             or <span class="font-semibold" style="color:#6C2BD9;">browse to upload</span>
           </p>
-          <div id="mobile-action-btns" class="mobile-action-btns">
-            <button type="button" id="btn-take-photo" class="mob-btn mob-btn-camera">
-              <i data-lucide="camera" class="w-4 h-4"></i> Take Photo
-            </button>
-            <button type="button" id="btn-upload-gallery" class="mob-btn mob-btn-upload">
-              <i data-lucide="image" class="w-4 h-4"></i> Upload Photo
-            </button>
+          <!-- Paste hint -->
+          <div class="flex justify-center mb-5">
+            <span class="paste-hint">
+              <i data-lucide="clipboard" class="w-3 h-3"></i>
+              Press <kbd>Ctrl</kbd>+<kbd>V</kbd> to paste a screenshot directly
+            </span>
           </div>
-          <div class="flex flex-wrap justify-center gap-2 mb-7">
-            <span class="fmt-badge"><i data-lucide="camera" class="w-3 h-3" style="color:#6C2BD9;"></i> Camera</span>
+          <!-- Format badges — no PDF -->
+          <div class="flex flex-wrap justify-center gap-2 mb-6">
+            <span class="fmt-badge"><i data-lucide="camera" class="w-3 h-3" style="color:#6C2BD9;"></i> Camera Photo</span>
             <span class="fmt-badge"><i data-lucide="image"  class="w-3 h-3" style="color:#818cf8;"></i> JPG / PNG / WEBP</span>
-            <span class="fmt-badge"><i data-lucide="file-text" class="w-3 h-3" style="color:#f472b6;"></i> PDF</span>
-            <span class="fmt-badge"><i data-lucide="layers" class="w-3 h-3" style="color:#fbbf24;"></i> Multiple Pages</span>
+            <span class="fmt-badge"><i data-lucide="image"  class="w-3 h-3" style="color:#f472b6;"></i> HEIC / HEIF</span>
+            <span class="fmt-badge"><i data-lucide="layers" class="w-3 h-3" style="color:#fbbf24;"></i> Multiple Pages OK</span>
           </div>
+          <!-- File chip list -->
           <div id="file-preview-list" class="flex flex-wrap justify-center gap-2"></div>
-          <p id="drop-hint" class="text-xs text-slate-400 dark:text-gray-600 mt-5">Max 10 files · 20 MB each</p>
+          <!-- Counter -->
+          <p id="drop-hint" class="text-xs text-slate-400 dark:text-gray-600 mt-4">
+            Max <strong>20 MB</strong> per image · No PDFs · Up to <strong>20 images</strong>
+          </p>
+          <p id="file-count-display" class="text-xs font-bold mt-1 hidden" style="color:#6C2BD9;"></p>
         </div>
 
-        <input type="file" id="file-input"   name="answer_images" multiple accept="image/*,application/pdf" class="hidden">
-        <input type="file" id="camera-input" name="answer_images" accept="image/*" capture="environment" class="hidden">
+        <!-- Hidden file input — images only, no PDF -->
+        <input type="file" id="file-input" name="answer_images"
+              multiple accept="image/jpeg,image/jpg,image/png,image/webp,image/heic,image/heif,image/gif,image/bmp,image/tiff"
+              capture="environment" class="hidden">
 
+        <!-- Submit -->
         <button type="submit" id="submit-btn" class="btn-submit" disabled>
           <span id="submit-label" class="flex items-center justify-center gap-2.5">
             <i data-lucide="gavel" class="w-5 h-5"></i>
@@ -706,59 +877,95 @@
           </span>
         </button>
         <p class="text-center text-xs text-slate-400 dark:text-gray-600 mt-3">
-          Your screen &amp; image metadata are sent alongside your answer to improve evaluation accuracy.
+          Fill all fields for best results · Upload photos for <strong>one question only</strong> · No PDFs accepted
         </p>
       </form>
     </div>
 
-    <!-- LOADING -->
-    <div id="loading-section" class="hidden">
-      <div class="glass rounded-2xl border border-gray-200 dark:border-white/6 overflow-hidden" style="position:relative;">
-        <div class="scanner-line"></div>
-        <div class="p-10 sm:p-16 text-center">
-          <div class="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center"
-               style="background:linear-gradient(135deg,#EF4444,#6C2BD9);box-shadow:0 8px 30px rgba(239,68,68,0.45);">
-            <i data-lucide="scan-line" class="w-9 h-9 text-white"></i>
-          </div>
-          <h3 class="text-xl font-bold font-display text-slate-900 dark:text-white mb-2">Examiner Analysing…</h3>
-          <p id="loading-status" class="text-sm text-slate-400 dark:text-gray-500 mb-8 transition-all duration-500">Reading your handwriting…</p>
-          <div class="flex justify-center gap-2.5">
-            <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#EF4444;"></span>
-            <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#6C2BD9;"></span>
-            <span class="t-dot w-3 h-3 rounded-full inline-block" style="background:#16A34A;"></span>
-          </div>
-          <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto text-left">
-            <div id="step-read" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500">
-              <div class="w-5 h-5 rounded-full border-2 border-purple-500 flex items-center justify-center" id="spin-read">
-                <i data-lucide="loader-2" class="w-3 h-3 text-purple-500 animate-spin"></i>
-              </div> Reading answer
+    <!-- ══════════ ENHANCED LOADING STATE ══════════ -->
+    <div id="loading-section">
+      <div class="loader-card">
+        <div class="scan-beam"></div>
+        <div class="glow-strip-top"></div>
+        <div class="glow-strip-bottom"></div>
+
+        <div class="p-8 sm:p-12 text-center">
+          <!-- Central spinning orb -->
+          <div class="loader-orb-container mb-7">
+            <div class="orb-ring orb-ring-1"></div>
+            <div class="orb-ring orb-ring-2"></div>
+            <div class="orb-ring orb-ring-3"></div>
+            <div class="orb-core">
+              <i data-lucide="scan-line" class="w-8 h-8" style="color:rgba(255,255,255,0.9);"></i>
             </div>
-            <div id="step-eval" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500 opacity-40">
-              <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center" id="spin-eval">
-                <i data-lucide="loader-2" class="w-3 h-3 text-gray-400"></i>
-              </div> Applying marking
+          </div>
+
+          <h3 class="text-xl font-bold font-display text-white mb-1">Strict Examiner Analysing…</h3>
+          <p id="loading-status" class="text-sm mb-5 transition-all duration-500" style="color:rgba(148,163,184,0.8);">
+            Reading your handwriting…
+          </p>
+
+          <!-- Progress bar -->
+          <div class="loader-progress-track mb-7 max-w-xs mx-auto">
+            <div class="loader-progress-fill" id="progress-fill"></div>
+          </div>
+
+          <!-- Stage steps — 3 cols -->
+          <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto mb-7 text-left" id="loader-stages">
+            <div class="loader-stage active" id="lstage-0">
+              <div class="stage-icon" id="licon-0">
+                <i data-lucide="loader-2" class="w-3 h-3"></i>
+              </div>
+              <div>
+                <p class="text-xs font-bold text-white">Reading</p>
+                <p class="text-xs" style="color:rgba(148,163,184,0.6);">Parsing handwriting</p>
+              </div>
             </div>
-            <div id="step-done" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500 opacity-40">
-              <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center" id="spin-done">
-                <i data-lucide="loader-2" class="w-3 h-3 text-gray-400"></i>
-              </div> Generating answer
+            <div class="loader-stage" id="lstage-1">
+              <div class="stage-icon" id="licon-1">
+                <span style="font-size:11px;">2</span>
+              </div>
+              <div>
+                <p class="text-xs font-bold" style="color:rgba(255,255,255,0.5);">Evaluating</p>
+                <p class="text-xs" style="color:rgba(148,163,184,0.4);">Applying scheme</p>
+              </div>
+            </div>
+            <div class="loader-stage" id="lstage-2">
+              <div class="stage-icon" id="licon-2">
+                <span style="font-size:11px;">3</span>
+              </div>
+              <div>
+                <p class="text-xs font-bold" style="color:rgba(255,255,255,0.5);">Composing</p>
+                <p class="text-xs" style="color:rgba(148,163,184,0.4);">Model answer</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Fun fact ticker -->
+          <div class="max-w-xs mx-auto p-3 rounded-xl mb-4"
+              style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+            <p class="text-xs font-bold uppercase tracking-widest mb-2" style="color:rgba(108,43,217,0.8);">
+              Did you know?
+            </p>
+            <div class="fact-ticker">
+              <p class="fact-item" id="fact-display">CBSE marks scheme allows ½ marks in many questions…</p>
             </div>
           </div>
         </div>
       </div>
     </div>
 
-    <!-- RESULT -->
+    <!-- ══════════ RESULT SECTION ══════════ -->
     <div id="result-section" style="display:none;">
 
-      <!-- Scorecard -->
+      <!-- ─── 1. Scorecard ─── -->
       <div class="gsap-r scorecard glass rounded-2xl p-5 sm:p-7 mb-6 border">
         <div class="flex flex-col lg:flex-row items-start lg:items-center gap-6">
           <div class="score-ring-wrap flex-shrink-0 mx-auto lg:mx-0">
             <svg width="130" height="130" viewBox="0 0 130 130">
               <defs>
                 <linearGradient id="rGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                  <stop offset="0%" stop-color="#EF4444"/>
+                  <stop offset="0%"   stop-color="#EF4444"/>
                   <stop offset="100%" stop-color="#6C2BD9"/>
                 </linearGradient>
               </defs>
@@ -780,20 +987,18 @@
             <div class="flex flex-wrap gap-2 mb-4" id="meta-chips"></div>
             <div id="ps-wrapper" style="display:none;" class="mb-3">
               <div class="flex items-start gap-2 p-3 rounded-xl"
-                   style="background:rgba(108,43,217,0.06);border:1px solid rgba(108,43,217,0.16);">
+                  style="background:rgba(108,43,217,0.06);border:1px solid rgba(108,43,217,0.16);">
                 <i data-lucide="help-circle" class="w-3.5 h-3.5 mt-0.5 flex-shrink-0" style="color:#a78bfa;"></i>
                 <div>
                   <p class="text-xs font-bold text-slate-500 dark:text-gray-400 uppercase tracking-wide mb-0.5">Question</p>
-                  <!-- problem-text class enables KaTeX auto-render scoping -->
-                  <div id="problem-statement-banner" class="problem-text text-sm font-medium text-slate-800 dark:text-gray-100 leading-snug"></div>
+                  <p id="problem-statement-banner" class="text-sm font-medium text-slate-800 dark:text-gray-100 leading-snug"></p>
                 </div>
               </div>
             </div>
             <div class="p-3 sm:p-4 rounded-xl mb-4"
-                 style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);">
+                style="background:rgba(239,68,68,0.06);border:1px solid rgba(239,68,68,0.15);">
               <p class="text-sm font-semibold text-red-500 dark:text-red-400 mb-1 flex items-center gap-1.5">
-                <i data-lucide="message-square-warning" class="w-3.5 h-3.5"></i>
-                Examiner's Summary
+                <i data-lucide="message-square-warning" class="w-3.5 h-3.5"></i> Examiner's Summary
               </p>
               <p id="eval-summary" class="text-sm text-slate-600 dark:text-gray-300 leading-relaxed"></p>
             </div>
@@ -819,7 +1024,7 @@
         </div>
       </div>
 
-      <!-- AR Canvas -->
+      <!-- ─── 2. AR Canvas ─── -->
       <div class="gsap-r mb-8">
         <div class="section-rule">
           <h3 class="text-base text-slate-900 dark:text-white flex items-center gap-2">
@@ -827,6 +1032,8 @@
             Augmented Annotation View
           </h3>
         </div>
+
+        <!-- Toolbar -->
         <div class="flex flex-wrap items-center gap-2 mb-3">
           <button id="btn-toggle-annot" onclick="toggleAnnotations()"
                   class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
@@ -855,48 +1062,47 @@
                   class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-gray-200 dark:border-white/8 text-slate-600 dark:text-gray-300 transition-all hover:border-purple-400">
             <i data-lucide="maximize-2" class="w-3.5 h-3.5"></i> Reset
           </button>
+          <!-- ★ Fullscreen button (NEW) -->
+          <button onclick="openFullscreen()"
+                  class="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-all"
+                  style="border-color:rgba(108,43,217,0.3);background:rgba(108,43,217,0.08);color:#a78bfa;">
+            <i data-lucide="fullscreen" class="w-3.5 h-3.5"></i> Full Screen
+          </button>
+          <!-- Legend -->
           <div class="flex items-center gap-3 ml-auto text-xs">
-            <span class="flex items-center gap-1.5 text-slate-500 dark:text-gray-400">
-              <span class="inline-block w-3 h-3 rounded-full" style="background:rgba(239,68,68,0.7);"></span> Error
-            </span>
-            <span class="flex items-center gap-1.5 text-slate-500 dark:text-gray-400">
-              <span class="inline-block w-3 h-3 rounded-full" style="background:rgba(22,163,74,0.8);"></span> Mark
-            </span>
+            <span id="anno-count-errors" class="anno-stat anno-stat-errors hidden"></span>
+            <span id="anno-count-marks"  class="anno-stat anno-stat-marks  hidden"></span>
           </div>
         </div>
 
-        <div id="canvas-wrapper">
-          <img id="student-img" src="" alt="Student answer sheet" loading="lazy">
-          <div id="konva-container"></div>
-          <div id="anno-tooltip" class="anno-tooltip"></div>
+        <!-- Page navigation (★ improved — with flip animation) -->
+        <div id="page-nav" class="hidden items-center gap-2 mb-3 p-2 rounded-xl"
+            style="background:rgba(108,43,217,0.06);border:1px solid rgba(108,43,217,0.15);">
+          <button id="btn-prev-page" class="page-nav-btn" onclick="prevPage()" disabled title="Previous page (←)">
+            <i data-lucide="chevron-left" class="w-4 h-4"></i>
+          </button>
+          <div class="flex-1 text-center">
+            <span id="page-indicator" class="text-sm font-bold font-display text-slate-900 dark:text-white">Page 1 / 1</span>
+          </div>
+          <button id="btn-next-page" class="page-nav-btn" onclick="nextPage()" title="Next page (→)">
+            <i data-lucide="chevron-right" class="w-4 h-4"></i>
+          </button>
         </div>
+
+        <!-- Image + Konva canvas -->
+        <div class="page-flip-perspective">
+          <div id="canvas-wrapper" class="page-content-wrap">
+            <img id="student-img" src="" alt="Student answer sheet" loading="lazy">
+            <div id="konva-container"></div>
+            <div id="anno-tooltip" class="anno-tooltip"></div>
+          </div>
+        </div>
+
+        <!-- Image info bar -->
         <div id="img-info-bar" class="mt-2 flex flex-wrap items-center gap-3 text-xs text-slate-400 dark:text-gray-500"></div>
-
-        <!-- Page navigation — below image -->
-        <div id="page-nav" class="hidden mt-4 select-none">
-          <div class="flex items-center justify-center gap-3">
-            <button onclick="prevPage()"
-                    class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border transition-all hover:opacity-90
-                           border-gray-200 dark:border-white/10 text-slate-600 dark:text-gray-300
-                           hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20">
-              <i data-lucide="chevron-left" class="w-4 h-4"></i> Prev
-            </button>
-            <span id="page-indicator"
-                  class="px-5 py-2 rounded-xl text-sm font-bold"
-                  style="background:rgba(108,43,217,0.1);color:#a78bfa;border:1px solid rgba(108,43,217,0.22);font-family:'Poppins',sans-serif;">
-              Page 1 / 1
-            </span>
-            <button onclick="nextPage()"
-                    class="flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold border transition-all hover:opacity-90
-                           border-gray-200 dark:border-white/10 text-slate-600 dark:text-gray-300
-                           hover:border-purple-400 dark:hover:border-purple-500 hover:bg-purple-50 dark:hover:bg-purple-900/20">
-              Next <i data-lucide="chevron-right" class="w-4 h-4"></i>
-            </button>
-          </div>
-        </div>
       </div>
 
-      <!-- Topper's Notebook -->
+      <!-- ─── 3. Topper's Notebook ─── -->
       <div class="gsap-r mb-8">
         <div class="section-rule">
           <h3 class="text-base text-slate-900 dark:text-white flex items-center gap-2">
@@ -906,7 +1112,7 @@
         </div>
         <div class="toppers-notebook rounded-r-2xl overflow-hidden">
           <div class="px-5 sm:px-7 py-4 border-b border-gray-100 dark:border-white/5 flex items-center justify-between"
-               style="background:linear-gradient(90deg,rgba(108,43,217,0.06),transparent);">
+              style="background:linear-gradient(90deg,rgba(108,43,217,0.06),transparent);">
             <div class="flex items-center gap-2">
               <i data-lucide="award" class="w-4 h-4" style="color:#16A34A;"></i>
               <span class="text-sm font-bold text-slate-900 dark:text-white">Board-Standard Model Answer</span>
@@ -920,10 +1126,10 @@
         </div>
       </div>
 
-      <!-- Diagram placeholder -->
+      <!-- ─── 4. Diagram Coming Soon ─── -->
       <div class="gsap-r diagram-ph p-8 sm:p-10 text-center mb-6">
-        <div class="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-center"
-             style="background:rgba(108,43,217,0.1);border:1px solid rgba(108,43,217,0.15);">
+        <div class="w-12 h-12 rounded-xl mx-auto mb-4 flex items-center justify-content"
+            style="background:rgba(108,43,217,0.1);border:1px solid rgba(108,43,217,0.15);display:flex;justify-content:center;">
           <i data-lucide="pen-tool" class="w-5 h-5" style="color:#a78bfa;"></i>
         </div>
         <span class="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest mb-3"
@@ -948,14 +1154,14 @@
   </div>
 </main>
 
-<!-- FOOTER -->
+<!-- ══════════════════════ FOOTER ══════════════════════ -->
 <footer class="glass mt-auto relative z-10" style="border-top:1px solid rgba(0,0,0,0.05);">
   <div class="max-w-6xl mx-auto px-4 sm:px-6 py-8 md:py-10">
     <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 mb-7">
       <div class="col-span-2 sm:col-span-1">
         <div class="flex items-center gap-2 mb-3">
           <div class="w-7 h-7 rounded-md flex items-center justify-center text-white font-bold text-sm"
-               style="background:linear-gradient(135deg,#6C2BD9,#a855f7);">B</div>
+              style="background:linear-gradient(135deg,#6C2BD9,#a855f7);">B</div>
           <span class="text-lg font-bold font-display text-slate-900 dark:text-white">BOARD <span style="color:#6C2BD9;">Algo</span></span>
         </div>
         <p class="text-slate-400 text-xs leading-relaxed">AI-powered CBSE exam preparation at topper-level quality.</p>
@@ -1000,108 +1206,59 @@
   </div>
 </footer>
 
-<!-- CROP MODAL -->
-<div id="crop-modal" role="dialog" aria-modal="true" aria-label="Crop image">
-  <div id="crop-backdrop"></div>
-  <div id="crop-panel">
-    <div class="flex items-center justify-between px-5 py-3"
-         style="border-bottom:1px solid rgba(255,255,255,0.07);">
-      <div class="flex items-center gap-2.5">
-        <div class="w-7 h-7 rounded-lg flex items-center justify-center" style="background:rgba(108,43,217,0.2);">
-          <i data-lucide="crop" class="w-3.5 h-3.5" style="color:#a78bfa;"></i>
-        </div>
-        <div>
-          <p class="text-sm font-bold text-white" style="font-family:'Poppins',sans-serif;">Crop Image</p>
-          <p class="text-xs" style="color:#64748b;margin-top:-1px;">Drag corners to resize · drag inside to move</p>
-        </div>
-      </div>
-      <span id="crop-counter" class="text-xs font-bold px-2.5 py-1 rounded-full"
-            style="background:rgba(108,43,217,0.15);color:#a78bfa;border:1px solid rgba(108,43,217,0.25);"></span>
-    </div>
-    <div style="padding:10px 10px 4px;">
-      <canvas id="crop-canvas"></canvas>
-    </div>
-    <p style="text-align:center;font-size:11px;color:#475569;padding:0 12px 8px;">
-      Pinch on mobile to resize · Skip to keep original
-    </p>
-    <div class="flex gap-2 p-4 pt-0">
-      <button id="crop-cancel-btn" class="crop-action-btn crop-btn-cancel">✕ Cancel All</button>
-      <button id="crop-skip-btn"   class="crop-action-btn crop-btn-skip">↷ Skip</button>
-      <button id="crop-apply-btn"  class="crop-action-btn crop-btn-apply">✓ Apply Crop</button>
-    </div>
-  </div>
-</div>
-
-<!-- ════════════════════════════════════════════════════════════════
-     JAVASCRIPT
-════════════════════════════════════════════════════════════════ -->
+<!-- ══════════════════════════════════════════════════════════════════
+  JAVASCRIPT
+══════════════════════════════════════════════════════════════════════ -->
 <script>
-'use strict';
-
-/* ── Global state ────────────────────────────────────────────────── */
+/* ════════════════════════════════════════════════════════════════════
+  STATE
+════════════════════════════════════════════════════════════════════ */
 let currentImageIndex  = 0;
 let globalImageUrls    = [];
 let globalAnnotations  = [];
 let currentAnnotations = [];
-let lastEvaluationData = null;
 
-/* ── Konva state ─────────────────────────────────────────────────── */
-let konvaStage = null;
-let konvaLayer = null;
-let errorGroup = null;
-let markGroup  = null;
-let errorsVisible     = true;
-let marksVisible      = true;
-let annotationsVisible = true;
+// Konva instances
+let konvaStage = null, konvaLayer = null, errorGroup = null, markGroup = null;
+let errorsVisible = true, marksVisible = true, annotationsVisible = true;
 let currentZoom = 1;
 
-const DEMO_IMAGE_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png';
+// Fullscreen state
+let fsStage = null, fsLayer = null, fsErrorGroup = null, fsMarkGroup = null;
+let fsErrVis = true, fsMrkVis = true;
+let fsZoomLevel = 1;
+let fsIsDragging = false, fsDragStart = { x: 0, y: 0 }, fsTranslate = { x: 0, y: 0 };
+let fsCurrentIndex = 0;
+let fsObjectUrls = [];
 
-/* ── Crop state ──────────────────────────────────────────────────── */
-let cropQueue      = [];
-let cropQueueTotal = 0;
-const CS = {
-  file:null, img:null,
-  imgX:0, imgY:0, imgW:0, imgH:0,
-  box:{x:0,y:0,w:0,h:0},
-  dragging:null,
-  dragStartX:0, dragStartY:0, boxAtDragStart:null
-};
+// Page flip direction tracking
+let flipDirection = 'right'; // 'left' or 'right'
 
-/* ── Schema / validation constants ──────────────────────────────── */
-const SCHEMA_VERSION        = '1.0';
-const VALID_ANNO_TYPES       = new Set(['tick','cross','circle','text','step_mark']);
-const CONFIDENCE_THRESHOLD   = 0.40;
-
-/* ══════════════════════════════════════════════════════════════════
-   DEMO / FALLBACK DATA
-══════════════════════════════════════════════════════════════════ */
+/* Demo fallback */
 if (!window.injectedEvaluationData) {
   window.injectedEvaluationData = {
     meta: {
-      problem_statement: "Find the derivative of $f(x) = x^2 \\cdot \\sin(x)$ using the product rule.",
-      total_marks_awarded: 3.5,
-      max_marks: 5,
+      problem_statement: "Find the derivative of f(x) = x² · sin(x)",
+      total_marks_awarded: 3.5, max_marks: 5,
       evaluation_summary: "Good application of the product rule, but you made a sign error in the final simplification step. Marks deducted for missing the intermediate differentiation step.",
-      difficulty: "Medium",
-      subject: "Mathematics"
+      difficulty: "Medium", subject: "Mathematics"
     },
     rubric: [
-      { label: "Concept Identification",   scored: 1,   total: 1,   color: "#4ade80" },
-      { label: "Product Rule Application", scored: 1.5, total: 2,   color: "#a78bfa" },
-      { label: "Simplification",           scored: 0.5, total: 1,   color: "#f87171" },
-      { label: "Final Answer",             scored: 0.5, total: 1,   color: "#fbbf24" },
+      { label: "Concept Identification",  scored: 1,   total: 1,   color: "#4ade80" },
+      { label: "Product Rule Application",scored: 1.5, total: 2,   color: "#a78bfa" },
+      { label: "Simplification",          scored: 0.5, total: 1,   color: "#f87171" },
+      { label: "Final Answer",            scored: 0.5, total: 1,   color: "#fbbf24" },
     ],
     visual_annotations: [
-      { annotation_type:"tick",      color:"green", box_2d:[170,60,220,110],  comment:"Correct formula applied" },
-      { annotation_type:"tick",      color:"green", box_2d:[300,60,350,110],  comment:"Differentiation correct" },
-      { annotation_type:"step_mark", color:"green", box_2d:[170,840,230,960], comment:"+2" },
-      { annotation_type:"circle",    color:"red",   box_2d:[430,180,510,420], comment:"Sign error here" },
-      { annotation_type:"text",      color:"red",   box_2d:[360,60,420,200],  comment:"Sign Error! −0.5" },
-      { annotation_type:"step_mark", color:"red",   box_2d:[430,840,490,960], comment:"-½" },
-      { annotation_type:"cross",     color:"red",   box_2d:[565,70,615,120],  comment:"Incomplete step" },
-      { annotation_type:"circle",    color:"red",   box_2d:[555,200,625,500], comment:"Step not shown" },
-      { annotation_type:"step_mark", color:"green", box_2d:[650,840,710,960], comment:"+1" },
+      { annotation_type: "tick",      color: "green", box_2d: [170, 60,  220, 110],  comment: "Correct formula applied", page_number: 1 },
+      { annotation_type: "tick",      color: "green", box_2d: [300, 60,  350, 110],  comment: "Differentiation correct", page_number: 1 },
+      { annotation_type: "step_mark", color: "green", box_2d: [170, 840, 230, 960],  comment: "+2", page_number: 1 },
+      { annotation_type: "circle",    color: "red",   box_2d: [430, 180, 510, 420],  comment: "Sign error here", page_number: 1 },
+      { annotation_type: "text",      color: "red",   box_2d: [360,  60, 420, 200],  comment: "Sign Error! −0.5", page_number: 1 },
+      { annotation_type: "step_mark", color: "red",   box_2d: [430, 840, 490, 960],  comment: "-½", page_number: 1 },
+      { annotation_type: "cross",     color: "red",   box_2d: [565, 70,  615, 120],  comment: "Incomplete step", page_number: 1 },
+      { annotation_type: "circle",    color: "red",   box_2d: [555, 200, 625, 500],  comment: "Step not shown", page_number: 1 },
+      { annotation_type: "step_mark", color: "green", box_2d: [650, 840, 710, 960],  comment: "+1", page_number: 1 },
     ],
     perfect_marker_answer: [
       { step:1, text:"Identify the structure: f(x) = x² · sin(x) is a product of two functions u(x) = x² and v(x) = sin(x). Apply the Product Rule.", latex:"(uv)' = u'v + uv'" },
@@ -1112,39 +1269,27 @@ if (!window.injectedEvaluationData) {
   };
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   1. BOOTSTRAP — theme + icons + GSAP
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  BOOTSTRAP
+════════════════════════════════════════════════════════════════════ */
 lucide.createIcons();
 
 const html = document.documentElement;
 (function applyTheme() {
   const s = localStorage.theme;
-  if (s === 'dark' || (!s && window.matchMedia('(prefers-color-scheme: dark)').matches))
-    html.classList.add('dark');
+  if (s === 'dark' || (!s && window.matchMedia('(prefers-color-scheme: dark)').matches)) html.classList.add('dark');
   else html.classList.remove('dark');
 })();
 document.getElementById('theme-toggle').addEventListener('click', () => {
   html.classList.toggle('dark');
   localStorage.theme = html.classList.contains('dark') ? 'dark' : 'light';
 });
-gsap.from('.gsap-entry', { y:24, opacity:0, stagger:0.08, duration:0.7, ease:'power2.out' });
 
-/* ══════════════════════════════════════════════════════════════════
-   2. MOBILE DETECTION + UI SETUP
-══════════════════════════════════════════════════════════════════ */
-const IS_MOBILE = /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
-                  (navigator.maxTouchPoints > 1 && window.innerWidth < 1024);
+gsap.from('.gsap-entry', { y: 24, opacity: 0, stagger: 0.08, duration: 0.7, ease: 'power2.out' });
 
-if (IS_MOBILE) {
-  document.getElementById('desktop-upload-hint').style.display = 'none';
-  document.getElementById('mobile-action-btns').style.display  = 'flex';
-  lucide.createIcons();
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   3. DEVICE METADATA CAPTURE
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  DEVICE METADATA
+════════════════════════════════════════════════════════════════════ */
 function captureDeviceMetadata() {
   const ua = navigator.userAgent;
   let dtype = 'desktop';
@@ -1160,306 +1305,337 @@ function captureDeviceMetadata() {
   document.getElementById('f-ts').value    = new Date().toISOString();
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   4. FILE MANAGEMENT
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  FILE MANAGEMENT
+════════════════════════════════════════════════════════════════════ */
 const dropZone    = document.getElementById('drop-zone');
 const fileInput   = document.getElementById('file-input');
-const cameraInput = document.getElementById('camera-input');
 const previewList = document.getElementById('file-preview-list');
 const submitBtn   = document.getElementById('submit-btn');
-let fileDT        = new DataTransfer();
+let   fileDT      = new DataTransfer();
 
-function refreshSubmit() { submitBtn.disabled = fileDT.files.length === 0; }
+const BLOCKED_TYPES = ['application/pdf', 'application/x-pdf'];
+const MAX_FILE_SIZE = 20 * 1024 * 1024; // 20 MB
+const MAX_FILES     = 20;
+
+function refreshSubmit() {
+  submitBtn.disabled = fileDT.files.length === 0;
+  const cd = document.getElementById('file-count-display');
+  if (fileDT.files.length > 0) {
+    cd.textContent = `${fileDT.files.length} image${fileDT.files.length > 1 ? 's' : ''} selected`;
+    cd.classList.remove('hidden');
+  } else {
+    cd.classList.add('hidden');
+  }
+}
 
 function formatBytes(b) {
   if (b < 1024) return b + ' B';
-  if (b < 1048576) return (b/1024).toFixed(1) + ' KB';
-  return (b/1048576).toFixed(2) + ' MB';
+  if (b < 1024 * 1024) return (b / 1024).toFixed(1) + ' KB';
+  return (b / (1024 * 1024)).toFixed(2) + ' MB';
 }
 
 function buildImageMeta() {
   const arr = Array.from(fileDT.files).map(f => ({
-    name:f.name, size:f.size, sizeHuman:formatBytes(f.size), type:f.type, lastModified:f.lastModified
+    name: f.name, size: f.size, sizeHuman: formatBytes(f.size),
+    type: f.type, lastModified: f.lastModified
   }));
   document.getElementById('f-imgmeta').value = JSON.stringify(arr);
 }
 
-function addSingleFile(file) {
-  if (fileDT.files.length >= 10) return;
-  if (file.size > 20*1024*1024) { alert(`"${file.name}" exceeds 20 MB.`); return; }
-  if (Array.from(fileDT.files).some(x => x.name===file.name && x.size===file.size)) return;
-  fileDT.items.add(file);
-  renderChip(file);
+function addFiles(files) {
+  Array.from(files).forEach(f => {
+    // ★ Block PDFs
+    if (BLOCKED_TYPES.includes(f.type) || f.name.toLowerCase().endsWith('.pdf')) {
+      showToast(`"${f.name}" — PDFs are not accepted. Please upload an image.`, 'error');
+      return;
+    }
+    // Max files
+    if (fileDT.files.length >= MAX_FILES) {
+      showToast(`Maximum ${MAX_FILES} images allowed.`, 'error');
+      return;
+    }
+    // Max size
+    if (f.size > MAX_FILE_SIZE) {
+      showToast(`"${f.name}" exceeds the 20 MB limit.`, 'error');
+      return;
+    }
+    // Deduplicate
+    const dup = Array.from(fileDT.files).some(x => x.name === f.name && x.size === f.size);
+    if (dup) return;
+
+    fileDT.items.add(f);
+    renderChip(f);
+  });
   fileInput.files = fileDT.files;
   buildImageMeta();
   refreshSubmit();
 }
 
-function addFiles(files) {
-  const arr = Array.from(files);
-  arr.filter(f => !f.type.startsWith('image/')).forEach(addSingleFile);
-  const imgs = arr.filter(f => f.type.startsWith('image/'));
-  if (imgs.length) enqueueCrop(imgs);
-}
-
+/* ★ THUMBNAIL CHIP — shows actual image preview */
 function renderChip(file) {
   const chip = document.createElement('div');
   chip.className = 'file-chip';
-  const isPdf = file.type === 'application/pdf';
-  chip.innerHTML = `
-    <svg xmlns="http://www.w3.org/2000/svg" width="11" height="11" viewBox="0 0 24 24" fill="none"
-         stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-      ${isPdf
-        ? '<path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/>'
-        : '<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/>'}
-    </svg>
-    <span class="file-chip-name">${file.name}</span>
-    <span class="text-[10px] text-purple-300/70">${formatBytes(file.size)}</span>
-    <span class="chip-remove" title="Remove">✕</span>`;
-  chip.querySelector('.chip-remove').addEventListener('click', e => {
+  chip.dataset.name = file.name;
+  chip.dataset.size = file.size;
+
+  // Create thumbnail
+  const thumb = document.createElement('img');
+  thumb.className = 'chip-thumb';
+  thumb.alt = file.name;
+  const objUrl = URL.createObjectURL(file);
+  thumb.src = objUrl;
+  thumb.onload = () => {}; // blob URL, fast
+
+  const nameEl  = document.createElement('span');
+  nameEl.className = 'file-chip-name';
+  nameEl.textContent = file.name;
+
+  const sizeEl  = document.createElement('span');
+  sizeEl.className = 'text-[10px] text-purple-300/70 flex-shrink-0';
+  sizeEl.textContent = formatBytes(file.size);
+
+  const removeEl = document.createElement('span');
+  removeEl.className = 'chip-remove';
+  removeEl.title = 'Remove';
+  removeEl.textContent = '✕';
+  removeEl.addEventListener('click', e => {
     e.stopPropagation();
-    const ndt = new DataTransfer();
-    Array.from(fileDT.files).forEach(x => { if (!(x.name===file.name && x.size===file.size)) ndt.items.add(x); });
-    fileDT = ndt;
+    URL.revokeObjectURL(objUrl);
+    const newDT = new DataTransfer();
+    Array.from(fileDT.files).forEach(x => {
+      if (!(x.name === file.name && x.size === file.size)) newDT.items.add(x);
+    });
+    fileDT = newDT;
     fileInput.files = fileDT.files;
     buildImageMeta();
     chip.remove();
     refreshSubmit();
   });
+
+  chip.appendChild(thumb);
+  chip.appendChild(nameEl);
+  chip.appendChild(sizeEl);
+  chip.appendChild(removeEl);
   previewList.appendChild(chip);
 }
 
+/* ★ PASTE HANDLER — Ctrl+V anywhere on the page */
+document.addEventListener('paste', (e) => {
+  const items = e.clipboardData && e.clipboardData.items;
+  if (!items) return;
+  const imageFiles = [];
+  for (const item of items) {
+    if (item.kind === 'file' && item.type.startsWith('image/')) {
+      const file = item.getAsFile();
+      if (file) {
+        // Give it a useful name with timestamp
+        const ext = file.type.split('/')[1] || 'png';
+        const named = new File([file], `paste-${Date.now()}.${ext}`, { type: file.type });
+        imageFiles.push(named);
+      }
+    }
+  }
+  if (imageFiles.length > 0) {
+    // Flash the drop zone green
+    dropZone.classList.add('paste-flash');
+    setTimeout(() => dropZone.classList.remove('paste-flash'), 500);
+    addFiles(imageFiles);
+    showToast(`${imageFiles.length} image${imageFiles.length > 1 ? 's' : ''} pasted from clipboard ✓`, 'success');
+  }
+});
+
+// Click and drag-drop
 dropZone.addEventListener('click', e => {
   if (e.target.closest('.chip-remove') || e.target.closest('.file-chip')) return;
-  if (e.target.closest('#mobile-action-btns')) return;
-  if (IS_MOBILE) return;
   fileInput.click();
 });
-dropZone.addEventListener('keydown', e => { if ((e.key==='Enter'||e.key===' ') && !IS_MOBILE) fileInput.click(); });
-document.getElementById('btn-take-photo').addEventListener('click', e => { e.stopPropagation(); cameraInput.value=''; cameraInput.click(); });
-document.getElementById('btn-upload-gallery').addEventListener('click', e => { e.stopPropagation(); fileInput.value=''; fileInput.click(); });
-fileInput.addEventListener('change',   () => { if (fileInput.files.length)   addFiles(fileInput.files); });
-cameraInput.addEventListener('change', () => { if (cameraInput.files.length) addFiles(cameraInput.files); });
-['dragenter','dragover'].forEach(ev => dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
-['dragleave','dragend','drop'].forEach(ev => dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-over')));
+dropZone.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') fileInput.click(); });
+fileInput.addEventListener('change', () => addFiles(fileInput.files));
+
+['dragenter','dragover'].forEach(ev =>
+  dropZone.addEventListener(ev, e => { e.preventDefault(); dropZone.classList.add('drag-over'); }));
+['dragleave','dragend','drop'].forEach(ev =>
+  dropZone.addEventListener(ev, () => dropZone.classList.remove('drag-over')));
 dropZone.addEventListener('drop', e => { e.preventDefault(); addFiles(e.dataTransfer.files); });
 
-/* ══════════════════════════════════════════════════════════════════
-   5. CROP MODAL ENGINE
-══════════════════════════════════════════════════════════════════ */
-function enqueueCrop(files) {
-  const wasEmpty = cropQueue.length === 0;
-  cropQueue.push(...files);
-  if (wasEmpty) { cropQueueTotal = cropQueue.length; openCropFor(cropQueue[0]); }
-  else cropQueueTotal += files.length;
-  updateCropCounter();
-}
-
-function openCropFor(file) {
-  CS.file = file;
-  const blobUrl = URL.createObjectURL(file);
-  const img = new Image();
-  img.onerror = () => { URL.revokeObjectURL(blobUrl); cropSkip(); };
-  img.onload  = () => {
-    URL.revokeObjectURL(blobUrl);
-    CS.img = img;
-    const maxW = Math.min(480, window.innerWidth - 60);
-    const ar   = img.naturalHeight / img.naturalWidth;
-    const cW   = maxW;
-    const cH   = Math.min(Math.round(cW * ar), 430);
-    const cc   = document.getElementById('crop-canvas');
-    cc.width   = cW; cc.height = cH;
-    let iX, iY, iW, iH;
-    if (img.naturalWidth/img.naturalHeight > cW/cH) {
-      iW=cW; iH=Math.round(cW/img.naturalWidth*img.naturalHeight); iX=0; iY=Math.round((cH-iH)/2);
-    } else {
-      iH=cH; iW=Math.round(cH/img.naturalHeight*img.naturalWidth); iY=0; iX=Math.round((cW-iW)/2);
-    }
-    CS.imgX=iX; CS.imgY=iY; CS.imgW=iW; CS.imgH=iH;
-    CS.box = { x:iX, y:iY, w:iW, h:iH };
-    updateCropCounter(); drawCrop();
-    document.getElementById('crop-modal').classList.add('open');
-    lucide.createIcons();
+/* ════════════════════════════════════════════════════════════════════
+  TOAST NOTIFICATIONS
+════════════════════════════════════════════════════════════════════ */
+function showToast(message, type = 'info') {
+  const toast = document.createElement('div');
+  const colors = {
+    success: 'rgba(22,163,74,0.95)', error: 'rgba(239,68,68,0.95)', info: 'rgba(108,43,217,0.95)'
   };
-  img.src = blobUrl;
-}
-
-function updateCropCounter() {
-  const idx = cropQueueTotal - cropQueue.length + 1;
-  document.getElementById('crop-counter').textContent = cropQueueTotal > 1 ? `Photo ${idx} of ${cropQueueTotal}` : '';
-}
-
-function drawCrop() {
-  const cc  = document.getElementById('crop-canvas');
-  const ctx = cc.getContext('2d');
-  const { img, imgX, imgY, imgW, imgH, box } = CS;
-  ctx.clearRect(0,0,cc.width,cc.height);
-  ctx.fillStyle = '#080e1e'; ctx.fillRect(0,0,cc.width,cc.height);
-  ctx.globalAlpha = 0.3; ctx.drawImage(img,imgX,imgY,imgW,imgH); ctx.globalAlpha = 1;
-  ctx.save();
-  ctx.beginPath(); ctx.rect(box.x,box.y,box.w,box.h); ctx.clip();
-  ctx.drawImage(img,imgX,imgY,imgW,imgH);
-  ctx.restore();
-  ctx.strokeStyle='#a78bfa'; ctx.lineWidth=1.5; ctx.setLineDash([]);
-  ctx.strokeRect(box.x,box.y,box.w,box.h);
-  ctx.strokeStyle='rgba(167,139,250,0.2)'; ctx.lineWidth=0.75; ctx.setLineDash([4,4]);
-  ctx.beginPath();
-  [1/3,2/3].forEach(t => {
-    ctx.moveTo(box.x+box.w*t,box.y); ctx.lineTo(box.x+box.w*t,box.y+box.h);
-    ctx.moveTo(box.x,box.y+box.h*t); ctx.lineTo(box.x+box.w,box.y+box.h*t);
-  });
-  ctx.stroke(); ctx.setLineDash([]);
-  [[box.x,box.y],[box.x+box.w,box.y],[box.x,box.y+box.h],[box.x+box.w,box.y+box.h]].forEach(([hx,hy]) => {
-    ctx.beginPath(); ctx.arc(hx,hy,7,0,Math.PI*2);
-    ctx.fillStyle='#6C2BD9'; ctx.fill();
-    ctx.strokeStyle='#ffffff'; ctx.lineWidth=1.5; ctx.stroke();
-  });
-}
-
-function cropCanvasPos(e) {
-  const cc   = document.getElementById('crop-canvas');
-  const rect = cc.getBoundingClientRect();
-  const sx   = cc.width/rect.width, sy = cc.height/rect.height;
-  const src  = e.touches ? e.touches[0] : e;
-  return { x:(src.clientX-rect.left)*sx, y:(src.clientY-rect.top)*sy };
-}
-function hitHandle(mx,my) {
-  const { box } = CS; const R=14;
-  const h={ tl:[box.x,box.y], tr:[box.x+box.w,box.y], bl:[box.x,box.y+box.h], br:[box.x+box.w,box.y+box.h] };
-  for (const [k,[hx,hy]] of Object.entries(h)) { if (Math.hypot(mx-hx,my-hy)<R) return k; }
-  return null;
-}
-function hitInside(mx,my) { const {box}=CS; return mx>box.x&&mx<box.x+box.w&&my>box.y&&my<box.y+box.h; }
-
-const cropCanvas = document.getElementById('crop-canvas');
-function onCropStart(e) {
-  e.preventDefault();
-  const {x,y}=cropCanvasPos(e);
-  const hit=hitHandle(x,y)||(hitInside(x,y)?'move':null);
-  if(!hit) return;
-  CS.dragging=hit; CS.dragStartX=x; CS.dragStartY=y; CS.boxAtDragStart={...CS.box};
-  if(e.type==='pointerdown') cropCanvas.setPointerCapture(e.pointerId);
-}
-function onCropMove(e) {
-  if(!CS.dragging) return; e.preventDefault();
-  const {x,y}=cropCanvasPos(e);
-  const dx=x-CS.dragStartX, dy=y-CS.dragStartY;
-  const S=CS.boxAtDragStart, {imgX,imgY,imgW,imgH}=CS;
-  const MIN=30; let b={...S};
-  if (CS.dragging==='move') {
-    b.x=Math.max(imgX,Math.min(imgX+imgW-b.w,b.x+dx));
-    b.y=Math.max(imgY,Math.min(imgY+imgH-b.h,b.y+dy));
-  } else if (CS.dragging==='br') {
-    b.w=Math.max(MIN,Math.min(imgX+imgW-b.x,b.w+dx));
-    b.h=Math.max(MIN,Math.min(imgY+imgH-b.y,b.h+dy));
-  } else if (CS.dragging==='bl') {
-    const nx=Math.max(imgX,Math.min(b.x+b.w-MIN,b.x+dx)); b.w=b.x+b.w-nx; b.x=nx;
-    b.h=Math.max(MIN,Math.min(imgY+imgH-b.y,b.h+dy));
-  } else if (CS.dragging==='tr') {
-    b.w=Math.max(MIN,Math.min(imgX+imgW-b.x,b.w+dx));
-    const ny=Math.max(imgY,Math.min(b.y+b.h-MIN,b.y+dy)); b.h=b.y+b.h-ny; b.y=ny;
-  } else if (CS.dragging==='tl') {
-    const nx=Math.max(imgX,Math.min(b.x+b.w-MIN,b.x+dx)); b.w=b.x+b.w-nx; b.x=nx;
-    const ny=Math.max(imgY,Math.min(b.y+b.h-MIN,b.y+dy)); b.h=b.y+b.h-ny; b.y=ny;
+  toast.style.cssText = `
+    position: fixed; bottom: 20px; right: 20px; z-index: 99999;
+    padding: 10px 16px; border-radius: 10px;
+    background: ${colors[type] || colors.info};
+    color: white; font-size: 0.8rem; font-weight: 600;
+    font-family: 'Inter', sans-serif;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    animation: toastIn 0.3s ease; max-width: 320px; line-height: 1.4;
+  `;
+  toast.textContent = message;
+  if (!document.getElementById('toast-style')) {
+    const s = document.createElement('style');
+    s.id = 'toast-style';
+    s.textContent = `@keyframes toastIn { from { opacity:0; transform: translateY(12px) scale(0.95); } to { opacity:1; transform: none; } }
+    @keyframes toastOut { from { opacity:1; } to { opacity:0; transform: translateY(6px); } }`;
+    document.head.appendChild(s);
   }
-  CS.box=b; drawCrop();
+  document.body.appendChild(toast);
+  setTimeout(() => {
+    toast.style.animation = 'toastOut 0.3s ease forwards';
+    setTimeout(() => toast.remove(), 300);
+  }, 3000);
 }
-function onCropEnd() { CS.dragging=null; }
-cropCanvas.addEventListener('pointerdown', onCropStart);
-cropCanvas.addEventListener('pointermove', onCropMove);
-cropCanvas.addEventListener('pointerup',   onCropEnd);
-cropCanvas.addEventListener('pointercancel', onCropEnd);
-cropCanvas.addEventListener('touchstart', onCropStart, {passive:false});
-cropCanvas.addEventListener('touchmove',  onCropMove,  {passive:false});
-cropCanvas.addEventListener('touchend',   onCropEnd);
 
-function cropApply() {
-  const {img,box,imgX,imgY,imgW,imgH,file}=CS;
-  const scaleX=img.naturalWidth/imgW, scaleY=img.naturalHeight/imgH;
-  const srcX=Math.max(0,(box.x-imgX)*scaleX);
-  const srcY=Math.max(0,(box.y-imgY)*scaleY);
-  const srcW=Math.min(img.naturalWidth-srcX,  box.w*scaleX);
-  const srcH=Math.min(img.naturalHeight-srcY, box.h*scaleY);
-  const off=document.createElement('canvas');
-  off.width=Math.round(srcW); off.height=Math.round(srcH);
-  off.getContext('2d').drawImage(img,srcX,srcY,srcW,srcH,0,0,off.width,off.height);
-  off.toBlob(blob => {
-    const fname=file.name.replace(/\.[^.]+$/,'')+'_cropped.jpg';
-    addSingleFile(blob ? new File([blob],fname,{type:'image/jpeg'}) : file);
-    cropNext();
-  }, 'image/jpeg', 0.92);
+/* ════════════════════════════════════════════════════════════════════
+  LOADING STATE — ENHANCED
+════════════════════════════════════════════════════════════════════ */
+const loadingMessages = [
+  'Reading your handwriting…',
+  'Parsing mathematical expressions…',
+  'Applying CBSE marking scheme…',
+  'Cross-referencing model answers…',
+  'Calculating marks breakdown…',
+  'Generating examiner annotations…',
+  'Composing perfect answer…',
+];
+
+const examFacts = [
+  'CBSE marking scheme allows ½ marks in many questions…',
+  'Top CBSE scorers write answers in clearly numbered steps…',
+  'Diagrams carry up to 30% marks in science subjects…',
+  'Keywords highlighted in CBSE marking scheme score full marks…',
+  'Legible handwriting directly influences examiner leniency…',
+  'Introduction + body + conclusion structure scores best in English…',
+  'In Maths, showing each step is worth marks even if answer is wrong…',
+];
+
+let loadingMsgIdx = 0;
+let loadingInterval = null;
+let factInterval   = null;
+let progressSim    = null;
+let submitAbortCtrl = null;
+
+const stagesConfig = [
+  { id: 0, progressTarget: 35 },
+  { id: 1, progressTarget: 70 },
+  { id: 2, progressTarget: 95 },
+];
+let currentStage = 0;
+
+function setStage(n) {
+  for (let i = 0; i < 3; i++) {
+    const el   = document.getElementById(`lstage-${i}`);
+    const icon = document.getElementById(`licon-${i}`);
+    if (!el || !icon) continue;
+    if (i < n) {
+      el.className = 'loader-stage done';
+      icon.innerHTML = '<i data-lucide="check" class="w-3 h-3" style="color:#4ade80;"></i>';
+    } else if (i === n) {
+      el.className = 'loader-stage active';
+      icon.innerHTML = '<i data-lucide="loader-2" class="w-3 h-3"></i>';
+    } else {
+      el.className = 'loader-stage';
+      icon.innerHTML = `<span style="font-size:11px;">${i + 1}</span>`;
+    }
+  }
+  const stage = document.querySelectorAll('.loader-stage')[n];
+  if (stage) {
+    const p = stage.querySelector('p');
+    if (p) p.style.color = 'white';
+  }
+  lucide.createIcons();
 }
-function cropSkip()      { addSingleFile(CS.file); cropNext(); }
-function cropCancelAll() { cropQueue=[]; closeCropModal(); }
-function cropNext()      { cropQueue.shift(); if (cropQueue.length>0) openCropFor(cropQueue[0]); else closeCropModal(); }
-function closeCropModal(){ document.getElementById('crop-modal').classList.remove('open'); CS.dragging=null; }
-document.getElementById('crop-apply-btn').addEventListener('click',  cropApply);
-document.getElementById('crop-skip-btn').addEventListener('click',   cropSkip);
-document.getElementById('crop-cancel-btn').addEventListener('click', cropCancelAll);
-document.getElementById('crop-backdrop').addEventListener('click',   cropCancelAll);
-document.addEventListener('keydown', e => {
-  if (e.key==='Escape' && document.getElementById('crop-modal').classList.contains('open')) cropCancelAll();
-});
 
-/* ══════════════════════════════════════════════════════════════════
-   6. FORM SUBMIT — ASYNC FETCH + RETRY + TIMEOUT
-══════════════════════════════════════════════════════════════════ */
+function animateProgress(target, current = null) {
+  const fill = document.getElementById('progress-fill');
+  if (!fill) return;
+  const from = current !== null ? current : parseFloat(fill.style.width) || 0;
+  let start = null;
+  function step(ts) {
+    if (!start) start = ts;
+    const pct = Math.min((ts - start) / 800, 1);
+    fill.style.width = (from + (target - from) * pct) + '%';
+    if (pct < 1) requestAnimationFrame(step);
+  }
+  requestAnimationFrame(step);
+}
+
+function startLoadingMessages() {
+  const el = document.getElementById('loading-status');
+  loadingMsgIdx = 0; currentStage = 0;
+  if (el) el.textContent = loadingMessages[0];
+  setStage(0);
+  animateProgress(10, 0);
+
+  loadingInterval = setInterval(() => {
+    loadingMsgIdx = (loadingMsgIdx + 1) % loadingMessages.length;
+    if (el) {
+      el.style.opacity = '0';
+      setTimeout(() => {
+        if (el) { el.textContent = loadingMessages[loadingMsgIdx]; el.style.opacity = '1'; }
+      }, 250);
+    }
+    // Advance stages
+    if (loadingMsgIdx === 2) { setStage(1); animateProgress(45); }
+    if (loadingMsgIdx === 5) { setStage(2); animateProgress(78); }
+  }, 1800);
+
+  // Fact ticker
+  let factIdx = 0;
+  factInterval = setInterval(() => {
+    factIdx = (factIdx + 1) % examFacts.length;
+    const f = document.getElementById('fact-display');
+    if (f) {
+      f.style.transform = 'translateY(-20px)';
+      f.style.opacity = '0';
+      setTimeout(() => {
+        if (f) { f.textContent = examFacts[factIdx]; f.style.transform = ''; f.style.opacity = '1'; }
+      }, 350);
+    }
+  }, 4000);
+}
+
+function stopLoadingAnimations() {
+  clearInterval(loadingInterval);
+  clearInterval(factInterval);
+  clearInterval(progressSim);
+  loadingInterval = null; factInterval = null; progressSim = null;
+}
+
+/* ════════════════════════════════════════════════════════════════════
+  FORM SUBMIT + RETRY
+════════════════════════════════════════════════════════════════════ */
 const SUBMIT_TIMEOUT_MS  = 90_000;
 const SUBMIT_MAX_RETRIES = 2;
 const RETRY_DELAY_MS     = 3_000;
 
-const LOADING_MSGS = [
-  'Reading your handwriting…','Parsing mathematical expressions…',
-  'Applying CBSE marking scheme…','Cross-referencing model answers…',
-  'Calculating marks breakdown…','Generating examiner annotations…',
-  'Composing perfect answer…',
-];
-let loadingMsgIdx   = 0;
-let loadingInterval = null;
-let submitAbortCtrl = null;
-let lastFormData    = null;
-
-function startLoadingMessages() {
-  const el = document.getElementById('loading-status');
-  loadingMsgIdx = 0;
-  el.textContent = LOADING_MSGS[0];
-  loadingInterval = setInterval(() => {
-    loadingMsgIdx = (loadingMsgIdx+1) % LOADING_MSGS.length;
-    el.style.opacity='0';
-    setTimeout(() => { el.textContent=LOADING_MSGS[loadingMsgIdx]; el.style.opacity='1'; }, 250);
-    if (loadingMsgIdx>=2) {
-      document.getElementById('step-eval').classList.remove('opacity-40');
-      document.getElementById('spin-eval').innerHTML='<i data-lucide="loader-2" class="w-3 h-3 text-purple-500 animate-spin"></i>';
-      lucide.createIcons();
-    }
-    if (loadingMsgIdx>=6) {
-      document.getElementById('step-done').classList.remove('opacity-40');
-      document.getElementById('spin-done').innerHTML='<i data-lucide="loader-2" class="w-3 h-3 text-purple-500 animate-spin"></i>';
-      lucide.createIcons();
-    }
-  }, 1800);
-}
+let lastFormData = null;
 
 function showErrorState(title, detail, canRetry) {
-  clearInterval(loadingInterval);
-  document.getElementById('loading-section').innerHTML = `
+  stopLoadingAnimations();
+  const loadEl = document.getElementById('loading-section');
+  loadEl.innerHTML = `
     <div class="glass rounded-2xl border border-red-500/20 overflow-hidden">
       <div class="p-10 sm:p-14 text-center">
-        <div class="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-center"
-             style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);">
+        <div class="w-16 h-16 rounded-2xl mx-auto mb-5 flex items-center justify-content"
+            style="background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);display:flex;justify-content:center;">
           <i data-lucide="alert-triangle" class="w-8 h-8" style="color:#f87171;"></i>
         </div>
         <h3 class="text-lg font-bold font-display text-slate-900 dark:text-white mb-2">${title}</h3>
         <p class="text-sm text-slate-400 dark:text-gray-500 mb-8 max-w-sm mx-auto leading-relaxed">${detail}</p>
         <div class="flex flex-wrap justify-center gap-3">
           ${canRetry ? `<button onclick="retrySubmit()"
-            class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-bold text-white transition-all hover:opacity-90"
             style="background:linear-gradient(135deg,#6C2BD9,#7c3aed);box-shadow:0 4px 14px rgba(108,43,217,0.4);">
             <i data-lucide="refresh-ccw" class="w-4 h-4"></i> Retry
           </button>` : ''}
           <button onclick="resetEvaluator()"
-            class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border"
+            class="flex items-center gap-2 px-5 py-2.5 rounded-xl text-sm font-semibold border transition-all hover:opacity-80"
             style="border-color:rgba(108,43,217,0.3);background:rgba(108,43,217,0.08);color:#a78bfa;">
             <i data-lucide="upload-cloud" class="w-4 h-4"></i> Upload Again
           </button>
@@ -1469,218 +1645,193 @@ function showErrorState(title, detail, canRetry) {
   lucide.createIcons();
 }
 
-async function submitWithRetry(formData, attempt=1) {
+async function submitWithRetry(formData, attempt = 1) {
   submitAbortCtrl = new AbortController();
-  const tid = setTimeout(() => submitAbortCtrl.abort('timeout'), SUBMIT_TIMEOUT_MS);
+  const timeoutId = setTimeout(() => submitAbortCtrl.abort('timeout'), SUBMIT_TIMEOUT_MS);
+
   try {
-    const resp = await fetch('/examiner/evaluate', { method:'POST', body:formData, signal:submitAbortCtrl.signal });
-    clearTimeout(tid);
-    if (!resp.ok) {
-      if (resp.status===429) { showErrorState('Rate limit reached','Too many evaluations. Please wait and try again.',true); return; }
-      if (resp.status>=500)  throw new Error(`Server error ${resp.status}`);
-      showErrorState(`Request failed (${resp.status})`,'The server rejected the request. Check your inputs.',false); return;
+    const response = await fetch('/examiner/evaluate', {
+      method: 'POST', body: formData, signal: submitAbortCtrl.signal,
+    });
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        showErrorState('Rate limit reached', 'You\'ve used too many evaluations recently. Please wait a minute and try again.', true);
+        return;
+      }
+      if (response.status >= 500) throw new Error(`Server error ${response.status}`);
+      showErrorState(`Request failed (${response.status})`, 'The server rejected the request. Please check your inputs and try again.', false);
+      return;
     }
+
     let json;
-    try { json = await resp.json(); } catch(_) { throw new Error('Invalid JSON from server'); }
-    if (json && json.meta) renderResult(json);
-    else showErrorState('Unexpected response format','Server returned unrecognised data. Please try again.',true);
-  } catch(err) {
-    clearTimeout(tid);
-    if (err.name!=='AbortError' && err.message!=='cancelled' && attempt<=SUBMIT_MAX_RETRIES) {
-      document.getElementById('loading-status').textContent=`Retrying (attempt ${attempt+1}/${SUBMIT_MAX_RETRIES+1})…`;
-      await new Promise(r=>setTimeout(r,RETRY_DELAY_MS));
-      return submitWithRetry(formData, attempt+1);
+    try { json = await response.json(); } catch (_) { throw new Error('Invalid JSON from server'); }
+
+    if (json && json.meta) {
+      animateProgress(100);
+      setTimeout(() => renderResult(json, json.imageUrls || ''), 400);
+    } else {
+      showErrorState('Unexpected response format', 'The server returned data in an unrecognised format. Please try again.', true);
     }
-    if (err.name==='AbortError'||String(err.message).includes('timeout'))
-      showErrorState('Request timed out',`Gemini took longer than ${SUBMIT_TIMEOUT_MS/1000}s. Please try again.`,true);
-    else
-      showErrorState('Network error',`Could not reach the server: ${err.message}`,true);
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err.name !== 'AbortError' && err.message !== 'cancelled' && attempt <= SUBMIT_MAX_RETRIES) {
+      const statusEl = document.getElementById('loading-status');
+      if (statusEl) statusEl.textContent = `Network hiccup — retrying (attempt ${attempt + 1} of ${SUBMIT_MAX_RETRIES + 1})…`;
+      await new Promise(r => setTimeout(r, RETRY_DELAY_MS));
+      return submitWithRetry(formData, attempt + 1);
+    }
+    if (err.name === 'AbortError' || String(err.message).includes('timeout')) {
+      showErrorState('Request timed out', `Gemini took longer than ${SUBMIT_TIMEOUT_MS / 1000}s. Please try again.`, true);
+    } else {
+      showErrorState('Network error', `Could not reach the server: ${err.message}.`, true);
+    }
   }
 }
 
 function retrySubmit() {
   if (!lastFormData) { resetEvaluator(); return; }
-  const ls = document.getElementById('loading-section');
-  ls.innerHTML = `<div class="glass rounded-2xl border border-gray-200 dark:border-white/6 overflow-hidden" style="position:relative;">
-    <div class="scanner-line"></div>
-    <div class="p-10 sm:p-16 text-center">
-      <div class="w-20 h-20 rounded-2xl mx-auto mb-6 flex items-center justify-center"
-           style="background:linear-gradient(135deg,#EF4444,#6C2BD9);box-shadow:0 8px 30px rgba(239,68,68,0.45);">
-        <i data-lucide="scan-line" class="w-9 h-9 text-white"></i>
-      </div>
-      <h3 class="text-xl font-bold font-display text-slate-900 dark:text-white mb-2">Examiner Analysing…</h3>
-      <p id="loading-status" class="text-sm text-slate-400 dark:text-gray-500 mb-8 transition-all duration-500">Retrying…</p>
-      <div class="flex justify-center gap-2.5">
-        <span class="t-dot w-3 h-3 rounded-full" style="background:#EF4444;"></span>
-        <span class="t-dot w-3 h-3 rounded-full" style="background:#6C2BD9;"></span>
-        <span class="t-dot w-3 h-3 rounded-full" style="background:#16A34A;"></span>
-      </div>
-      <div class="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto text-left">
-        <div id="step-read" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500">
-          <div class="w-5 h-5 rounded-full border-2 border-purple-500 flex items-center justify-center" id="spin-read">
-            <i data-lucide="loader-2" class="w-3 h-3 text-purple-500 animate-spin"></i></div> Reading answer</div>
-        <div id="step-eval" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500 opacity-40">
-          <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center" id="spin-eval">
-            <i data-lucide="loader-2" class="w-3 h-3 text-gray-400"></i></div> Applying marking</div>
-        <div id="step-done" class="flex items-center gap-2 text-xs text-slate-400 dark:text-gray-500 opacity-40">
-          <div class="w-5 h-5 rounded-full border-2 border-gray-400 flex items-center justify-center" id="spin-done">
-            <i data-lucide="loader-2" class="w-3 h-3 text-gray-400"></i></div> Generating answer</div>
-      </div>
-    </div>
-  </div>`;
+  // Restore the loading HTML
+  document.getElementById('loading-section').innerHTML = buildLoaderHTML();
   lucide.createIcons();
   startLoadingMessages();
   submitWithRetry(lastFormData);
+}
+
+function buildLoaderHTML() {
+  return `
+    <div class="loader-card">
+      <div class="scan-beam"></div>
+      <div class="glow-strip-top"></div>
+      <div class="glow-strip-bottom"></div>
+      <div class="p-8 sm:p-12 text-center">
+        <div class="loader-orb-container mb-7">
+          <div class="orb-ring orb-ring-1"></div>
+          <div class="orb-ring orb-ring-2"></div>
+          <div class="orb-ring orb-ring-3"></div>
+          <div class="orb-core">
+            <i data-lucide="scan-line" class="w-8 h-8" style="color:rgba(255,255,255,0.9);"></i>
+          </div>
+        </div>
+        <h3 class="text-xl font-bold font-display text-white mb-1">Strict Examiner Analysing…</h3>
+        <p id="loading-status" class="text-sm mb-5 transition-all duration-500" style="color:rgba(148,163,184,0.8);">Retrying…</p>
+        <div class="loader-progress-track mb-7 max-w-xs mx-auto">
+          <div class="loader-progress-fill" id="progress-fill"></div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-lg mx-auto mb-7 text-left" id="loader-stages">
+          <div class="loader-stage active" id="lstage-0">
+            <div class="stage-icon" id="licon-0"><i data-lucide="loader-2" class="w-3 h-3"></i></div>
+            <div><p class="text-xs font-bold text-white">Reading</p><p class="text-xs" style="color:rgba(148,163,184,0.6);">Parsing handwriting</p></div>
+          </div>
+          <div class="loader-stage" id="lstage-1">
+            <div class="stage-icon" id="licon-1"><span style="font-size:11px;">2</span></div>
+            <div><p class="text-xs font-bold" style="color:rgba(255,255,255,0.5);">Evaluating</p><p class="text-xs" style="color:rgba(148,163,184,0.4);">Applying scheme</p></div>
+          </div>
+          <div class="loader-stage" id="lstage-2">
+            <div class="stage-icon" id="licon-2"><span style="font-size:11px;">3</span></div>
+            <div><p class="text-xs font-bold" style="color:rgba(255,255,255,0.5);">Composing</p><p class="text-xs" style="color:rgba(148,163,184,0.4);">Model answer</p></div>
+          </div>
+        </div>
+        <div class="max-w-xs mx-auto p-3 rounded-xl" style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);">
+          <p class="text-xs font-bold uppercase tracking-widest mb-2" style="color:rgba(108,43,217,0.8);">Did you know?</p>
+          <div class="fact-ticker"><p class="fact-item" id="fact-display">CBSE marks scheme allows ½ marks in many questions…</p></div>
+        </div>
+      </div>
+    </div>`;
 }
 
 document.getElementById('evaluator-form').addEventListener('submit', function(e) {
   e.preventDefault();
-  if (fileDT.files.length===0) return;
+  if (fileDT.files.length === 0) return;
   captureDeviceMetadata();
   buildImageMeta();
   lastFormData = new FormData(this);
-  document.getElementById('upload-section').style.cssText='opacity:0.4;pointer-events:none;';
-  document.getElementById('loading-section').classList.remove('hidden');
+
+  // Switch to loading
+  document.getElementById('upload-section').style.cssText = 'opacity:0.4;pointer-events:none;';
+  const ls = document.getElementById('loading-section');
+  ls.style.display = 'block';
+  ls.innerHTML = buildLoaderHTML();
+  lucide.createIcons();
+
   submitBtn.disabled = true;
   document.getElementById('submit-label').innerHTML = `
     <svg class="animate-spin w-4 h-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/>
-      <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/>
-    </svg> Grading in progress…`;
+      <circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"></circle>
+      <path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"></path>
+    </svg>
+    Grading in progress…`;
   startLoadingMessages();
   submitWithRetry(lastFormData);
 });
 
-/* ══════════════════════════════════════════════════════════════════
-   7. KATEX HELPERS
-   ─────────────────────────────────────────────────────────────────
-   renderMathInElement is the ONLY reliable way to handle mixed
-   text + LaTeX. We use KaTeX auto-render for all displayed content.
-══════════════════════════════════════════════════════════════════ */
-const KATEX_OPTS = {
-  delimiters: [
-    { left: '$$', right: '$$', display: true  },
-    { left: '$',  right: '$',  display: false },
-    { left: '\\[', right: '\\]', display: true  },
-    { left: '\\(', right: '\\)', display: false },
-  ],
-  throwOnError: false,
-  trust: true,
-  strict: false,
-};
-
-/**
- * renderMathSafe — sets text content and runs auto-render.
- * Handles both plain text and strings with LaTeX delimiters.
- * This is the single correct way to render math in this app.
- */
-function renderMathSafe(el, text) {
-  if (!text) { el.innerHTML = ''; return; }
-  // Escape HTML entities in raw text before inserting
-  const escaped = text
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
-    // But undo escaping for LaTeX delimiters ($ \[ etc stay as-is)
-    .replace(/\\\$/g,'\\$');
-  el.innerHTML = escaped;
-  // Run KaTeX auto-render over the element
-  if (typeof renderMathInElement === 'function') {
-    renderMathInElement(el, KATEX_OPTS);
-  }
-}
-
-/**
- * renderLatexBlock — renders a pure LaTeX string in display mode.
- * Used for .katex-block divs in steps.
- */
-function renderLatexBlock(el, latex) {
-  if (!latex) return;
-  try {
-    katex.render(latex, el, { displayMode:true, throwOnError:false, trust:true, strict:false });
-  } catch(err) {
-    el.textContent = latex;
-    el.style.fontFamily = 'monospace';
-    el.style.color = '#6C2BD9';
-  }
-}
-
-/**
- * latexToHTMLString — for embedding rendered KaTeX in PDF HTML.
- */
-function latexToHTMLString(latex, display=true) {
-  if (!latex) return '';
-  try {
-    return katex.renderToString(latex, { displayMode:display, throwOnError:false, trust:true, strict:false });
-  } catch(e) {
-    return `<code style="color:#6C2BD9;font-family:'Courier New',monospace;font-size:12px;">${latex}</code>`;
-  }
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   8. RESULT RENDERER
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  RESULT RENDERER
+════════════════════════════════════════════════════════════════════ */
 function renderResult(data) {
-  clearInterval(loadingInterval);
-  lastEvaluationData = data;
-  document.getElementById('loading-section').classList.add('hidden');
+  stopLoadingAnimations();
+  document.getElementById('loading-section').style.display = 'none';
   document.getElementById('upload-section').style.display = 'none';
+
   const rs = document.getElementById('result-section');
   rs.style.display = 'block';
 
   const { meta, rubric, visual_annotations, perfect_marker_answer } = data;
+
+  // Score ring
   const scored = meta.total_marks_awarded;
   const maxMk  = meta.max_marks;
-
-  /* Scorecard */
   document.getElementById('score-main').textContent = `${scored}/${maxMk}`;
   requestAnimationFrame(() => {
-    document.getElementById('ring-fill-el').style.strokeDashoffset = 351.9 * (1 - scored/maxMk);
+    document.getElementById('ring-fill-el').style.strokeDashoffset = 351.9 * (1 - scored / maxMk);
   });
 
+  // Difficulty
   const diffEl = document.getElementById('diff-badge');
-  const d = (meta.difficulty||'Medium').toLowerCase();
-  diffEl.textContent = meta.difficulty||'Medium';
-  diffEl.className = 'diff-pill '+(d==='easy'?'diff-easy':d==='hard'?'diff-hard':'diff-medium');
+  const d = (meta.difficulty || 'Medium').toLowerCase();
+  diffEl.textContent = meta.difficulty || 'Medium';
+  diffEl.className = 'diff-pill ' + (d === 'easy' ? 'diff-easy' : d === 'hard' ? 'diff-hard' : 'diff-medium');
 
-  /* Meta chips */
+  // Meta chips
   const chips = document.getElementById('meta-chips');
-  chips.innerHTML = '';
-  const conf = (typeof meta.confidence==='number') ? meta.confidence : null;
+  const confScore = typeof data.meta?.confidence === 'number' ? data.meta.confidence : null;
   const chipDefs = [
     [`<i data-lucide="book" class="w-3 h-3"></i>`, meta.subject],
     [`<i data-lucide="target" class="w-3 h-3"></i>`, `${scored}/${maxMk} marks`],
   ];
-  if (conf!==null) {
-    const pct=Math.round(conf*100);
-    const cc=pct>=80?'#4ade80':pct>=55?'#fbbf24':'#f87171';
-    chipDefs.push([`<i data-lucide="activity" class="w-3 h-3" style="color:${cc};"></i>`,`AI Confidence: ${pct}%`]);
+  if (confScore !== null) {
+    const confPct = Math.round(confScore * 100);
+    const confColor = confPct >= 80 ? '#4ade80' : confPct >= 55 ? '#fbbf24' : '#f87171';
+    chipDefs.push([`<i data-lucide="activity" class="w-3 h-3" style="color:${confColor};"></i>`, `AI Confidence: ${confPct}%`]);
   }
-  chipDefs.forEach(([ic,txt]) => {
-    const c=document.createElement('span'); c.className='meta-chip'; c.innerHTML=`${ic} ${txt}`; chips.appendChild(c);
+  chipDefs.forEach(([ic, txt]) => {
+    const c = document.createElement('span');
+    c.className = 'meta-chip';
+    c.innerHTML = `${ic} ${txt}`;
+    chips.appendChild(c);
   });
   lucide.createIcons();
 
-  /* Problem statement — use renderMathSafe for mixed text+LaTeX */
+  // Problem statement
   if (meta.problem_statement) {
     const psWrap = document.getElementById('ps-wrapper');
     const psEl   = document.getElementById('problem-statement-banner');
-    if (psWrap && psEl) {
-      renderMathSafe(psEl, meta.problem_statement);
-      psWrap.style.display = '';
-    }
+    if (psWrap && psEl) { psEl.textContent = meta.problem_statement; psWrap.style.display = ''; }
   }
 
-  /* Summary */
+  // Summary
   document.getElementById('eval-summary').textContent = meta.evaluation_summary;
 
-  /* Rubric bars */
+  // Rubric bars
   const rubricData = rubric || [
-    { label:'Conceptual Accuracy', scored:scored*0.6, total:maxMk*0.6, color:'#a78bfa' },
-    { label:'Step Completeness',   scored:scored*0.4, total:maxMk*0.4, color:'#fbbf24' },
+    { label: 'Conceptual Accuracy', scored: scored * 0.6, total: maxMk * 0.6, color: '#a78bfa' },
+    { label: 'Step Completeness',   scored: scored * 0.4, total: maxMk * 0.4, color: '#fbbf24' },
   ];
-  const rbc = document.getElementById('rubric-bars');
-  rbc.innerHTML = '';
+  const rbContainer = document.getElementById('rubric-bars');
+  rbContainer.innerHTML = '';
   rubricData.forEach(r => {
-    const pct = Math.min(100, Math.round((r.scored/r.total)*100));
+    const pct = Math.round((r.scored / r.total) * 100);
     const row = document.createElement('div');
     row.innerHTML = `
       <div class="flex items-center justify-between mb-1">
@@ -1690,296 +1841,617 @@ function renderResult(data) {
       <div class="rbar-track">
         <div class="rbar-fill" data-w="${pct}%" style="width:0%;background:${r.color};"></div>
       </div>`;
-    rbc.appendChild(row);
+    rbContainer.appendChild(row);
   });
-  setTimeout(() => rbc.querySelectorAll('.rbar-fill').forEach(b => { b.style.width=b.dataset.w; }), 120);
+  setTimeout(() => {
+    rbContainer.querySelectorAll('.rbar-fill').forEach(b => { b.style.width = b.dataset.w; });
+  }, 120);
 
+  // Image + annotations
   setupAugmentedCanvas(data.imageUrls, visual_annotations);
+
+  // Topper's steps
   renderSteps(perfect_marker_answer);
 
-  gsap.from('.gsap-r', { y:28, opacity:0, stagger:0.12, duration:0.7, ease:'power2.out' });
+  gsap.from('.gsap-r', { y: 28, opacity: 0, stagger: 0.12, duration: 0.7, ease: 'power2.out' });
   lucide.createIcons();
-  window.scrollTo({ top:0, behavior:'smooth' });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   9. ANNOTATION SCHEMA VALIDATION
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  SCHEMA VALIDATION
+════════════════════════════════════════════════════════════════════ */
+const VALID_ANNOTATION_TYPES = new Set(['tick','cross','circle','text','step_mark']);
+const CONFIDENCE_THRESHOLD   = 0.40;
+
 function normalisePayload(raw) {
-  if (!raw) return { version:SCHEMA_VERSION, annotations:[] };
-  if (!Array.isArray(raw) && Array.isArray(raw.annotations))
-    return { version:raw.version||SCHEMA_VERSION, annotations:raw.annotations };
-  if (Array.isArray(raw))
-    return { version:SCHEMA_VERSION, annotations:raw };
-  if (Array.isArray(raw.visual_annotations))
-    return { version:raw.version||SCHEMA_VERSION, annotations:raw.visual_annotations };
-  return { version:SCHEMA_VERSION, annotations:[] };
+  if (!raw) return { annotations: [] };
+  if (!Array.isArray(raw) && Array.isArray(raw.annotations)) return { annotations: raw.annotations };
+  if (Array.isArray(raw)) return { annotations: raw };
+  if (Array.isArray(raw.visual_annotations)) return { annotations: raw.visual_annotations };
+  return { annotations: [] };
 }
 
 function validateAnnotations(annotations) {
-  const valid=[]; const skipped=[];
-  (annotations||[]).forEach((a,idx) => {
-    if (!VALID_ANNO_TYPES.has(a.annotation_type)) { skipped.push({idx,reason:`unknown type "${a.annotation_type}"`}); return; }
-    if (!Array.isArray(a.box_2d)||a.box_2d.length!==4||a.box_2d.some(v=>typeof v!=='number'&&isNaN(Number(v))))
-      { skipped.push({idx,reason:'invalid box_2d'}); return; }
-    if (typeof a.confidence==='number'&&a.confidence<CONFIDENCE_THRESHOLD)
-      { skipped.push({idx,reason:`confidence ${a.confidence} below threshold`}); return; }
-    let [y0,x0,y1,x1]=a.box_2d.map(v=>Math.max(0,Math.min(1000,Number(v))));
-    if (y0>y1) [y0,y1]=[y1,y0];
-    if (x0>x1) [x0,x1]=[x1,x0];
-    if ((y1-y0)<10) y1=y0+10;
-    if ((x1-x0)<10) x1=x0+10;
-    a.box_2d=[y0,x0,y1,x1];
+  const valid = [];
+  (annotations || []).forEach((a) => {
+    if (!VALID_ANNOTATION_TYPES.has(a.annotation_type)) return;
+    if (!Array.isArray(a.box_2d) || a.box_2d.length !== 4 ||
+        a.box_2d.some(v => typeof v !== 'number' && isNaN(Number(v)))) return;
+    if (typeof a.confidence === 'number' && a.confidence < CONFIDENCE_THRESHOLD) return;
+    let [y0, x0, y1, x1] = a.box_2d.map(v => Math.max(0, Math.min(1000, Number(v))));
+    if (y0 > y1) [y0, y1] = [y1, y0];
+    if (x0 > x1) [x0, x1] = [x1, x0];
+    if ((y1 - y0) < 10) y1 = y0 + 10;
+    if ((x1 - x0) < 10) x1 = x0 + 10;
+    a.box_2d = [y0, x0, y1, x1];
     valid.push(a);
   });
-  if (skipped.length) console.warn('[BoardAlgo] Skipped annotations:', skipped);
   return valid;
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   10. KONVA ANNOTATION ENGINE
-   ─────────────────────────────────────────────────────────────────
-   ALL coordinate math uses the same 0-1000 grid → rendered pixel
-   mapping. PDF uses identical mapping at natural image resolution.
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  CANVAS SETUP + PAGE NAVIGATION
+════════════════════════════════════════════════════════════════════ */
+const DEMO_IMAGE_URL = 'https://upload.wikimedia.org/wikipedia/commons/thumb/4/47/PNG_transparency_demonstration_1.png/280px-PNG_transparency_demonstration_1.png';
+
 function setupAugmentedCanvas(imageUrls, rawAnnotations) {
   globalImageUrls   = imageUrls || [];
   const payload     = normalisePayload(rawAnnotations);
   globalAnnotations = validateAnnotations(payload.annotations);
   currentImageIndex = 0;
 
+  // If no page_number on annotations, assign all to page 1
+  globalAnnotations.forEach(a => { if (!a.page_number) a.page_number = 1; });
+
+  // Page nav
   const pageNav = document.getElementById('page-nav');
-  if (globalImageUrls.length > 1) pageNav.classList.remove('hidden');
-  else pageNav.classList.add('hidden');
+  if (globalImageUrls.length > 1) {
+    pageNav.classList.remove('hidden');
+    pageNav.classList.add('flex');
+  } else {
+    pageNav.classList.add('hidden');
+    pageNav.classList.remove('flex');
+  }
+
+  // Update annotation count badges
+  updateAnnoBadges();
+
+  renderCurrentPage(null);
+}
+
+function updateAnnoBadges() {
+  const errs = currentAnnotations.filter(a => a.color === 'red').length;
+  const mrks = currentAnnotations.filter(a => a.color === 'green').length;
+  const errEl = document.getElementById('anno-count-errors');
+  const mrkEl = document.getElementById('anno-count-marks');
+  if (errEl) {
+    errEl.innerHTML = `<i data-lucide="x-circle" class="w-3 h-3"></i> ${errs} errors`;
+    errEl.classList.toggle('hidden', errs === 0);
+  }
+  if (mrkEl) {
+    mrkEl.innerHTML = `<i data-lucide="check-circle" class="w-3 h-3"></i> ${mrks} marks`;
+    mrkEl.classList.toggle('hidden', mrks === 0);
+  }
   lucide.createIcons();
-
-  renderCurrentPage();
 }
 
-function renderCurrentPage() {
-  const img = document.getElementById('student-img');
-  document.getElementById('page-indicator').textContent =
-    `Page ${currentImageIndex+1} / ${Math.max(1,globalImageUrls.length)}`;
+/* ★ PAGE TURN — with 3D flip animation */
+function renderCurrentPage(direction) {
+  const wrapper    = document.getElementById('canvas-wrapper');
+  const img        = document.getElementById('student-img');
+  const prevBtn    = document.getElementById('btn-prev-page');
+  const nextBtn    = document.getElementById('btn-next-page');
+  const indicator  = document.getElementById('page-indicator');
 
-  // For single-page docs, show all annotations (no page_number filter needed)
-  currentAnnotations = globalAnnotations.filter(a =>
-    globalImageUrls.length <= 1 ? true : a.page_number === (currentImageIndex+1)
-  );
+  if (prevBtn) prevBtn.disabled = currentImageIndex === 0;
+  if (nextBtn) nextBtn.disabled = currentImageIndex === globalImageUrls.length - 1;
+  if (indicator) indicator.textContent = `Page ${currentImageIndex + 1} / ${globalImageUrls.length}`;
 
-  img.crossOrigin = 'anonymous';
-  img.src = globalImageUrls[currentImageIndex] || DEMO_IMAGE_URL;
-  img.onload = () => buildKonva();
+  currentAnnotations = globalAnnotations.filter(a => a.page_number === (currentImageIndex + 1));
+  updateAnnoBadges();
+
+  const doRender = () => {
+    img.crossOrigin = 'anonymous';
+    img.src = globalImageUrls[currentImageIndex] || DEMO_IMAGE_URL;
+    img.onload = () => {
+      buildKonva();
+      // Enter animation
+      if (direction === 'right') {
+        wrapper.classList.add('flip-enter-right');
+      } else if (direction === 'left') {
+        wrapper.classList.add('flip-enter-left');
+      }
+      if (direction) {
+        setTimeout(() => {
+          wrapper.classList.remove('flip-enter-right', 'flip-enter-left');
+        }, 450);
+      }
+    };
+  };
+
+  if (direction) {
+    // Exit animation first
+    const exitClass = direction === 'right' ? 'flip-exit-left' : 'flip-exit-right';
+    wrapper.classList.add(exitClass);
+    setTimeout(() => {
+      wrapper.classList.remove(exitClass);
+      doRender();
+    }, 380);
+  } else {
+    doRender();
+  }
 }
 
-function prevPage() { if (currentImageIndex>0) { currentImageIndex--; renderCurrentPage(); } }
-function nextPage() { if (currentImageIndex<globalImageUrls.length-1) { currentImageIndex++; renderCurrentPage(); } }
+function prevPage() {
+  if (currentImageIndex > 0) {
+    currentImageIndex--;
+    renderCurrentPage('left');
+  }
+}
 
+function nextPage() {
+  if (currentImageIndex < globalImageUrls.length - 1) {
+    currentImageIndex++;
+    renderCurrentPage('right');
+  }
+}
+
+/* Keyboard navigation */
+document.addEventListener('keydown', (e) => {
+  if (document.getElementById('result-section').style.display === 'none') return;
+  if (document.activeElement && ['INPUT','TEXTAREA','SELECT'].includes(document.activeElement.tagName)) return;
+  if (e.key === 'ArrowRight') nextPage();
+  if (e.key === 'ArrowLeft')  prevPage();
+  if (e.key === 'Escape' && document.getElementById('fullscreen-overlay').classList.contains('active')) closeFullscreen();
+  if (e.key === 'f' || e.key === 'F') openFullscreen();
+});
+
+/* ════════════════════════════════════════════════════════════════════
+  KONVA ENGINE — with safe-zone clamping
+════════════════════════════════════════════════════════════════════ */
 function buildKonva() {
   const img      = document.getElementById('student-img');
   const wrapper  = document.getElementById('canvas-wrapper');
   const konvaDiv = document.getElementById('konva-container');
 
   const rw = img.offsetWidth  || wrapper.offsetWidth  || 600;
-  const rh = img.offsetHeight || Math.round(rw*1.4);
+  const rh = img.offsetHeight || Math.round(rw * 1.4);
 
-  if (konvaStage) { konvaStage.destroy(); konvaStage=null; }
-  errorGroup=null; markGroup=null;
+  if (konvaStage) { konvaStage.destroy(); konvaStage = null; }
+  errorGroup = null; markGroup = null;
 
-  konvaDiv.style.width  = rw+'px';
-  konvaDiv.style.height = rh+'px';
+  konvaDiv.style.width  = rw + 'px';
+  konvaDiv.style.height = rh + 'px';
 
-  konvaStage = new Konva.Stage({ container:'konva-container', width:rw, height:rh });
+  konvaStage = new Konva.Stage({ container: 'konva-container', width: rw, height: rh });
   konvaLayer = new Konva.Layer();
-  errorGroup = new Konva.Group({ name:'errors' });
-  markGroup  = new Konva.Group({ name:'marks'  });
+  errorGroup = new Konva.Group({ name: 'errors' });
+  markGroup  = new Konva.Group({ name: 'marks' });
   konvaLayer.add(errorGroup, markGroup);
   konvaStage.add(konvaLayer);
 
   if (annotationsVisible) drawAnnotations(rw, rh);
 }
 
-/**
- * coordsToPixels — converts a 0-1000 box_2d to pixel coords.
- * This exact function is mirrored in drawAnnotations2DCanvas.
- */
-function coordsToPixels(box_2d, W, H) {
-  const [yn,xn,ym,xm] = box_2d;
-  return {
-    px: (xn/1000)*W,
-    py: (yn/1000)*H,
-    pw: ((xm-xn)/1000)*W,
-    ph: ((ym-yn)/1000)*H,
-    cx: ((xn+xm)/2000)*W,
-    cy: ((yn+ym)/2000)*H,
-  };
-}
+/* ★ SAFE-ZONE CLAMPING — all annotations stay within visible bounds */
+const SAFE_MARGIN_RATIO = 0.035; // 3.5% padding from each edge
 
-function drawAnnotations(rw, rh) {
-  if (errorGroup) errorGroup.destroyChildren();
-  if (markGroup)  markGroup.destroyChildren();
+function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-  const sw = n => Math.max(1.5, rw*n);
-  const fs = n => Math.max(10, Math.min(20, rw*n));
+function drawAnnotations(rw, rh, stage, layer, errGrp, mrkGrp, annotSet) {
+  // Support both main canvas and fullscreen canvas
+  const useStage  = stage  || konvaStage;
+  const useLayer  = layer  || konvaLayer;
+  const useErr    = errGrp || errorGroup;
+  const useMrk    = mrkGrp || markGroup;
+  const useAnnots = annotSet || currentAnnotations;
 
-  currentAnnotations.forEach(anno => {
-    const {px,py,pw,ph,cx,cy} = coordsToPixels(anno.box_2d, rw, rh);
+  if (!useStage || !useLayer) return;
+  if (useErr) useErr.destroyChildren();
+  if (useMrk) useMrk.destroyChildren();
 
-    const isRed   = anno.color==='red';
-    const isGreen = anno.color==='green';
-    const strokeC = isRed?'rgba(239,68,68,0.88)':isGreen?'rgba(22,163,74,0.92)':'rgba(108,43,217,0.88)';
-    const fillC   = isRed?'rgba(239,68,68,0.09)':isGreen?'rgba(22,163,74,0.10)':'rgba(108,43,217,0.09)';
-    const glowC   = isRed?'#EF4444':isGreen?'#16A34A':'#6C2BD9';
-    const target  = isGreen ? markGroup : errorGroup;
+  const SAFE_X = rw * SAFE_MARGIN_RATIO;
+  const SAFE_Y = rh * SAFE_MARGIN_RATIO;
 
-    if (anno.annotation_type==='tick') {
-      const r=Math.max(14,Math.min(28,Math.min(pw,ph)/2));
-      const halo=new Konva.Circle({x:cx,y:cy,radius:r+4,fill:'rgba(22,163,74,0.12)',stroke:'rgba(22,163,74,0.35)',strokeWidth:1});
-      const bg  =new Konva.Circle({x:cx,y:cy,radius:r,fill:'rgba(22,163,74,0.82)',shadowColor:'#16A34A',shadowBlur:10,shadowOpacity:0.5});
-      const ts  =r*0.55;
-      const tick=new Konva.Line({points:[cx-ts*0.6,cy,cx-ts*0.1,cy+ts*0.6,cx+ts*0.7,cy-ts*0.55],
-        stroke:'#ffffff',strokeWidth:sw(0.008)+1.5,lineCap:'round',lineJoin:'round'});
-      target.add(halo,bg,tick);
-      if(anno.comment) addTooltipBehaviour(bg,anno.comment,cx,py);
+  const sw = (n) => Math.max(1.5, rw * n);
+  const fs = (n) => Math.max(10, Math.min(20, rw * n));
 
-    } else if (anno.annotation_type==='cross') {
-      const r=Math.max(14,Math.min(28,Math.min(pw,ph)/2));
-      const halo=new Konva.Circle({x:cx,y:cy,radius:r+4,fill:'rgba(239,68,68,0.1)',stroke:'rgba(239,68,68,0.3)',strokeWidth:1});
-      const bg  =new Konva.Circle({x:cx,y:cy,radius:r,fill:'rgba(239,68,68,0.8)',shadowColor:'#EF4444',shadowBlur:10,shadowOpacity:0.5});
-      const arm=r*0.52;
-      const l1=new Konva.Line({points:[cx-arm,cy-arm,cx+arm,cy+arm],stroke:'#ffffff',strokeWidth:sw(0.007)+1.5,lineCap:'round'});
-      const l2=new Konva.Line({points:[cx+arm,cy-arm,cx-arm,cy+arm],stroke:'#ffffff',strokeWidth:sw(0.007)+1.5,lineCap:'round'});
-      target.add(halo,bg,l1,l2);
-      if(anno.comment) addTooltipBehaviour(bg,anno.comment,cx,py);
+  useAnnots.forEach(anno => {
+    const [yn, xn, ym, xm] = anno.box_2d;
+    const rawPx = (xn / 1000) * rw;
+    const rawPy = (yn / 1000) * rh;
+    const pw    = ((xm - xn) / 1000) * rw;
+    const ph    = ((ym - yn) / 1000) * rh;
+    const rawCx = rawPx + pw / 2;
+    const rawCy = rawPy + ph / 2;
 
-    } else if (anno.annotation_type==='circle') {
-      const ellipse=new Konva.Ellipse({x:cx,y:cy,
-        radiusX:Math.max(8,pw/2),radiusY:Math.max(8,ph/2),
-        stroke:strokeC,strokeWidth:sw(0.005),dash:[7,4],fill:fillC,
-        shadowColor:glowC,shadowBlur:10,shadowOpacity:0.3});
+    const isRed   = anno.color === 'red';
+    const isGreen = anno.color === 'green';
+    const strokeC = isRed ? 'rgba(239,68,68,0.88)' : isGreen ? 'rgba(22,163,74,0.92)' : 'rgba(108,43,217,0.88)';
+    const fillC   = isRed ? 'rgba(239,68,68,0.09)' : isGreen ? 'rgba(22,163,74,0.10)' : 'rgba(108,43,217,0.09)';
+    const glowC   = isRed ? '#EF4444' : isGreen ? '#16A34A' : '#6C2BD9';
+
+    const target = isGreen ? useMrk : useErr;
+
+    if (anno.annotation_type === 'tick') {
+      const r    = Math.max(14, Math.min(28, Math.min(pw, ph) / 2));
+      // ★ SAFE-ZONE: clamp center so circle never clips edge
+      const cx   = clamp(rawCx, SAFE_X + r, rw - SAFE_X - r);
+      const cy   = clamp(rawCy, SAFE_Y + r, rh - SAFE_Y - r);
+      const halo = new Konva.Circle({ x:cx, y:cy, radius:r+4, fill:'rgba(22,163,74,0.12)', stroke:'rgba(22,163,74,0.35)', strokeWidth:1 });
+      const bg   = new Konva.Circle({ x:cx, y:cy, radius:r, fill:'rgba(22,163,74,0.82)', shadowColor:'#16A34A', shadowBlur:10, shadowOpacity:0.5 });
+      const ts   = r * 0.55;
+      const tick = new Konva.Line({ points:[cx-ts*0.6,cy,cx-ts*0.1,cy+ts*0.6,cx+ts*0.7,cy-ts*0.55], stroke:'#ffffff', strokeWidth:sw(0.008)+1.5, lineCap:'round', lineJoin:'round' });
+      target.add(halo, bg, tick);
+      if (anno.comment) addTooltipBehaviour(bg, anno.comment, cx, cy - r - 8);
+
+    } else if (anno.annotation_type === 'cross') {
+      const r    = Math.max(14, Math.min(28, Math.min(pw, ph) / 2));
+      const cx   = clamp(rawCx, SAFE_X + r, rw - SAFE_X - r);
+      const cy   = clamp(rawCy, SAFE_Y + r, rh - SAFE_Y - r);
+      const halo = new Konva.Circle({ x:cx, y:cy, radius:r+4, fill:'rgba(239,68,68,0.1)', stroke:'rgba(239,68,68,0.3)', strokeWidth:1 });
+      const bg   = new Konva.Circle({ x:cx, y:cy, radius:r, fill:'rgba(239,68,68,0.8)', shadowColor:'#EF4444', shadowBlur:10, shadowOpacity:0.5 });
+      const arm  = r * 0.52;
+      const l1   = new Konva.Line({ points:[cx-arm,cy-arm,cx+arm,cy+arm], stroke:'#ffffff', strokeWidth:sw(0.007)+1.5, lineCap:'round' });
+      const l2   = new Konva.Line({ points:[cx+arm,cy-arm,cx-arm,cy+arm], stroke:'#ffffff', strokeWidth:sw(0.007)+1.5, lineCap:'round' });
+      target.add(halo, bg, l1, l2);
+      if (anno.comment) addTooltipBehaviour(bg, anno.comment, cx, cy - r - 8);
+
+    } else if (anno.annotation_type === 'circle') {
+      const radiusX = Math.max(8, Math.min(pw / 2, (rw - SAFE_X * 2) / 2));
+      const radiusY = Math.max(8, Math.min(ph / 2, (rh - SAFE_Y * 2) / 2));
+      const cx = clamp(rawCx, SAFE_X + radiusX, rw - SAFE_X - radiusX);
+      const cy = clamp(rawCy, SAFE_Y + radiusY, rh - SAFE_Y - radiusY);
+      const ellipse = new Konva.Ellipse({
+        x:cx, y:cy, radiusX, radiusY,
+        stroke:strokeC, strokeWidth:sw(0.005), dash:[7,4], fill:fillC,
+        shadowColor:glowC, shadowBlur:10, shadowOpacity:0.3,
+      });
       target.add(ellipse);
-      addTooltipBehaviour(ellipse,anno.comment,cx,py);
+      addTooltipBehaviour(ellipse, anno.comment, cx, cy - radiusY - 8);
 
-    } else if (anno.annotation_type==='text' && anno.comment) {
-      const label=new Konva.Label({x:px,y:py});
-      label.add(new Konva.Tag({fill:isRed?'rgba(239,68,68,0.92)':'rgba(22,163,74,0.92)',
-        cornerRadius:7,shadowColor:glowC,shadowBlur:9,shadowOpacity:0.45}));
-      label.add(new Konva.Text({text:anno.comment,fontSize:fs(0.022),
-        fontFamily:'Poppins, sans-serif',fontStyle:'bold',fill:'#ffffff',padding:6}));
+    } else if (anno.annotation_type === 'text' && anno.comment) {
+      const fontSize = fs(0.022);
+      const labelW   = Math.min(anno.comment.length * (fontSize * 0.65) + 20, rw * 0.4);
+      // ★ SAFE-ZONE: clamp so label never leaves the canvas
+      const px  = clamp(rawPx, SAFE_X, rw - SAFE_X - labelW);
+      const py  = clamp(rawPy, SAFE_Y, rh - SAFE_Y - 40);
+      const label = new Konva.Label({ x:px, y:py });
+      label.add(new Konva.Tag({
+        fill: isRed ? 'rgba(239,68,68,0.92)' : 'rgba(22,163,74,0.92)',
+        cornerRadius:7, shadowColor:glowC, shadowBlur:9, shadowOpacity:0.45,
+      }));
+      label.add(new Konva.Text({
+        text:anno.comment, fontSize, fontFamily:'Poppins, sans-serif', fontStyle:'bold',
+        fill:'#ffffff', padding:6,
+      }));
       target.add(label);
-      if (ph>4) {
-        const ay1=py+fs(0.022)+18, ay2=py+ph*0.85;
-        if (ay2>ay1) target.add(new Konva.Arrow({points:[px+10,ay1,px+10,ay2],
-          stroke:strokeC,fill:strokeC,strokeWidth:1.5,pointerLength:7,pointerWidth:6,dash:[4,3]}));
+      const ay1 = py + fontSize + 18;
+      const ay2 = clamp(rawPy + ph * 0.85, ay1 + 4, rh - SAFE_Y);
+      if (ay2 > ay1) {
+        target.add(new Konva.Arrow({
+          points:[px+10,ay1,px+10,ay2], stroke:strokeC, fill:strokeC,
+          strokeWidth:1.5, pointerLength:7, pointerWidth:6, dash:[4,3],
+        }));
       }
 
-    } else if (anno.annotation_type==='step_mark' && anno.comment) {
-      const isDed=isRed||String(anno.comment).startsWith('-');
-      const bgF=isDed?'rgba(239,68,68,0.88)':'rgba(22,163,74,0.88)';
-      const shd=isDed?'#EF4444':'#16A34A';
-      const fontSize=fs(0.030);
-      const radius=Math.max(18,Math.min(36,Math.min(pw,ph)/2));
-      const circle=new Konva.Circle({x:cx,y:cy,radius,fill:bgF,
-        shadowColor:shd,shadowBlur:14,shadowOpacity:0.55,
-        stroke:isDed?'rgba(239,68,68,0.4)':'rgba(22,163,74,0.4)',strokeWidth:1.5});
-      const label=new Konva.Text({text:anno.comment,fontSize,
-        fontFamily:'Poppins, sans-serif',fontStyle:'bold',fill:'#ffffff',
-        align:'center',verticalAlign:'middle',width:radius*2,height:radius*2,x:cx-radius,y:cy-radius});
-      const rule=new Konva.Line({points:[cx-radius-6,cy,cx-radius-30,cy],
-        stroke:isDed?'rgba(239,68,68,0.35)':'rgba(22,163,74,0.35)',strokeWidth:1.2,dash:[3,3]});
-      target.add(rule,circle,label);
+    } else if (anno.annotation_type === 'step_mark' && anno.comment) {
+      const isDed    = isRed || String(anno.comment).startsWith('-');
+      const bgF      = isDed ? 'rgba(239,68,68,0.88)' : 'rgba(22,163,74,0.88)';
+      const shd      = isDed ? '#EF4444' : '#16A34A';
+      const fontSize = fs(0.030);
+      const radius   = Math.max(18, Math.min(36, Math.min(pw, ph) / 2));
+      // ★ SAFE-ZONE: step marks often go to margins — clamp hard
+      const cx = clamp(rawCx, SAFE_X + radius, rw - SAFE_X - radius);
+      const cy = clamp(rawCy, SAFE_Y + radius, rh - SAFE_Y - radius);
+      const circle = new Konva.Circle({
+        x:cx, y:cy, radius, fill:bgF,
+        shadowColor:shd, shadowBlur:14, shadowOpacity:0.55,
+        stroke: isDed ? 'rgba(239,68,68,0.4)' : 'rgba(22,163,74,0.4)', strokeWidth:1.5,
+      });
+      const labelT = new Konva.Text({
+        text:anno.comment, fontSize, fontFamily:'Poppins, sans-serif', fontStyle:'bold',
+        fill:'#ffffff', align:'center', verticalAlign:'middle',
+        width:radius*2, height:radius*2, x:cx-radius, y:cy-radius,
+      });
+      const rule = new Konva.Line({
+        points:[cx-radius-6,cy,cx-radius-30,cy],
+        stroke: isDed ? 'rgba(239,68,68,0.35)' : 'rgba(22,163,74,0.35)',
+        strokeWidth:1.2, dash:[3,3],
+      });
+      target.add(rule, circle, labelT);
     }
   });
 
-  if (errorGroup) errorGroup.visible(errorsVisible);
-  if (markGroup)  markGroup.visible(marksVisible);
-  konvaLayer.draw();
+  if (useErr) useErr.visible(errorsVisible);
+  if (useMrk) useMrk.visible(marksVisible);
+  useLayer.draw();
 }
 
 function addTooltipBehaviour(shape, comment, x, y) {
   if (!comment) return;
   const tooltip = document.getElementById('anno-tooltip');
+  if (!tooltip) return;
   shape.on('mouseenter touchstart', () => {
-    tooltip.textContent=comment; tooltip.style.left=x+'px'; tooltip.style.top=(y-32)+'px';
+    tooltip.textContent = comment;
+    tooltip.style.left  = x + 'px';
+    tooltip.style.top   = Math.max(0, y) + 'px';
     tooltip.classList.add('show');
   });
   shape.on('mouseleave touchend', () => tooltip.classList.remove('show'));
 }
 
 function toggleAnnotations() {
-  annotationsVisible=!annotationsVisible;
-  const btn=document.getElementById('btn-toggle-annot');
-  if (annotationsVisible) { drawAnnotations(konvaStage.width(),konvaStage.height()); btn.innerHTML='<i data-lucide="eye" class="w-3.5 h-3.5"></i> All: ON'; }
-  else { if(errorGroup)errorGroup.visible(false); if(markGroup)markGroup.visible(false); konvaLayer.draw(); btn.innerHTML='<i data-lucide="eye-off" class="w-3.5 h-3.5"></i> All: OFF'; }
+  annotationsVisible = !annotationsVisible;
+  const btn = document.getElementById('btn-toggle-annot');
+  if (annotationsVisible) {
+    drawAnnotations(konvaStage.width(), konvaStage.height());
+    btn.innerHTML = '<i data-lucide="eye" class="w-3.5 h-3.5"></i> All: ON';
+  } else {
+    if (errorGroup) errorGroup.visible(false);
+    if (markGroup)  markGroup.visible(false);
+    konvaLayer.draw();
+    btn.innerHTML = '<i data-lucide="eye-off" class="w-3.5 h-3.5"></i> All: OFF';
+  }
   lucide.createIcons();
 }
+
 function toggleErrors() {
-  if (!errorGroup||!konvaStage) return;
-  errorsVisible=!errorsVisible; errorGroup.visible(errorsVisible); konvaLayer.draw();
-  const btn=document.getElementById('btn-toggle-errors');
-  btn.innerHTML=`<i data-lucide="x-circle" class="w-3.5 h-3.5" style="color:#f87171;"></i> Errors: ${errorsVisible?'ON':'OFF'}`;
-  btn.style.opacity=errorsVisible?'1':'0.5'; lucide.createIcons();
-}
-function toggleMarks() {
-  if (!markGroup||!konvaStage) return;
-  marksVisible=!marksVisible; markGroup.visible(marksVisible); konvaLayer.draw();
-  const btn=document.getElementById('btn-toggle-marks');
-  btn.innerHTML=`<i data-lucide="check-circle" class="w-3.5 h-3.5" style="color:#4ade80;"></i> Marks: ${marksVisible?'ON':'OFF'}`;
-  btn.style.opacity=marksVisible?'1':'0.5'; lucide.createIcons();
-}
-function zoomImage(factor) {
-  currentZoom=Math.min(4,Math.max(0.5,currentZoom*factor));
-  const img=document.getElementById('student-img');
-  img.style.transformOrigin='top left';
-  img.style.transform=`scale(${currentZoom})`;
-  document.getElementById('canvas-wrapper').style.overflow=currentZoom>1?'auto':'hidden';
-}
-function resetZoom() {
-  currentZoom=1;
-  document.getElementById('student-img').style.transform='';
-  document.getElementById('canvas-wrapper').style.overflow='hidden';
+  if (!errorGroup) return;
+  errorsVisible = !errorsVisible;
+  errorGroup.visible(errorsVisible);
+  konvaLayer.draw();
+  const btn = document.getElementById('btn-toggle-errors');
+  btn.innerHTML = `<i data-lucide="x-circle" class="w-3.5 h-3.5" style="color:#f87171;"></i> Errors: ${errorsVisible ? 'ON' : 'OFF'}`;
+  btn.style.opacity = errorsVisible ? '1' : '0.5';
+  lucide.createIcons();
 }
 
-const resizeObserver=new ResizeObserver(()=>{
-  if(konvaStage&&document.getElementById('result-section').style.display!=='none')
+function toggleMarks() {
+  if (!markGroup) return;
+  marksVisible = !marksVisible;
+  markGroup.visible(marksVisible);
+  konvaLayer.draw();
+  const btn = document.getElementById('btn-toggle-marks');
+  btn.innerHTML = `<i data-lucide="check-circle" class="w-3.5 h-3.5" style="color:#4ade80;"></i> Marks: ${marksVisible ? 'ON' : 'OFF'}`;
+  btn.style.opacity = marksVisible ? '1' : '0.5';
+  lucide.createIcons();
+}
+
+function zoomImage(factor) {
+  currentZoom = Math.min(4, Math.max(0.5, currentZoom * factor));
+  const img = document.getElementById('student-img');
+  img.style.transformOrigin = 'top left';
+  img.style.transform = `scale(${currentZoom})`;
+  document.getElementById('canvas-wrapper').style.overflow = currentZoom > 1 ? 'auto' : 'hidden';
+}
+
+function resetZoom() {
+  currentZoom = 1;
+  document.getElementById('student-img').style.transform = '';
+  document.getElementById('canvas-wrapper').style.overflow = 'hidden';
+}
+
+const resizeObserver = new ResizeObserver(() => {
+  if (konvaStage && document.getElementById('result-section').style.display !== 'none')
     requestAnimationFrame(buildKonva);
 });
 resizeObserver.observe(document.getElementById('canvas-wrapper'));
-window.addEventListener('orientationchange',()=>{ setTimeout(()=>{ if(konvaStage)buildKonva(); },350); });
 
-/* ══════════════════════════════════════════════════════════════════
-   11. STEPS RENDERER — Topper's Notebook
-   ─────────────────────────────────────────────────────────────────
-   Uses renderLatexBlock (KaTeX display mode) for math blocks,
-   and renderMathSafe for step text (handles mixed text+inline math).
-══════════════════════════════════════════════════════════════════ */
+window.addEventListener('orientationchange', () => { setTimeout(() => { if (konvaStage) buildKonva(); }, 350); });
+
+/* ════════════════════════════════════════════════════════════════════
+  ★ FULLSCREEN MODE
+════════════════════════════════════════════════════════════════════ */
+function openFullscreen() {
+  if (globalImageUrls.length === 0 && !document.getElementById('student-img').src) return;
+  fsCurrentIndex = currentImageIndex;
+  fsZoomLevel = 1;
+  fsTranslate = { x: 0, y: 0 };
+  fsErrVis = errorsVisible;
+  fsMrkVis = marksVisible;
+
+  buildFsThumbStrip();
+  loadFsPage(fsCurrentIndex, null);
+
+  document.getElementById('fullscreen-overlay').classList.add('active');
+  document.body.style.overflow = 'hidden';
+}
+
+function closeFullscreen() {
+  document.getElementById('fullscreen-overlay').classList.remove('active');
+  document.body.style.overflow = '';
+  if (fsStage) { fsStage.destroy(); fsStage = null; }
+}
+
+function buildFsThumbStrip() {
+  const strip = document.getElementById('fs-bottombar');
+  strip.innerHTML = '';
+  const urls = globalImageUrls.length > 0 ? globalImageUrls : [document.getElementById('student-img').src];
+  urls.forEach((url, i) => {
+    const img = document.createElement('img');
+    img.className = 'fs-thumb' + (i === fsCurrentIndex ? ' active' : '');
+    img.src = url || DEMO_IMAGE_URL;
+    img.alt = `Page ${i + 1}`;
+    img.onclick = () => { fsCurrentIndex = i; loadFsPage(i, null); buildFsThumbStrip(); };
+    strip.appendChild(img);
+  });
+}
+
+function loadFsPage(idx, direction) {
+  const mainImg = document.getElementById('fs-img');
+  const urls = globalImageUrls.length > 0 ? globalImageUrls : [document.getElementById('student-img').src];
+  const url  = urls[idx] || DEMO_IMAGE_URL;
+
+  document.getElementById('fs-page-badge').textContent = `${idx + 1} / ${urls.length}`;
+  document.getElementById('fs-prev').style.opacity = idx === 0 ? '0.35' : '1';
+  document.getElementById('fs-next').style.opacity = idx === urls.length - 1 ? '0.35' : '1';
+
+  // Update thumb active state
+  document.querySelectorAll('.fs-thumb').forEach((t, i) => t.classList.toggle('active', i === idx));
+
+  mainImg.crossOrigin = 'anonymous';
+  mainImg.src = url;
+
+  mainImg.onload = () => {
+    applyFsZoom();
+    buildFsKonva();
+  };
+}
+
+function buildFsKonva() {
+  const img      = document.getElementById('fs-img');
+  const konvaDiv = document.getElementById('fs-konva-container');
+
+  if (!img.offsetWidth) return; // Not rendered yet
+
+  const rw = img.offsetWidth;
+  const rh = img.offsetHeight;
+
+  if (fsStage) { fsStage.destroy(); fsStage = null; }
+
+  konvaDiv.style.width  = rw + 'px';
+  konvaDiv.style.height = rh + 'px';
+
+  fsStage     = new Konva.Stage({ container: 'fs-konva-container', width: rw, height: rh });
+  const fsLyr = new Konva.Layer();
+  fsErrorGroup = new Konva.Group({ name: 'errors' });
+  fsMarkGroup  = new Konva.Group({ name: 'marks' });
+  fsLyr.add(fsErrorGroup, fsMarkGroup);
+  fsStage.add(fsLyr);
+
+  // Use page annotations
+  const pageAnnots = globalAnnotations.filter(a => a.page_number === (fsCurrentIndex + 1));
+  drawAnnotations(rw, rh, fsStage, fsLyr, fsErrorGroup, fsMarkGroup, pageAnnots);
+
+  // Apply visibility states
+  if (fsErrorGroup) fsErrorGroup.visible(fsErrVis);
+  if (fsMarkGroup)  fsMarkGroup.visible(fsMrkVis);
+  fsLyr.draw();
+}
+
+function applyFsZoom() {
+  const container = document.getElementById('fs-zoom-container');
+  const label     = document.getElementById('fs-zoom-label');
+  container.style.transform = `translate(${fsTranslate.x}px, ${fsTranslate.y}px) scale(${fsZoomLevel})`;
+  if (label) label.textContent = Math.round(fsZoomLevel * 100) + '%';
+}
+
+function fsZoom(factor) {
+  fsZoomLevel = Math.min(5, Math.max(0.3, fsZoomLevel * factor));
+  applyFsZoom();
+}
+
+function fsZoomReset() {
+  fsZoomLevel = 1;
+  fsTranslate = { x: 0, y: 0 };
+  applyFsZoom();
+}
+
+function fsPrevPage() {
+  if (fsCurrentIndex > 0) {
+    fsCurrentIndex--;
+    buildFsThumbStrip();
+    loadFsPage(fsCurrentIndex, 'left');
+  }
+}
+
+function fsNextPage() {
+  const urls = globalImageUrls.length > 0 ? globalImageUrls : [document.getElementById('student-img').src];
+  if (fsCurrentIndex < urls.length - 1) {
+    fsCurrentIndex++;
+    buildFsThumbStrip();
+    loadFsPage(fsCurrentIndex, 'right');
+  }
+}
+
+function fstoggleErrors() {
+  fsErrVis = !fsErrVis;
+  if (fsErrorGroup) {
+    const fsLyr = fsStage && fsStage.getLayers()[0];
+    if (fsLyr) { fsErrorGroup.visible(fsErrVis); fsLyr.draw(); }
+  }
+  const btn = document.getElementById('fs-toggle-errors');
+  if (btn) btn.style.opacity = fsErrVis ? '1' : '0.4';
+}
+
+function fstoggleMarks() {
+  fsMrkVis = !fsMrkVis;
+  if (fsMarkGroup) {
+    const fsLyr = fsStage && fsStage.getLayers()[0];
+    if (fsLyr) { fsMarkGroup.visible(fsMrkVis); fsLyr.draw(); }
+  }
+  const btn = document.getElementById('fs-toggle-marks');
+  if (btn) btn.style.opacity = fsMrkVis ? '1' : '0.4';
+}
+
+// Mouse wheel zoom in fullscreen
+document.getElementById('fs-image-area').addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 1.1 : 0.91;
+  fsZoom(delta);
+  setTimeout(buildFsKonva, 50);
+}, { passive: false });
+
+// Drag to pan in fullscreen
+const fsArea = document.getElementById('fs-image-area');
+fsArea.addEventListener('mousedown', (e) => {
+  fsIsDragging = true;
+  fsDragStart = { x: e.clientX - fsTranslate.x, y: e.clientY - fsTranslate.y };
+  fsArea.style.cursor = 'grabbing';
+});
+document.addEventListener('mousemove', (e) => {
+  if (!fsIsDragging) return;
+  fsTranslate = { x: e.clientX - fsDragStart.x, y: e.clientY - fsDragStart.y };
+  applyFsZoom();
+});
+document.addEventListener('mouseup', () => {
+  fsIsDragging = false;
+  fsArea.style.cursor = 'grab';
+});
+
+// Keyboard arrow navigation in fullscreen
+document.addEventListener('keydown', (e) => {
+  if (!document.getElementById('fullscreen-overlay').classList.contains('active')) return;
+  if (e.key === 'ArrowRight') fsNextPage();
+  if (e.key === 'ArrowLeft')  fsPrevPage();
+  if (e.key === '+' || e.key === '=') { fsZoom(1.2); setTimeout(buildFsKonva, 50); }
+  if (e.key === '-') { fsZoom(0.83); setTimeout(buildFsKonva, 50); }
+});
+
+/* ════════════════════════════════════════════════════════════════════
+  KATEX STEPS RENDERER
+════════════════════════════════════════════════════════════════════ */
 function renderSteps(steps) {
   const container = document.getElementById('steps-container');
   container.innerHTML = '';
-  (steps||[]).forEach((s,i) => {
-    const card=document.createElement('div');
-    card.className='step-card py-5 px-1';
-    const header=document.createElement('div');
-    header.className='flex items-start gap-3 sm:gap-4';
-    const numEl=document.createElement('div');
-    numEl.className='step-num mt-0.5 flex-shrink-0';
-    numEl.textContent=s.step||(i+1);
-    const body=document.createElement('div');
-    body.className='flex-1 min-w-0';
-
-    // Text — may contain inline LaTeX like $f(x)$
-    const textEl=document.createElement('p');
-    textEl.className='text-sm sm:text-base text-slate-700 dark:text-gray-200 leading-relaxed font-medium';
-    renderMathSafe(textEl, s.text);
+  (steps || []).forEach((s, i) => {
+    const card   = document.createElement('div');
+    card.className = 'step-card py-5 px-1';
+    const header = document.createElement('div');
+    header.className = 'flex items-start gap-3 sm:gap-4';
+    const numEl  = document.createElement('div');
+    numEl.className = 'step-num mt-0.5 flex-shrink-0';
+    numEl.textContent = s.step || (i + 1);
+    const body   = document.createElement('div');
+    body.className = 'flex-1 min-w-0';
+    const textEl = document.createElement('p');
+    textEl.className = 'text-sm sm:text-base text-slate-700 dark:text-gray-200 leading-relaxed font-medium';
+    textEl.textContent = s.text;
     body.appendChild(textEl);
-
-    // LaTeX block — pure LaTeX, display mode
     if (s.latex) {
-      const mathBlock=document.createElement('div');
-      mathBlock.className='katex-block';
-      renderLatexBlock(mathBlock, s.latex);
+      const mathBlock = document.createElement('div');
+      mathBlock.className = 'katex-block';
+      try {
+        katex.render(s.latex, mathBlock, { displayMode: true, throwOnError: false, trust: true });
+      } catch(_) {
+        mathBlock.textContent = s.latex;
+        mathBlock.style.fontFamily = 'monospace';
+        mathBlock.style.color = '#6C2BD9';
+      }
       body.appendChild(mathBlock);
     }
-
     header.appendChild(numEl);
     header.appendChild(body);
     card.appendChild(header);
@@ -1987,387 +2459,114 @@ function renderSteps(steps) {
   });
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   12. PDF GENERATION
-   ─────────────────────────────────────────────────────────────────
-   Key fix: annotations are drawn onto a canvas at NATURAL image
-   resolution using coordsToPixels(box_2d, naturalWidth, naturalHeight).
-   This is the SAME formula used by Konva at rendered resolution.
-   Result: pixel-perfect annotation placement in the PDF.
-══════════════════════════════════════════════════════════════════ */
-
-/**
- * drawAnnotations2DCanvas — mirrors drawAnnotations() but uses
- * Canvas 2D API at NATURAL image resolution for PDF compositing.
- * Uses coordsToPixels for identical coordinate mapping.
- */
-function drawAnnotations2DCanvas(ctx, annos, W, H) {
-  if (!annos||!annos.length) return;
-  const sw = n => Math.max(1.5, W*n);
-  const fs = n => Math.max(W*0.012, W*n);
-
-  annos.forEach(anno => {
-    const {px,py,pw,ph,cx,cy} = coordsToPixels(anno.box_2d, W, H);
-
-    const isRed   = anno.color==='red';
-    const isGreen = anno.color==='green';
-    const strokeC = isRed?'rgba(239,68,68,0.88)':isGreen?'rgba(22,163,74,0.92)':'rgba(108,43,217,0.88)';
-    const fillC   = isRed?'rgba(239,68,68,0.09)':isGreen?'rgba(22,163,74,0.10)':'rgba(108,43,217,0.09)';
-
-    ctx.save();
-
-    if (anno.annotation_type==='tick') {
-      const r=Math.max(W*0.014,Math.min(W*0.028,Math.min(pw,ph)/2));
-      // Halo
-      ctx.beginPath(); ctx.arc(cx,cy,r+W*0.004,0,Math.PI*2);
-      ctx.fillStyle='rgba(22,163,74,0.18)'; ctx.fill();
-      // Circle bg
-      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
-      ctx.fillStyle='rgba(22,163,74,0.85)';
-      ctx.shadowColor='#16A34A'; ctx.shadowBlur=W*0.01; ctx.fill(); ctx.shadowBlur=0;
-      // Tick
-      const ts=r*0.55;
-      ctx.beginPath();
-      ctx.moveTo(cx-ts*0.6,cy); ctx.lineTo(cx-ts*0.1,cy+ts*0.6); ctx.lineTo(cx+ts*0.7,cy-ts*0.55);
-      ctx.strokeStyle='#fff'; ctx.lineWidth=sw(0.008)+W*0.001;
-      ctx.lineCap='round'; ctx.lineJoin='round'; ctx.stroke();
-
-    } else if (anno.annotation_type==='cross') {
-      const r=Math.max(W*0.014,Math.min(W*0.028,Math.min(pw,ph)/2));
-      ctx.beginPath(); ctx.arc(cx,cy,r+W*0.004,0,Math.PI*2);
-      ctx.fillStyle='rgba(239,68,68,0.15)'; ctx.fill();
-      ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2);
-      ctx.fillStyle='rgba(239,68,68,0.85)';
-      ctx.shadowColor='#EF4444'; ctx.shadowBlur=W*0.01; ctx.fill(); ctx.shadowBlur=0;
-      const arm=r*0.52;
-      ctx.strokeStyle='#fff'; ctx.lineWidth=sw(0.007)+W*0.001; ctx.lineCap='round';
-      ctx.beginPath(); ctx.moveTo(cx-arm,cy-arm); ctx.lineTo(cx+arm,cy+arm); ctx.stroke();
-      ctx.beginPath(); ctx.moveTo(cx+arm,cy-arm); ctx.lineTo(cx-arm,cy+arm); ctx.stroke();
-
-    } else if (anno.annotation_type==='circle') {
-      ctx.beginPath();
-      ctx.ellipse(cx,cy,Math.max(W*0.008,pw/2),Math.max(W*0.008,ph/2),0,0,Math.PI*2);
-      ctx.fillStyle=fillC; ctx.fill();
-      ctx.strokeStyle=strokeC; ctx.lineWidth=sw(0.005);
-      ctx.setLineDash([W*0.007,W*0.004]); ctx.stroke(); ctx.setLineDash([]);
-
-    } else if (anno.annotation_type==='text' && anno.comment) {
-      const fSize=fs(0.022);
-      ctx.font=`bold ${fSize}px 'Poppins',sans-serif`;
-      const tw=ctx.measureText(anno.comment).width+fSize;
-      const th=fSize*1.8;
-      const br=fSize*0.35;
-      ctx.fillStyle=isRed?'rgba(239,68,68,0.92)':'rgba(22,163,74,0.92)';
-      ctx.shadowColor=isRed?'#EF4444':'#16A34A'; ctx.shadowBlur=W*0.009;
-      ctx.beginPath();
-      ctx.moveTo(px+br,py); ctx.lineTo(px+tw-br,py); ctx.arcTo(px+tw,py,px+tw,py+br,br);
-      ctx.lineTo(px+tw,py+th-br); ctx.arcTo(px+tw,py+th,px+tw-br,py+th,br);
-      ctx.lineTo(px+br,py+th); ctx.arcTo(px,py+th,px,py+th-br,br);
-      ctx.lineTo(px,py+br); ctx.arcTo(px,py,px+br,py,br); ctx.closePath();
-      ctx.fill(); ctx.shadowBlur=0;
-      ctx.fillStyle='#fff'; ctx.textBaseline='middle';
-      ctx.fillText(anno.comment,px+fSize*0.4,py+th/2);
-
-    } else if (anno.annotation_type==='step_mark' && anno.comment) {
-      const isDed=isRed||String(anno.comment).startsWith('-');
-      const radius=Math.max(W*0.018,Math.min(W*0.036,Math.min(pw,ph)/2));
-      const fSize=fs(0.030);
-      const bgF=isDed?'rgba(239,68,68,0.88)':'rgba(22,163,74,0.88)';
-      const shd=isDed?'#EF4444':'#16A34A';
-      // Dashed rule line
-      ctx.strokeStyle=isDed?'rgba(239,68,68,0.35)':'rgba(22,163,74,0.35)';
-      ctx.lineWidth=W*0.0012; ctx.setLineDash([W*0.003,W*0.003]);
-      ctx.beginPath(); ctx.moveTo(cx-radius-W*0.006,cy); ctx.lineTo(cx-radius-W*0.03,cy); ctx.stroke();
-      ctx.setLineDash([]);
-      // Circle
-      ctx.beginPath(); ctx.arc(cx,cy,radius,0,Math.PI*2);
-      ctx.fillStyle=bgF; ctx.shadowColor=shd; ctx.shadowBlur=W*0.014;
-      ctx.fill(); ctx.shadowBlur=0;
-      // Label
-      ctx.font=`bold ${fSize}px 'Poppins',sans-serif`;
-      ctx.fillStyle='#fff'; ctx.textAlign='center'; ctx.textBaseline='middle';
-      ctx.fillText(anno.comment,cx,cy);
-    }
-
-    ctx.restore();
-  });
-}
-
-/**
- * buildCompositeImage — loads image at natural size, draws annotations
- * using coordsToPixels at naturalWidth/naturalHeight for precise placement.
- */
-function buildCompositeImage(imageUrl, pageIndex) {
-  return new Promise(resolve => {
-    const img=new Image();
-    img.crossOrigin='anonymous';
-    img.onload=()=>{
-      const W=img.naturalWidth, H=img.naturalHeight;
-      const canvas=document.createElement('canvas');
-      canvas.width=W; canvas.height=H;
-      const ctx=canvas.getContext('2d');
-      ctx.drawImage(img,0,0,W,H);
-      const total=globalImageUrls.length;
-      const annos=globalAnnotations.filter(a=>total<=1?true:a.page_number===(pageIndex+1));
-      drawAnnotations2DCanvas(ctx,annos,W,H);
-      try { resolve(canvas.toDataURL('image/jpeg',0.92)); }
-      catch(e) { console.warn('[BoardAlgo PDF] CORS prevented composite for page',pageIndex+1); resolve(imageUrl); }
-    };
-    img.onerror=()=>resolve(imageUrl);
-    img.src=imageUrl;
-    // Handle already-cached images
-    if(img.complete&&img.naturalWidth) img.onload();
-  });
-}
-
-async function generatePDF() {
-  const data = lastEvaluationData;
-  if (!data) { window.print(); return; }
-
-  const meta   = data.meta||{};
-  const urls   = globalImageUrls||[];
-  const today  = new Date().toLocaleDateString('en-IN',{day:'numeric',month:'short',year:'numeric'});
-
-  // Build all composites (await sequentially to avoid memory spikes on mobile)
-  const compositeUrls=[];
-  for (let i=0;i<Math.max(1,urls.length);i++) {
-    compositeUrls.push(urls[i] ? await buildCompositeImage(urls[i],i) : null);
-  }
-
-  const imagesSection = compositeUrls.some(u=>u)
-    ? compositeUrls.map((url,i)=>url?`
-        <div class="page-block">
-          <p class="page-label">Answer Sheet${compositeUrls.length>1?` — Page ${i+1} of ${compositeUrls.length}`:''}</p>
-          <img src="${url}" class="answer-img">
-        </div>`:'').join('')
-    : '<p style="color:#94a3b8;font-style:italic;padding:16px 0;">No answer sheet image available.</p>';
-
-  // Steps with KaTeX rendered to HTML strings
-  const stepsSection=(data.perfect_marker_answer||[]).map((s,i)=>`
-    <div class="step-row">
-      <div class="step-circle">${s.step||(i+1)}</div>
-      <div class="step-body">
-        <p class="step-text">${(s.text||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}</p>
-        ${s.latex?`<div class="step-math">${latexToHTMLString(s.latex,true)}</div>`:''}
-      </div>
-    </div>`).join('');
-
-  // Rubric
-  const rubricRows=(data.rubric||[]).map(r=>{
-    const pct=Math.min(100,Math.round((r.scored/r.total)*100));
-    return `<div class="rubric-row">
-      <div class="rubric-header"><span>${r.label}</span><span style="color:${r.color};font-weight:700;">${r.scored}/${r.total}</span></div>
-      <div class="rubric-track"><div class="rubric-bar" style="width:${pct}%;background:${r.color};"></div></div>
-    </div>`;
-  }).join('');
-
-  const scored  = meta.total_marks_awarded??'—';
-  const maxMk   = meta.max_marks??'—';
-  const subject = meta.subject||'';
-  const diff    = meta.difficulty||'—';
-  const summary = (meta.evaluation_summary||'—').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  // Problem statement rendered via latexToHTMLString if it contains LaTeX
-  const questionHtml = (()=>{
-    const q=meta.problem_statement||'';
-    if (!q) return '';
-    if (/\$|\\[[(]/.test(q)) {
-      // Has LaTeX — render inline
-      try { return katex.renderToString(q,{displayMode:false,throwOnError:false,trust:true}); }
-      catch(e) {}
-    }
-    return q.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  })();
-
-  const printHtml=`<!DOCTYPE html>
-<html>
-<head>
-  <meta charset="UTF-8">
-  <title>BoardAlgo Evaluation Report</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-    body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1e293b;background:#fff;font-size:13px;}
-    .header{background:linear-gradient(135deg,#6C2BD9 0%,#7c3aed 50%,#dc2626 100%);color:#fff;padding:20px 28px;display:flex;justify-content:space-between;align-items:flex-start;gap:16px;}
-    .header-left h1{font-size:20px;font-weight:800;letter-spacing:-0.02em;}
-    .header-left .question{font-size:12px;opacity:0.9;margin-top:5px;max-width:480px;}
-    .score-box{background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.25);border-radius:12px;padding:10px 20px;text-align:center;flex-shrink:0;}
-    .score-box .marks{font-size:28px;font-weight:900;line-height:1;}
-    .score-box .sub{font-size:10px;opacity:0.8;text-transform:uppercase;letter-spacing:0.05em;margin-top:2px;}
-    .body{padding:22px 28px;}
-    .chips{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px;}
-    .chip{font-size:11px;font-weight:600;padding:3px 10px;border-radius:99px;background:#f5f0ff;border:1px solid #ddd6fe;color:#6C2BD9;}
-    .section-title{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:#6C2BD9;border-bottom:2px solid #e9d5ff;padding-bottom:4px;margin:20px 0 10px;}
-    .summary-box{background:#fff5f5;border:1px solid #fecaca;border-radius:8px;padding:12px 14px;font-size:12.5px;color:#475569;line-height:1.55;}
-    .rubric-row{margin-bottom:8px;}
-    .rubric-header{display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;}
-    .rubric-track{background:#e2e8f0;height:6px;border-radius:99px;overflow:hidden;}
-    .rubric-bar{height:100%;border-radius:99px;}
-    .page-block{margin-bottom:18px;page-break-inside:avoid;}
-    .page-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:0.06em;color:#94a3b8;margin-bottom:5px;}
-    /* CRITICAL: answer image fills full width with annotations already composited */
-    .answer-img{width:100%;height:auto;display:block;border-radius:8px;border:1px solid #e2e8f0;}
-    .step-row{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid #f1f5f9;page-break-inside:avoid;}
-    .step-row:last-child{border-bottom:none;}
-    .step-circle{width:24px;height:24px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#6C2BD9,#a855f7);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;margin-top:1px;}
-    .step-body{flex:1;min-width:0;}
-    .step-text{font-size:12.5px;color:#334155;line-height:1.5;margin-bottom:6px;}
-    .step-math{background:#f8f4ff;border:1px solid #ddd6fe;border-radius:7px;padding:8px 14px;overflow-x:auto;margin-top:4px;}
-    .katex-display{margin:0!important;}
-    .katex{font-size:1.05em;}
-    .footer{margin-top:24px;padding-top:12px;border-top:1px solid #e2e8f0;display:flex;justify-content:space-between;font-size:10px;color:#94a3b8;}
-    @media print{body{-webkit-print-color-adjust:exact;print-color-adjust:exact;}.page-block,.step-row{page-break-inside:avoid;}}
-  </style>
-</head>
-<body>
-<div class="header">
-  <div class="header-left">
-    <h1>BoardAlgo — Evaluation Report</h1>
-    ${questionHtml?`<div class="question">${questionHtml}</div>`:''}
-  </div>
-  <div class="score-box">
-    <div class="marks">${scored}/${maxMk}</div>
-    <div class="sub">Score · ${diff}</div>
-  </div>
-</div>
-<div class="body">
-  <div class="chips">
-    ${subject?`<span class="chip">📚 ${subject}</span>`:''}
-    <span class="chip">🎯 ${scored}/${maxMk} marks</span>
-    ${diff!=='—'?`<span class="chip">📊 ${diff}</span>`:''}
-    <span class="chip">📅 ${today}</span>
-  </div>
-  <div class="section-title">Examiner's Summary</div>
-  <div class="summary-box">${summary}</div>
-  ${rubricRows?`<div class="section-title">Marks Breakdown</div>${rubricRows}`:''}
-  <div class="section-title">Answer Sheet${urls.length>1?`s (${urls.length} pages)`:''}</div>
-  ${imagesSection}
-  ${stepsSection?`<div class="section-title">Topper's Model Answer</div>${stepsSection}`:''}
-  <div class="footer">
-    <span>Generated by BoardAlgo · boardalgo.in</span>
-    <span>${today}</span>
-  </div>
-</div>
-</body>
-</html>`;
-
-  const win=window.open('','_blank');
-  if (!win) { alert('Please allow pop-ups from this site to download the PDF.'); return; }
-  win.document.write(printHtml);
-  win.document.close();
-  // Data URLs are already loaded — short delay for KaTeX CSS to load
-  setTimeout(()=>{ try { win.print(); } catch(_){} }, 700);
-}
-
-/* ══════════════════════════════════════════════════════════════════
-   13. RESET
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  RESET
+════════════════════════════════════════════════════════════════════ */
 function resetEvaluator() {
-  clearInterval(loadingInterval);
-  if (submitAbortCtrl) { try { submitAbortCtrl.abort('cancelled'); } catch(_){} submitAbortCtrl=null; }
-  lastFormData=null; lastEvaluationData=null;
-  cropQueue=[]; closeCropModal();
+  stopLoadingAnimations();
+  if (submitAbortCtrl) { try { submitAbortCtrl.abort('cancelled'); } catch(_){} submitAbortCtrl = null; }
+  lastFormData = null;
 
-  fileDT=new DataTransfer();
-  fileInput.files=fileDT.files; cameraInput.value='';
-  document.getElementById('file-preview-list').innerHTML='';
+  fileDT = new DataTransfer();
+  fileInput.files = fileDT.files;
+  document.getElementById('file-preview-list').innerHTML = '';
 
-  if(konvaStage){konvaStage.destroy();konvaStage=null;}
-  errorGroup=null;markGroup=null;errorsVisible=true;marksVisible=true;annotationsVisible=true;
+  if (konvaStage) { konvaStage.destroy(); konvaStage = null; }
+  if (fsStage)    { fsStage.destroy();    fsStage    = null; }
+  errorGroup = null; markGroup = null; fsErrorGroup = null; fsMarkGroup = null;
+  errorsVisible = true; marksVisible = true; annotationsVisible = true;
+  fsErrVis = true; fsMrkVis = true;
 
-  document.getElementById('student-img').src='';
-  document.getElementById('img-info-bar').innerHTML='';
-  document.getElementById('meta-chips').innerHTML='';
-  document.getElementById('rubric-bars').innerHTML='';
-  document.getElementById('steps-container').innerHTML='';
-  document.getElementById('ring-fill-el').style.strokeDashoffset='351.9';
-  document.getElementById('score-main').textContent='—';
-  const psWrap=document.getElementById('ps-wrapper');
-  if(psWrap)psWrap.style.display='none';
+  document.getElementById('student-img').src     = '';
+  document.getElementById('img-info-bar').innerHTML = '';
+  document.getElementById('meta-chips').innerHTML   = '';
+  document.getElementById('rubric-bars').innerHTML  = '';
+  document.getElementById('steps-container').innerHTML = '';
+  document.getElementById('ring-fill-el').style.strokeDashoffset = '351.9';
+  document.getElementById('score-main').textContent = '—';
+  const psWrap = document.getElementById('ps-wrapper');
+  if (psWrap) psWrap.style.display = 'none';
 
-  const up=document.getElementById('upload-section');
-  up.style.display='';up.style.opacity='1';up.style.pointerEvents='';
-  document.getElementById('loading-section').classList.add('hidden');
-  document.getElementById('result-section').style.display='none';
+  const up = document.getElementById('upload-section');
+  up.style.display = ''; up.style.opacity = '1'; up.style.pointerEvents = '';
+  document.getElementById('loading-section').style.display = 'none';
+  document.getElementById('result-section').style.display = 'none';
+  document.getElementById('fullscreen-overlay').classList.remove('active');
+  document.body.style.overflow = '';
 
-  submitBtn.disabled=true;
-  document.getElementById('submit-label').innerHTML=`<i data-lucide="gavel" class="w-5 h-5"></i> Submit to Strict Examiner`;
+  submitBtn.disabled = true;
+  document.getElementById('file-count-display').classList.add('hidden');
+  document.getElementById('submit-label').innerHTML = `<i data-lucide="gavel" class="w-5 h-5"></i> Submit to Strict Examiner`;
 
-  currentZoom=1;currentAnnotations=[];globalImageUrls=[];globalAnnotations=[];
+  currentZoom = 1; currentAnnotations = []; globalImageUrls = []; globalAnnotations = [];
   lucide.createIcons();
-  gsap.from('.gsap-entry',{y:20,opacity:0,stagger:0.07,duration:0.55,ease:'power2.out'});
-  window.scrollTo({top:0,behavior:'smooth'});
+  gsap.from('.gsap-entry', { y: 20, opacity: 0, stagger: 0.07, duration: 0.55, ease: 'power2.out' });
+  window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-/* ══════════════════════════════════════════════════════════════════
-   14. ACTION BUTTONS
-══════════════════════════════════════════════════════════════════ */
-document.getElementById('btn-download').addEventListener('click', async () => {
-  const btn=document.getElementById('btn-download');
-  const orig=btn.innerHTML;
-  btn.innerHTML='<svg class="animate-spin w-3.5 h-3.5 inline" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"/><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg> Preparing…';
-  btn.disabled=true;
-  await generatePDF();
-  btn.innerHTML=orig; btn.disabled=false; lucide.createIcons();
-});
-
-document.getElementById('btn-share').addEventListener('click', async () => {
-  if (navigator.share) {
-    try { await navigator.share({title:'My BoardAlgo Result',url:window.location.href}); } catch(_){}
-  } else {
-    await navigator.clipboard.writeText(window.location.href);
-    const btn=document.getElementById('btn-share');
-    btn.innerHTML='<i data-lucide="check" class="w-3.5 h-3.5"></i> Copied!';
-    lucide.createIcons();
-    setTimeout(()=>{ btn.innerHTML='<i data-lucide="share-2" class="w-3.5 h-3.5"></i> Share'; lucide.createIcons(); },2000);
-  }
-});
-
-/* ══════════════════════════════════════════════════════════════════
-   15. AUTO-TRIGGER on page load (EJS injection)
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  AUTO-TRIGGER on page load (EJS injected data)
+════════════════════════════════════════════════════════════════════ */
 window.addEventListener('DOMContentLoaded', () => {
   if (window.injectedEvaluationData) {
-    document.getElementById('upload-section').style.display='none';
+    document.getElementById('upload-section').style.display = 'none';
     renderResult(window.injectedEvaluationData);
   }
 });
 
-/* ══════════════════════════════════════════════════════════════════
-   16. THREE.JS PARTICLE BACKGROUND
-══════════════════════════════════════════════════════════════════ */
+/* ════════════════════════════════════════════════════════════════════
+  SHARE + DOWNLOAD
+════════════════════════════════════════════════════════════════════ */
+document.getElementById('btn-download').addEventListener('click', () => { window.print(); });
+document.getElementById('btn-share').addEventListener('click', async () => {
+  if (navigator.share) {
+    try { await navigator.share({ title: 'My BoardAlgo Result', url: window.location.href }); } catch(_) {}
+  } else {
+    await navigator.clipboard.writeText(window.location.href);
+    const btn = document.getElementById('btn-share');
+    btn.innerHTML = '<i data-lucide="check" class="w-3.5 h-3.5"></i> Copied!';
+    lucide.createIcons();
+    setTimeout(() => {
+      btn.innerHTML = '<i data-lucide="share-2" class="w-3.5 h-3.5"></i> Share';
+      lucide.createIcons();
+    }, 2000);
+  }
+});
+
+/* ════════════════════════════════════════════════════════════════════
+  THREE.JS PARTICLE BACKGROUND
+════════════════════════════════════════════════════════════════════ */
 (function initThree() {
   const canvas   = document.getElementById('bg-canvas');
-  const renderer = new THREE.WebGLRenderer({canvas,alpha:true});
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true });
   const scene    = new THREE.Scene();
-  const camera   = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
-  renderer.setSize(innerWidth,innerHeight);
-  renderer.setPixelRatio(Math.min(devicePixelRatio,1.8));
-
-  const count=window.innerWidth<640?700:1400;
-  const pos=new Float32Array(count*3);
-  for(let i=0;i<count*3;i++) pos[i]=(Math.random()-0.5)*22;
-  const geo=new THREE.BufferGeometry();
-  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
-  const mat=new THREE.PointsMaterial({size:0.018,color:0xEF4444,transparent:true,opacity:0.45});
-  const mesh=new THREE.Points(geo,mat);
+  const camera   = new THREE.PerspectiveCamera(75, innerWidth / innerHeight, 0.1, 1000);
+  renderer.setSize(innerWidth, innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio, 1.8));
+  const count = window.innerWidth < 640 ? 700 : 1400;
+  const pos   = new Float32Array(count * 3);
+  for (let i = 0; i < count * 3; i++) pos[i] = (Math.random() - 0.5) * 22;
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute('position', new THREE.BufferAttribute(pos, 3));
+  const mat  = new THREE.PointsMaterial({ size: 0.018, color: 0xEF4444, transparent: true, opacity: 0.45 });
+  const mesh = new THREE.Points(geo, mat);
   scene.add(mesh);
-  camera.position.z=4;
-
-  let mx=0,my=0;
-  document.addEventListener('mousemove',e=>{ mx=e.clientX/innerWidth-0.5; my=e.clientY/innerHeight-0.5; });
-  document.addEventListener('touchmove',e=>{ if(e.touches[0]){mx=e.touches[0].clientX/innerWidth-0.5;my=e.touches[0].clientY/innerHeight-0.5;} },{passive:true});
-
-  (function animate(){
+  camera.position.z = 4;
+  let mx = 0, my = 0;
+  document.addEventListener('mousemove', e => { mx = e.clientX / innerWidth - 0.5; my = e.clientY / innerHeight - 0.5; });
+  document.addEventListener('touchmove', e => {
+    if (e.touches[0]) { mx = e.touches[0].clientX / innerWidth - 0.5; my = e.touches[0].clientY / innerHeight - 0.5; }
+  }, { passive: true });
+  (function animate() {
     requestAnimationFrame(animate);
-    mesh.rotation.y+=0.0003+mx*0.0014;
-    mesh.rotation.x+=0.0002+my*0.0008;
-    renderer.render(scene,camera);
+    mesh.rotation.y += 0.0003 + mx * 0.0014;
+    mesh.rotation.x += 0.0002 + my * 0.0008;
+    renderer.render(scene, camera);
   })();
-
-  window.addEventListener('resize',()=>{
-    camera.aspect=innerWidth/innerHeight;
+  window.addEventListener('resize', () => {
+    camera.aspect = innerWidth / innerHeight;
     camera.updateProjectionMatrix();
-    renderer.setSize(innerWidth,innerHeight);
+    renderer.setSize(innerWidth, innerHeight);
   });
 })();
 </script>

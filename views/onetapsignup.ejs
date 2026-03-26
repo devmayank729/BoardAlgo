@@ -176,7 +176,11 @@
                 
                 <div>
                     <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Your Class <span class="text-brand-primary">*</span></label>
-                    <input type="text" name="Class" placeholder="e.g. 10th, 12th" required class="w-full p-3.5 rounded-lg glass-input text-white placeholder-slate-600 focus:text-white transition-all">
+                    <select name="Class" required class="w-full p-3.5 rounded-lg glass-input text-white focus:text-white transition-all cursor-pointer">
+                        <option value="" disabled selected class="bg-[#0f172a] text-slate-400">Select Class</option>
+                        <option value="10th" class="bg-[#0f172a] text-white">10th</option>
+                        <option value="12th" class="bg-[#0f172a] text-white">12th</option>
+                    </select>
                 </div>
 
                 <div>
@@ -185,6 +189,11 @@
                         <span class="absolute left-4 text-white font-bold tracking-wide z-10 pointer-events-none">+91</span>
                         <input type="tel" name="phone_number" placeholder="99999 99999" required pattern="[0-9\s]{10,11}" class="w-full pl-14 p-3.5 rounded-lg glass-input text-white placeholder-slate-600 transition-all">
                     </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wider">Referral Code</label>
+                    <input type="text" name="referral_code" placeholder="Optional" class="w-full p-3.5 rounded-lg glass-input text-white placeholder-slate-600 focus:text-white transition-all">
                 </div>
 
                 <div class="space-y-4 pt-2">

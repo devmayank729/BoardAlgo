@@ -27,6 +27,8 @@ const UserSchema = new Schema({
 
   photoURL : {type : String} , 
 
+  referral_code : {type : String} , 
+
   // Add this inside your User Schema
   mnemonic_feedbacks: [{ 
     type: Schema.Types.ObjectId, 
